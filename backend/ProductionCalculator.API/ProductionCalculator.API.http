@@ -1,0 +1,6 @@
+@ProductionCalculator.API_HostAddress = http://localhost:5076
+
+GET {{ProductionCalculator.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
