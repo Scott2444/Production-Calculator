@@ -35,5 +35,42 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local settings
+# local info
 project_info.md
+
+# backend secrets
+backend/secrets/
+
+# ------------------------
+# .NET / Visual Studio
+# ------------------------
+
+# Build folders
+**/bin/
+**/obj/
+
+# VS/IDE directories
+.vs/
+.idea/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+
+# NuGet packages
+**/packages/
+*.nupkg
+*.snupkg
+
+# dotnet publish
+**/publish/
+
+# Rider
+*.sln.iml
+
+# ReSharper
+_ReSharper*/
+*.DotSettings

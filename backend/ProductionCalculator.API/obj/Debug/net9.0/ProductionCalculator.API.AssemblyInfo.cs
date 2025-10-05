@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ProductionCalculator.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+870805c3077c700ff47ffcd89bf8c3c57b1bec22")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+44d99aca62b001198932fb088df7c1b25ccc86db")]
 [assembly: System.Reflection.AssemblyProductAttribute("ProductionCalculator.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ProductionCalculator.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
