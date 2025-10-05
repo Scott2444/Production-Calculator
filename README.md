@@ -18,7 +18,7 @@ Authentication will be done with JWT.
 
 ### Database
 This will use PostgreSQL.
-Entity Relation Diagram
+#### Entity Relation Diagram
 https://michiganstate-my.sharepoint.com/personal/haakens3_msu_edu/_layouts/15/Doc.aspx?sourcedoc={a9564c30-e26d-4955-9261-0c8381a41fcf}&action=embedview
 
 ## Hosting

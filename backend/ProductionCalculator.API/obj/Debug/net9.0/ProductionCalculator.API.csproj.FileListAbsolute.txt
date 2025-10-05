@@ -128,3 +128,10 @@ C:\Users\scott\Production-Calculator\backend\ProductionCalculator.API\obj\Debug\
 C:\Users\scott\Production-Calculator\backend\ProductionCalculator.API\obj\Debug\net9.0\ProductionCalculator.API.pdb
 C:\Users\scott\Production-Calculator\backend\ProductionCalculator.API\obj\Debug\net9.0\ProductionCalculator.API.genruntimeconfig.cache
 C:\Users\scott\Production-Calculator\backend\ProductionCalculator.API\obj\Debug\net9.0\ref\ProductionCalculator.API.dll
+C:\Users\scott\Production-Calculator\backend\ProductionCalculator.API\bin\Debug\net9.0\ProductionCalculator.Business.dll
+C:\Users\scott\Production-Calculator\backend\ProductionCalculator.API\bin\Debug\net9.0\ProductionCalculator.Data.dll
+C:\Users\scott\Production-Calculator\backend\ProductionCalculator.API\bin\Debug\net9.0\ProductionCalculator.Business.pdb
+C:\Users\scott\Production-Calculator\backend\ProductionCalculator.API\bin\Debug\net9.0\ProductionCalculator.Data.pdb
+C:\Users\scott\Production-Calculator\backend\ProductionCalculator.API\bin\Debug\net9.0\Swashbuckle.AspNetCore.Swagger.dll
+C:\Users\scott\Production-Calculator\backend\ProductionCalculator.API\bin\Debug\net9.0\Swashbuckle.AspNetCore.SwaggerGen.dll
+C:\Users\scott\Production-Calculator\backend\ProductionCalculator.API\bin\Debug\net9.0\Swashbuckle.AspNetCore.SwaggerUI.dll
