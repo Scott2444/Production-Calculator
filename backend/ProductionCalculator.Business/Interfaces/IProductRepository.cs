@@ -4,10 +4,10 @@ using ProductionCalculator.Business.Models;
 
 namespace ProductionCalculator.Business.Interfaces
 {
-    public interface IItemService
+    public interface IProductRepository
     {
-        Task<IEnumerable<Item>> GetAllAsync();
-        Task<Item?> GetByIdAsync(int id);
-        Task<Item> CreateAsync(Item item);
+        Task<Product?> GetByIdAsync(int id);
+        Task<IEnumerable<Product>> ListAsync();
+        Task AddAsync(Product product);
     }
 }

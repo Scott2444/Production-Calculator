@@ -6,11 +6,11 @@ namespace ProductionCalculator.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class ItemsController : ControllerBase
+    public class ProductsController : ControllerBase
     {
-        private readonly IItemService _service;
+        private readonly IProductService _service;
 
-        public ItemsController(IItemService service)
+        public ProductsController(IProductService service)
         {
             _service = service;
         }
@@ -18,21 +18,21 @@ namespace ProductionCalculator.API.Controllers
         [HttpGet]
         public async Task<IActionResult> Get()
         {
-            var items = await _service.GetAllAsync();
-            return Ok(items);
+            var products = await _service.GetAllAsync();
+            return Ok(products);
         }
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> Get(int id)
         {
-            var item = await _service.GetByIdAsync(id);
-            return item is null ? NotFound() : Ok(item);
+            var product = await _service.GetByIdAsync(id);
+            return product is null ? NotFound() : Ok(product);
         }
 
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] Item item)
+        public async Task<IActionResult> Post([FromBody] Product product)
         {
-            var created = await _service.CreateAsync(item);
+            var created = await _service.CreateAsync(product);
             return CreatedAtAction(nameof(Get), new { id = created.Id }, created);
         }
     }

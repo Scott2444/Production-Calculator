@@ -22,7 +22,7 @@ builder.Services.AddSwaggerGen(c =>
 
 // Add application services and data
 builder.Services.AddProductionCalculatorData(builder.Configuration);
-builder.Services.AddScoped<IItemService, ItemService>();
+builder.Services.AddScoped<IProductService, ProductService>();
 
 var app = builder.Build();
 

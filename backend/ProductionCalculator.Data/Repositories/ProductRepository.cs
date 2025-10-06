@@ -6,29 +6,29 @@ using ProductionCalculator.Business.Interfaces;
 
 namespace ProductionCalculator.Data.Repositories
 {
-    public class ItemRepository : IItemRepository
+    public class ProductRepository : IProductRepository
     {
         private readonly ProductionCalculatorDbContext _db;
 
-        public ItemRepository(ProductionCalculatorDbContext db)
+        public ProductRepository(ProductionCalculatorDbContext db)
         {
             _db = db;
         }
 
-        public async Task AddAsync(Item item)
+        public async Task AddAsync(Product product)
         {
-            await _db.Items.AddAsync(item);
+            await _db.Products.AddAsync(product);
             await _db.SaveChangesAsync();
         }
 
-        public async Task<Item?> GetByIdAsync(int id)
+        public async Task<Product?> GetByIdAsync(int id)
         {
-            return await _db.Items.FindAsync(id);
+            return await _db.Products.FindAsync(id);
         }
 
-        public async Task<IEnumerable<Item>> ListAsync()
+        public async Task<IEnumerable<Product>> ListAsync()
         {
-            return await _db.Items.ToListAsync();
+            return await _db.Products.ToListAsync();
         }
     }
 }

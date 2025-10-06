@@ -12,7 +12,7 @@ namespace ProductionCalculator.Data.Extensions
         {
             var conn = configuration.GetConnectionString("DefaultConnection") ?? configuration["ConnectionStrings:DefaultConnection"];
             services.AddDbContext<ProductionCalculatorDbContext>(opts => opts.UseNpgsql(conn));
-            services.AddScoped<IItemRepository, ItemRepository>();
+            services.AddScoped<IProductRepository, ProductRepository>();
             return services;
         }
     }
