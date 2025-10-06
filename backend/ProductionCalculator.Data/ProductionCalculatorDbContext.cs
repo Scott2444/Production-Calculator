@@ -12,11 +12,13 @@ namespace ProductionCalculator.Data
         }
 
         public DbSet<Product> Products => Set<Product>();
+        public DbSet<User> Users => Set<User>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
             modelBuilder.ApplyConfiguration(new ProductConfiguration());
+            modelBuilder.ApplyConfiguration(new UserConfiguration());
 
             // Configure Product.User_Attributes as jsonb using System.Text.Json serialization
             var options = new System.Text.Json.JsonSerializerOptions();
