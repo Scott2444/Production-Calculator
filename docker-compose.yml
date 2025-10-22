@@ -21,11 +21,11 @@ services:
     depends_on:
       - postgres
     volumes:
-      - ./migrations:/flyway/sql
+      - ./database/migrations:/flyway/sql
     command: >
       -url=jdbc:postgresql://postgres:5432/production_calculator
-      -user=postgres
-      -password=admin
+      -user=flyway_user
+      -password=flyway_password_2
       migrate
     restart: "no"
 
