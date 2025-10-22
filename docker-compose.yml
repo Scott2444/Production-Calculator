@@ -1,0 +1,33 @@
+name: production-calculator
+services:
+  postgres:
+    image: postgres:18
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: production_calculator
+    volumes:
+      - production_calculator_dev:/var/lib/postgresql/data
+      - ./database/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./database/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
+    ports:
+      - "5151:5432"
+
+  flyway:
+    image: flyway/flyway:10
+    container_name: flyway_migrator
+    depends_on:
+      - postgres
+    volumes:
+      - ./migrations:/flyway/sql
+    command: >
+      -url=jdbc:postgresql://postgres:5432/production_calculator
+      -user=postgres
+      -password=admin
+      migrate
+    restart: "no"
+
+volumes:
+  production_calculator_dev:
