@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    if: hashFiles('**/Dockerfile') != '' # Remove this line when there is a Dockerfile
+    if: false # Remove this line when there is a Dockerfile
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
