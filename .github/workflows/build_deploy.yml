@@ -43,37 +43,16 @@ jobs:
     # needs: build  # Uncomment this line when Dockerfile is added
 
     steps:
-      - name: Checkout
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup Cloudflare Tunnel
-        uses: cloudflare/cloudflared-action@v1
+      - name: Connect and run command on remote server
+        uses: and-fm/cloudflared-ssh-action@v3
         with:
-          tunnel-token: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
-        run: cloudflared tunnel --no-autoupdate run &
-
-      - name: Copy compose and database files to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: localhost
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22 # For clarity
-          source: |
-            docker-compose.yml
-            database/**
-          target: C:/Users/Server1/Production-Calculator
-
-      # MODIFIED STEP: Notice the host is now 'localhost' here as well
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: localhost
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22 # For clarity
-          script: |
-            cd C:\Users\Server1\Production-Calculator
-            docker compose pull
-            docker compose up -d
-            docker image prune -f
+          host: ${{ secrets.SERVER_SSH_HOST }}
+          port: ${{ secrets.SERVER_SSH_PORT }}
+          username: ${{ secrets.SERVER_SSH_USERNAME }}
+          private_key_filename: deploy_key
+          private_key_value: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
+          commands: |
+            echo "Hello from GitHub Actions"
