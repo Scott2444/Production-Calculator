@@ -55,4 +55,4 @@ jobs:
           private_key_filename: deploy_key
           private_key_value: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
           commands: |
-            echo "Hello from GitHub Actions"
+            echo "Hello from GitHub Actions pt2"
