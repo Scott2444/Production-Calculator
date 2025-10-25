@@ -6,6 +6,9 @@ project_info.md
 # backend secrets
 backend/secrets/
 
+# Docker secrets
+/secrets/
+
 # ------------------------
 # Node.js
 # ------------------------
