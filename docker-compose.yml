@@ -24,14 +24,9 @@ services:
       - postgres
     volumes:
       - ./database/migrations:/flyway/sql
-    entrypoint: ["/bin/sh", "-c"]
-    command: >
-      echo "flyway -url=jdbc:postgresql://postgres:5432/production_calculator -user=flyway -password=$(cat /run/secrets/flyway_password) migrate";
-      flyway
-      -url=jdbc:postgresql://postgres:5432/production_calculator
-      -user=flyway
-      -password=$(cat /run/secrets/flyway_password)
-      migrate
+      - ./scripts/flyway-entrypoint.sh:/flyway-entrypoint.sh
+    entrypoint: ["/bin/sh", "/flyway-entrypoint.sh"]
+    command: -url=jdbc:postgresql://postgres:5432/production_calculator -user=flyway migrate
     restart: "no"
     secrets:
       - flyway_password
