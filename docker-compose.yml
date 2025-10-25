@@ -24,11 +24,13 @@ services:
       - postgres
     volumes:
       - ./database/migrations:/flyway/sql
-    environment:
-      FLYWAY_URL: jdbc:postgresql://postgres:5432/production_calculator
-      FLYWAY_USER: flyway
-      FLYWAY_PASSWORD_FILE: /run/secrets/flyway_password
-    command: migrate
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      flyway
+      -url=jdbc:postgresql://postgres:5432/production_calculator
+      -user=flyway
+      -password=$$(cat /run/secrets/flyway_password)
+      migrate
     restart: "no"
     secrets:
       - flyway_password
