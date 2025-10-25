@@ -67,8 +67,9 @@ jobs:
             "${{ secrets.SERVER_SSH_USERNAME }}"@"${{ secrets.SERVER_SSH_HOST }}" <<'EOF'
             cd Production-Calculator
             git pull origin main
-            DB_PORT=5151 docker compose -p "production-calculator-dev" down
-            DB_PORT=5151 docker compose -p "production-calculator-dev" up -d
+            $env:DB_PORT=5151
+            docker compose -p "production-calculator-dev" down
+            docker compose -p "production-calculator-dev" up -d
             EOF
 
   deploy_beta:
@@ -99,8 +100,9 @@ jobs:
             "${{ secrets.SERVER_SSH_USERNAME }}"@"${{ secrets.SERVER_SSH_HOST }}" <<'EOF'
             cd Production-Calculator
             git pull origin main
-            DB_PORT=5152 docker compose -p "production-calculator-beta" down
-            DB_PORT=5152 docker compose -p "production-calculator-beta" up -d
+            $env:DB_PORT=5152
+            docker compose -p "production-calculator-beta" down
+            docker compose -p "production-calculator-beta" up -d
             EOF
 
   deploy_prod:
@@ -131,6 +133,7 @@ jobs:
             "${{ secrets.SERVER_SSH_USERNAME }}"@"${{ secrets.SERVER_SSH_HOST }}" <<'EOF'
             cd Production-Calculator
             git pull origin main
-            DB_PORT=5152 docker compose -p "production-calculator-prod" down
-            DB_PORT=5152 docker compose -p "production-calculator-prod" up -d
+            $env:DB_PORT=5153
+            docker compose -p "production-calculator-prod" down
+            docker compose -p "production-calculator-prod" up -d
             EOF

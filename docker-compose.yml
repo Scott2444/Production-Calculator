@@ -2,14 +2,14 @@ name: production-calculator
 services:
   postgres:
     image: postgres:18
-    container_name: postgres_db
+    container_name: postgres_${ENV_NAME:-dev}
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
       POSTGRES_DB: production_calculator
     volumes:
-      - dev_db:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
       - ./database/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
       - ./database/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
     ports:
@@ -19,7 +19,7 @@ services:
 
   flyway:
     image: flyway/flyway:10
-    container_name: flyway_migrator
+    container_name: flyway_${ENV_NAME:-dev}
     depends_on:
       - postgres
     volumes:
@@ -32,7 +32,7 @@ services:
       - flyway_password
 
 volumes:
-  dev_db:
+  db_data:
 
 secrets:
   postgres_password:
