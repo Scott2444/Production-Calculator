@@ -13,4 +13,4 @@ CREATE SCHEMA IF NOT EXISTS app AUTHORIZATION flyway;
 
 -- Allow connection and object creation in the managed schema
 GRANT CONNECT ON DATABASE production_calculator TO flyway;
-GRANT USAGE, CREATE ON SCHEMA app TO flyway;
+GRANT USAGE, CREATE ON SCHEMA public TO flyway;
