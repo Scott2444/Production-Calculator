@@ -6,14 +6,16 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: admin
+      POSTGRES_PASSWORD: /run/secrets/postgres_password
       POSTGRES_DB: production_calculator
     volumes:
-      - production_calculator_dev:/var/lib/postgresql/data
+      - dev_db:/var/lib/postgresql/data
       - ./database/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
       - ./database/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
     ports:
       - "5151:5432"
+    secrets:
+      - postgres_password
 
   flyway:
     image: flyway/flyway:10
@@ -28,6 +30,14 @@ services:
       -password=flyway_password_2
       migrate
     restart: "no"
+    secrets:
+      - flyway_password
 
 volumes:
-  production_calculator_dev:
+  dev_db:
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  flyway_password:
+    file: ./secrets/flyway_password.txt
