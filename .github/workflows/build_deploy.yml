@@ -43,9 +43,6 @@ jobs:
     # needs: build  # Uncomment this line when Dockerfile is added
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
       - name: Connect and run command on remote server
         uses: and-fm/cloudflared-ssh-action@v3
         with:
