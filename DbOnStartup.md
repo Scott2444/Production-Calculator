@@ -6,13 +6,7 @@ docker run --name postgres_startup -e POSTGRES_PASSWORD=password -e POSTGRES_USE
 psql -h localhost -p 5151 -U postgres -d production_calculator
 
 -- Create a dedicated, non-superuser role for Flyway
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'flyway') THEN
-    CREATE ROLE flyway LOGIN PASSWORD 'password'
-        CREATEROLE NOINHERIT;
-  END IF;
-END$$;
+CREATE ROLE flyway LOGIN PASSWORD 'password'CREATEROLE NOINHERIT;
 
 -- Create a schema owned by flyway so it can alter it freely
 CREATE SCHEMA IF NOT EXISTS app AUTHORIZATION flyway;
