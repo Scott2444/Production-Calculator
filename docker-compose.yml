@@ -13,7 +13,7 @@ services:
       - ./database/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
       - ./database/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
     ports:
-      - "5151:5432"
+      - "${DB_PORT:-5151}:5432"
     secrets:
       - postgres_password
 

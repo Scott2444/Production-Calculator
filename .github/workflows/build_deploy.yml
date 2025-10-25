@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  pull_request:
+  workflow_dispatch: {}
 
 jobs:
   build:
@@ -38,27 +38,24 @@ jobs:
           provenance: true
           sbom: true
 
-  deploy:
+  deploy_dev:
+    # needs: build
+    environment: development
     runs-on: ubuntu-latest
-    # needs: build  # Uncomment this line when Dockerfile is added
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Install SSH client and cloudflared
         run: |
           sudo apt-get update
           sudo apt-get install -y openssh-client ca-certificates
           curl -L -o cloudflared.deb "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb"
           sudo dpkg -i cloudflared.deb || sudo apt-get -f install -y
-
       - name: Add SSH private key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SERVER_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-
       - name: Run remote deploy commands via cloudflared ProxyCommand
         env:
           CF_HOSTNAME: ${{ secrets.SERVER_SSH_HOST }}
@@ -70,5 +67,70 @@ jobs:
             "${{ secrets.SERVER_SSH_USERNAME }}"@"${{ secrets.SERVER_SSH_HOST }}" <<'EOF'
             cd Production-Calculator
             git pull origin main
-            docker compose down
-            docker compose up -d
+            DB_PORT=5151 docker compose -p "production-calculator-dev" down
+            DB_PORT=5151 docker compose -p "production-calculator-dev" up -d
+            EOF
+
+  deploy_beta:
+    needs: deploy_dev
+    runs-on: ubuntu-latest
+    environment: beta   # requires approval if you configure required reviewers in Repo > Settings > Environments > beta
+    env:
+      ENV_NAME: beta
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add SSH private key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Remote deploy to Beta
+        env:
+          CF_HOSTNAME: ${{ secrets.SERVER_SSH_HOST }}
+          ENV_NAME: beta
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            -o ProxyCommand="cloudflared access ssh --hostname $CF_HOSTNAME" \
+            -o StrictHostKeyChecking=no \
+            -p "${{ secrets.SERVER_SSH_PORT }}" \
+            "${{ secrets.SERVER_SSH_USERNAME }}"@"${{ secrets.SERVER_SSH_HOST }}" <<'EOF'
+            cd Production-Calculator
+            git pull origin main
+            DB_PORT=5152 docker compose -p "production-calculator-beta" down
+            DB_PORT=5152 docker compose -p "production-calculator-beta" up -d
+            EOF
+
+  deploy_prod:
+    needs: deploy_beta
+    runs-on: ubuntu-latest
+    environment: production   # requires approval if you configure required reviewers in Repo > Settings > Environments > production
+    env:
+      ENV_NAME: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add SSH private key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Remote deploy to Prod
+        env:
+          CF_HOSTNAME: ${{ secrets.SERVER_SSH_HOST }}
+          ENV_NAME: prod
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            -o ProxyCommand="cloudflared access ssh --hostname $CF_HOSTNAME" \
+            -o StrictHostKeyChecking=no \
+            -p "${{ secrets.SERVER_SSH_PORT }}" \
+            "${{ secrets.SERVER_SSH_USERNAME }}"@"${{ secrets.SERVER_SSH_HOST }}" <<'EOF'
+            cd Production-Calculator
+            git pull origin main
+            DB_PORT=5152 docker compose -p "production-calculator-prod" down
+            DB_PORT=5152 docker compose -p "production-calculator-prod" up -d
+            EOF
