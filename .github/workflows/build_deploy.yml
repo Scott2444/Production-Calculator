@@ -41,6 +41,8 @@ jobs:
   deploy_dev:
     # needs: build
     environment: development
+    env:
+      ENV_NAME: beta
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -68,6 +70,7 @@ jobs:
             cd Production-Calculator
             git pull origin main
             $env:DB_PORT=5151
+            $env:ENV_NAME = '${{ env.ENV_NAME }}'
             docker compose -p "production-calculator-dev" down
             docker compose -p "production-calculator-dev" up -d
             EOF
@@ -107,7 +110,7 @@ jobs:
             "${{ secrets.SERVER_SSH_USERNAME }}"@"${{ secrets.SERVER_SSH_HOST }}" <<'EOF'
             cd Production-Calculator
             git pull origin main
-            $env:DB_PORT=5152
+            $env:ENV_NAME = '${{ env.ENV_NAME }}'
             docker compose -p "production-calculator-beta" down
             docker compose -p "production-calculator-beta" up -d
             EOF
@@ -148,6 +151,7 @@ jobs:
             cd Production-Calculator
             git pull origin main
             $env:DB_PORT=5153
+            $env:ENV_NAME = '${{ env.ENV_NAME }}'
             docker compose -p "production-calculator-prod" down
             docker compose -p "production-calculator-prod" up -d
             EOF
