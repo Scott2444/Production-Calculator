@@ -52,7 +52,17 @@ jobs:
           private_key_filename: deploy_key
           private_key_value: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
           commands: |
-            cd .\Production-Calculator
+            echo "=== Current Directory ==="
+            pwd
+            echo "=== Changing to Production-Calculator ==="
+            cd Production-Calculator
+            echo "=== Git Pull ==="
             git pull origin main
+            echo "=== Docker Compose Down ==="
             docker compose down
+            echo "=== Docker Compose Up ==="
             docker compose up -d
+            echo "=== Docker Compose PS ==="
+            docker compose ps
+            echo "=== Docker Compose Logs (last 50 lines) ==="
+            docker compose logs --tail=50
