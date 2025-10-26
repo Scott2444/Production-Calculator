@@ -73,7 +73,6 @@ jobs:
             $env:ENV_NAME = '${{ env.ENV_NAME }}'
             docker compose -p "production-calculator-dev" down
             docker compose -p "production-calculator-dev" up -d
-            EOF
 
   deploy_beta:
     needs: deploy_dev
@@ -114,7 +113,6 @@ jobs:
             $env:ENV_NAME = '${{ env.ENV_NAME }}'
             docker compose -p "production-calculator-beta" down
             docker compose -p "production-calculator-beta" up -d
-            EOF
 
   deploy_prod:
     needs: deploy_beta
@@ -155,4 +153,3 @@ jobs:
             $env:ENV_NAME = '${{ env.ENV_NAME }}'
             docker compose -p "production-calculator-prod" down
             docker compose -p "production-calculator-prod" up -d
-            EOF
