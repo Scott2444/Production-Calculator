@@ -61,6 +61,8 @@ jobs:
       - name: Run remote deploy commands via cloudflared ProxyCommand
         env:
           CF_HOSTNAME: ${{ secrets.SERVER_SSH_HOST }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
           ssh -i ~/.ssh/deploy_key \
             -o ProxyCommand="cloudflared access ssh --hostname $CF_HOSTNAME" \
@@ -101,6 +103,8 @@ jobs:
         env:
           CF_HOSTNAME: ${{ secrets.SERVER_SSH_HOST }}
           ENV_NAME: beta
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
           ssh -i ~/.ssh/deploy_key \
             -o ProxyCommand="cloudflared access ssh --hostname $CF_HOSTNAME" \
@@ -141,6 +145,8 @@ jobs:
         env:
           CF_HOSTNAME: ${{ secrets.SERVER_SSH_HOST }}
           ENV_NAME: prod
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
           ssh -i ~/.ssh/deploy_key \
             -o ProxyCommand="cloudflared access ssh --hostname $CF_HOSTNAME" \
