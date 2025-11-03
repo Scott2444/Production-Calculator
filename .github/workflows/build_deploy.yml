@@ -42,7 +42,7 @@ jobs:
     # needs: build
     environment: development
     env:
-      ENV_NAME: development
+      ENV_NAME: dev
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -72,6 +72,7 @@ jobs:
             cd Production-Calculator
             git pull origin main
             set DB_PORT=5151
+            set BACKEND_PORT=5000
             set ENV_NAME=${{ env.ENV_NAME }}
             docker compose -p "production-calculator-dev" down
             docker compose -p "production-calculator-dev" up -d
@@ -102,7 +103,6 @@ jobs:
       - name: Remote deploy to Beta
         env:
           CF_HOSTNAME: ${{ secrets.SERVER_SSH_HOST }}
-          ENV_NAME: beta
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
@@ -114,6 +114,7 @@ jobs:
             cd Production-Calculator
             git pull origin main
             set DB_PORT=5152
+            set BACKEND_PORT=5001
             set ENV_NAME=${{ env.ENV_NAME }}
             docker compose -p "production-calculator-beta" down
             docker compose -p "production-calculator-beta" up -d
@@ -123,7 +124,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production   # requires approval if you configure required reviewers in Repo > Settings > Environments > production
     env:
-      ENV_NAME: production
+      ENV_NAME: prod
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -144,7 +145,6 @@ jobs:
       - name: Remote deploy to Prod
         env:
           CF_HOSTNAME: ${{ secrets.SERVER_SSH_HOST }}
-          ENV_NAME: prod
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
@@ -156,6 +156,7 @@ jobs:
             cd Production-Calculator
             git pull origin main
             set DB_PORT=5153
+            set BACKEND_PORT=5002
             set ENV_NAME=${{ env.ENV_NAME }}
             docker compose -p "production-calculator-prod" down
             docker compose -p "production-calculator-prod" up -d

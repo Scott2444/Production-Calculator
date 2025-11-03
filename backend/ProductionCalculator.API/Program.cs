@@ -5,13 +5,6 @@ using ProductionCalculator.Business.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Load local secrets file if present (not checked into source control)
-var secretsPath = Path.Combine(builder.Environment.ContentRootPath, "..", "secrets", "appsettings.Secrets.json");
-if (File.Exists(secretsPath))
-{
-    builder.Configuration.AddJsonFile(secretsPath, optional: true, reloadOnChange: true);
-}
-
 // Add services to the container
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
