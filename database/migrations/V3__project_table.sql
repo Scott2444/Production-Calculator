@@ -3,7 +3,7 @@ create table app.projects
     project_id  serial primary key,
     user_id integer not null
         constraint fk_user
-            references users
+            references app.users
             on delete cascade,
     name varchar(255) not null,
     description text,
