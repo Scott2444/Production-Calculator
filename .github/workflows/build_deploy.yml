@@ -4,11 +4,11 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: {}
 
 jobs:
   build:
-    if: false # Remove this line when there is a Dockerfile
+    # Remove this line when there is a Dockerfile
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -38,11 +38,11 @@ jobs:
           provenance: true
           sbom: true
 
-  deploy_dev:
+  deploy_development:
     # needs: build
-    environment: development
+    environment: Development
     env:
-      ENV_NAME: dev
+      ENV_NAME: Development
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -58,7 +58,7 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SERVER_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-      - name: Run remote deploy commands via cloudflared ProxyCommand
+      - name: Remote deploy to Development
         env:
           CF_HOSTNAME: ${{ secrets.SERVER_SSH_HOST }}
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
@@ -74,15 +74,15 @@ jobs:
             set DB_PORT=5151
             set BACKEND_PORT=5000
             set ENV_NAME=${{ env.ENV_NAME }}
-            docker compose -p "production-calculator-dev" down
-            docker compose -p "production-calculator-dev" up -d
+            docker compose -p "Production-Calculator-Development" down
+            docker compose -p "Production-Calculator-Development" up -d
 
-  deploy_beta:
-    needs: deploy_dev
+  deploy_staging:
+    needs: deploy_development
     runs-on: ubuntu-latest
-    environment: beta   # requires approval if you configure required reviewers in Repo > Settings > Environments > beta
+    environment: Staging
     env:
-      ENV_NAME: beta
+      ENV_NAME: Staging
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -100,7 +100,7 @@ jobs:
           echo "${{ secrets.SERVER_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
-      - name: Remote deploy to Beta
+      - name: Remote deploy to Staging
         env:
           CF_HOSTNAME: ${{ secrets.SERVER_SSH_HOST }}
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
@@ -116,15 +116,15 @@ jobs:
             set DB_PORT=5152
             set BACKEND_PORT=5001
             set ENV_NAME=${{ env.ENV_NAME }}
-            docker compose -p "production-calculator-beta" down
-            docker compose -p "production-calculator-beta" up -d
+            docker compose -p "Production-Calculator-Staging" down
+            docker compose -p "Production-Calculator-Staging" up -d
 
-  deploy_prod:
-    needs: deploy_beta
+  deploy_production:
+    needs: deploy_staging
     runs-on: ubuntu-latest
-    environment: production   # requires approval if you configure required reviewers in Repo > Settings > Environments > production
+    environment: Production
     env:
-      ENV_NAME: prod
+      ENV_NAME: Production
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -158,5 +158,5 @@ jobs:
             set DB_PORT=5153
             set BACKEND_PORT=5002
             set ENV_NAME=${{ env.ENV_NAME }}
-            docker compose -p "production-calculator-prod" down
-            docker compose -p "production-calculator-prod" up -d
+            docker compose -p "Production-Calculator-Production" down
+            docker compose -p "Production-Calculator-Production" up -d

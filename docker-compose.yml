@@ -2,13 +2,13 @@ name: production-calculator
 services:
   backend:
     image: production-calculator_backend
-    container_name: backend_${ENV_NAME:-dev}
+    container_name: backend_${ENV_NAME:-Development}
     build: ./backend
     restart: always
     ports:
       - "${BACKEND_PORT:-5000}:5000"
     environment:
-      - ASPNETCORE_ENVIRONMENT=${ENV_NAME:-dev}
+      - ASPNETCORE_ENVIRONMENT=${ENV_NAME:-Development}
     volumes:
       - ./scripts/backend-entrypoint.sh:/backend-entrypoint.sh
     entrypoint: ["/bin/sh", "/backend-entrypoint.sh"]
@@ -19,7 +19,7 @@ services:
 
   postgres:
     image: postgres:18
-    container_name: postgres_${ENV_NAME:-dev}
+    container_name: postgres_${ENV_NAME:-Development}
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -36,7 +36,7 @@ services:
 
   flyway:
     image: flyway/flyway:10
-    container_name: flyway_${ENV_NAME:-dev}
+    container_name: flyway_${ENV_NAME:-Development}
     depends_on:
       - postgres
     volumes:
