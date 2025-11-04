@@ -13,7 +13,11 @@ services:
       - ./scripts/backend-entrypoint.sh:/backend-entrypoint.sh
     entrypoint: ["/bin/sh", "/backend-entrypoint.sh"]
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+        restart: true
+      flyway:
+        condition: service_completed_successfully
     secrets:
       - server_password
 
@@ -26,13 +30,19 @@ services:
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
       POSTGRES_DB: production_calculator
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql
       - ./database/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
       - ./database/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
     ports:
       - "${DB_PORT:-5151}:5432"
     secrets:
       - postgres_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB}"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
 
   flyway:
     image: flyway/flyway:10
