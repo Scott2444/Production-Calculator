@@ -74,8 +74,8 @@ jobs:
             set DB_PORT=5151
             set BACKEND_PORT=5000
             set ENV_NAME=${{ env.ENV_NAME }}
-            docker compose -p "Production-Calculator-Development" down
-            docker compose -p "Production-Calculator-Development" up -d
+            docker compose -p "production-calculator-development" down
+            docker compose -p "production-calculator-development" up -d
 
   deploy_staging:
     needs: deploy_development
@@ -116,8 +116,8 @@ jobs:
             set DB_PORT=5152
             set BACKEND_PORT=5001
             set ENV_NAME=${{ env.ENV_NAME }}
-            docker compose -p "Production-Calculator-Staging" down
-            docker compose -p "Production-Calculator-Staging" up -d
+            docker compose -p "production-calculator-staging" down
+            docker compose -p "production-calculator-staging" up -d
 
   deploy_production:
     needs: deploy_staging
@@ -158,5 +158,5 @@ jobs:
             set DB_PORT=5153
             set BACKEND_PORT=5002
             set ENV_NAME=${{ env.ENV_NAME }}
-            docker compose -p "Production-Calculator-Production" down
-            docker compose -p "Production-Calculator-Production" up -d
+            docker compose -p "production-calculator-production" down
+            docker compose -p "production-calculator-production" up -d
