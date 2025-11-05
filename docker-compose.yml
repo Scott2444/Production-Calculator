@@ -6,9 +6,10 @@ services:
     build: ./backend
     restart: always
     ports:
-      - "${BACKEND_PORT:-5000}:5000"
+      - "${BACKEND_PORT:-5140}:5000"
     environment:
       - ASPNETCORE_ENVIRONMENT=${ENV_NAME:-Development}
+      - ASPNETCORE_URLS=http://0.0.0.0:5000
     volumes:
       - ./scripts/backend-entrypoint.sh:/backend-entrypoint.sh
     entrypoint: ["/bin/sh", "/backend-entrypoint.sh"]

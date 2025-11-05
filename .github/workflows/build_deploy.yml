@@ -72,7 +72,7 @@ jobs:
             cd Production-Calculator
             git pull origin main
             set DB_PORT=5151
-            set BACKEND_PORT=5000
+            set BACKEND_PORT=5141
             set ENV_NAME=${{ env.ENV_NAME }}
             docker compose -p "production-calculator-development" down
             docker compose -p "production-calculator-development" up -d
@@ -114,7 +114,7 @@ jobs:
             cd Production-Calculator
             git pull origin main
             set DB_PORT=5152
-            set BACKEND_PORT=5001
+            set BACKEND_PORT=5142
             set ENV_NAME=${{ env.ENV_NAME }}
             docker compose -p "production-calculator-staging" down
             docker compose -p "production-calculator-staging" up -d
@@ -156,7 +156,7 @@ jobs:
             cd Production-Calculator
             git pull origin main
             set DB_PORT=5153
-            set BACKEND_PORT=5002
+            set BACKEND_PORT=5143
             set ENV_NAME=${{ env.ENV_NAME }}
             docker compose -p "production-calculator-production" down
             docker compose -p "production-calculator-production" up -d
