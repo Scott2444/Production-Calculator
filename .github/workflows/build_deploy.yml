@@ -39,7 +39,6 @@ jobs:
           sbom: true
 
   deploy_development:
-    # needs: build
     environment: Development
     env:
       ENV_NAME: Development
@@ -57,11 +56,6 @@ jobs:
           commands: |
             cd Production-Calculator
             git pull origin main
-            set DB_PORT=5151
-            set BACKEND_PORT=5141
-            set ENV_NAME=${{ env.ENV_NAME }}
-            docker compose -p "production-calculator-development" down
-            docker compose -p "production-calculator-development" up -d
 
   deploy_staging:
     needs: deploy_development
