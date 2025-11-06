@@ -12,7 +12,7 @@ namespace ProductionCalculator.Data.Configurations
         public void Configure(EntityTypeBuilder<Product> builder)
         {
             // Table and key
-            builder.ToTable("products");
+            builder.ToTable("products", schema: "app");
             builder.HasKey(p => p.Id).HasName("products_pkey");
             builder.Property(p => p.Id)
                 .HasColumnName("product_id")
@@ -47,10 +47,6 @@ namespace ProductionCalculator.Data.Configurations
             // Project fk column mapping
             builder.Property(p => p.Project_Id)
                 .HasColumnName("project_id");
-
-            // If you have navigation properties for ProductType and Project, configure FKs like:
-            // builder.HasOne<ProductType>().WithMany().HasForeignKey(p => p.Product_Type_Id).HasConstraintName("fk_product_type").OnDelete(DeleteBehavior.Restrict);
-            // builder.HasOne<Project>().WithMany().HasForeignKey(p => p.Project_Id).HasConstraintName("fk_products_project").OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

@@ -8,7 +8,7 @@ namespace ProductionCalculator.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<User> builder)
         {
-            builder.ToTable("users");
+            builder.ToTable("users", schema: "app");
 
             builder.HasKey(u => u.User_Id).HasName("users_pkey");
             builder.Property(u => u.User_Id)

@@ -16,8 +16,8 @@ function Start-Tunnel {
 # Paths and hostnames
 $tunnels = @(
     @{ Hostname = "dev-db.production-calculator.com";  Port = 5151 },
-    @{ Hostname = "beta-db.production-calculator.com"; Port = 5152 },
-    @{ Hostname = "prod-db.production-calculator.com"; Port = 5153 }
+    @{ Hostname = "staging-db.production-calculator.com"; Port = 5152 },
+    @{ Hostname = "db.production-calculator.com"; Port = 5153 }
 )
 
 # Start each tunnel
