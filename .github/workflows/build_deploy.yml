@@ -64,18 +64,19 @@ jobs:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
+          export CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET
           ssh -i ~/.ssh/deploy_key \
             -o ProxyCommand="cloudflared access ssh --hostname $CF_HOSTNAME" \
             -o StrictHostKeyChecking=no \
             -p "${{ secrets.SERVER_SSH_PORT }}" \
             "${{ secrets.SERVER_SSH_USERNAME }}"@"${{ secrets.SERVER_SSH_HOST }}" <<'EOF'
-            cd Production-Calculator
-            git pull origin main
-            set DB_PORT=5151
-            set BACKEND_PORT=5141
-            set ENV_NAME=${{ env.ENV_NAME }}
-            docker compose -p "production-calculator-development" down
-            docker compose -p "production-calculator-development" up -d
+          cd Production-Calculator
+          git pull origin main
+          set DB_PORT=5151
+          set BACKEND_PORT=5141
+          set ENV_NAME=${{ env.ENV_NAME }}
+          docker compose -p "production-calculator-development" down
+          docker compose -p "production-calculator-development" up -d
 
   deploy_staging:
     needs: deploy_development
@@ -106,18 +107,19 @@ jobs:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
+          export CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET
           ssh -i ~/.ssh/deploy_key \
             -o ProxyCommand="cloudflared access ssh --hostname $CF_HOSTNAME" \
             -o StrictHostKeyChecking=no \
             -p "${{ secrets.SERVER_SSH_PORT }}" \
             "${{ secrets.SERVER_SSH_USERNAME }}"@"${{ secrets.SERVER_SSH_HOST }}" <<'EOF'
-            cd Production-Calculator
-            git pull origin main
-            set DB_PORT=5152
-            set BACKEND_PORT=5142
-            set ENV_NAME=${{ env.ENV_NAME }}
-            docker compose -p "production-calculator-staging" down
-            docker compose -p "production-calculator-staging" up -d
+          cd Production-Calculator
+          git pull origin main
+          set DB_PORT=5152
+          set BACKEND_PORT=5142
+          set ENV_NAME=${{ env.ENV_NAME }}
+          docker compose -p "production-calculator-staging" down
+          docker compose -p "production-calculator-staging" up -d
 
   deploy_production:
     needs: deploy_staging
@@ -148,15 +150,16 @@ jobs:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
+          export CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET
           ssh -i ~/.ssh/deploy_key \
             -o ProxyCommand="cloudflared access ssh --hostname $CF_HOSTNAME" \
             -o StrictHostKeyChecking=no \
             -p "${{ secrets.SERVER_SSH_PORT }}" \
             "${{ secrets.SERVER_SSH_USERNAME }}"@"${{ secrets.SERVER_SSH_HOST }}" <<'EOF'
-            cd Production-Calculator
-            git pull origin main
-            set DB_PORT=5153
-            set BACKEND_PORT=5143
-            set ENV_NAME=${{ env.ENV_NAME }}
-            docker compose -p "production-calculator-production" down
-            docker compose -p "production-calculator-production" up -d
+          cd Production-Calculator
+          git pull origin main
+          set DB_PORT=5153
+          set BACKEND_PORT=5143
+          set ENV_NAME=${{ env.ENV_NAME }}
+          docker compose -p "production-calculator-production" down
+          docker compose -p "production-calculator-production" up -d
