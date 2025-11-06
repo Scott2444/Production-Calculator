@@ -64,9 +64,8 @@ jobs:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
-          export CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET
           ssh -i ~/.ssh/deploy_key \
-            -o ProxyCommand="cloudflared access ssh --hostname $CF_HOSTNAME" \
+            -o ProxyCommand="CF_ACCESS_CLIENT_ID=$CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET=$CF_ACCESS_CLIENT_SECRET cloudflared access ssh --hostname $CF_HOSTNAME" \
             -o StrictHostKeyChecking=no \
             -p "${{ secrets.SERVER_SSH_PORT }}" \
             "${{ secrets.SERVER_SSH_USERNAME }}"@"${{ secrets.SERVER_SSH_HOST }}" <<'EOF'
@@ -107,9 +106,8 @@ jobs:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
-          export CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET
           ssh -i ~/.ssh/deploy_key \
-            -o ProxyCommand="cloudflared access ssh --hostname $CF_HOSTNAME" \
+            -o ProxyCommand="CF_ACCESS_CLIENT_ID=$CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET=$CF_ACCESS_CLIENT_SECRET cloudflared access ssh --hostname $CF_HOSTNAME" \
             -o StrictHostKeyChecking=no \
             -p "${{ secrets.SERVER_SSH_PORT }}" \
             "${{ secrets.SERVER_SSH_USERNAME }}"@"${{ secrets.SERVER_SSH_HOST }}" <<'EOF'
@@ -150,9 +148,8 @@ jobs:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
-          export CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET
           ssh -i ~/.ssh/deploy_key \
-            -o ProxyCommand="cloudflared access ssh --hostname $CF_HOSTNAME" \
+            -o ProxyCommand="CF_ACCESS_CLIENT_ID=$CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET=$CF_ACCESS_CLIENT_SECRET cloudflared access ssh --hostname $CF_HOSTNAME" \
             -o StrictHostKeyChecking=no \
             -p "${{ secrets.SERVER_SSH_PORT }}" \
             "${{ secrets.SERVER_SSH_USERNAME }}"@"${{ secrets.SERVER_SSH_HOST }}" <<'EOF'
