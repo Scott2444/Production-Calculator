@@ -53,9 +53,7 @@ jobs:
           private_key_value: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
           service_token_id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           service_token_secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-          commands: |
-            cd Production-Calculator
-            git pull origin main
+          commands: mkdir hello-world -v
 
   deploy_staging:
     needs: deploy_development
