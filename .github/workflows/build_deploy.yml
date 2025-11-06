@@ -45,37 +45,24 @@ jobs:
       ENV_NAME: Development
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install SSH client and cloudflared
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y openssh-client ca-certificates
-          curl -L -o cloudflared.deb "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb"
-          sudo dpkg -i cloudflared.deb || sudo apt-get -f install -y
-      - name: Add SSH private key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SERVER_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
       - name: Remote deploy to Development
-        env:
-          CF_HOSTNAME: ${{ secrets.SERVER_SSH_HOST }}
-          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-        run: |
-          ssh -i ~/.ssh/deploy_key \
-            -o ProxyCommand="CF_ACCESS_CLIENT_ID=$CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET=$CF_ACCESS_CLIENT_SECRET cloudflared access ssh --hostname $CF_HOSTNAME" \
-            -o StrictHostKeyChecking=no \
-            -p "${{ secrets.SERVER_SSH_PORT }}" \
-            "${{ secrets.SERVER_SSH_USERNAME }}"@"${{ secrets.SERVER_SSH_HOST }}" <<'EOF'
-          cd Production-Calculator
-          git pull origin main
-          set DB_PORT=5151
-          set BACKEND_PORT=5141
-          set ENV_NAME=${{ env.ENV_NAME }}
-          docker compose -p "production-calculator-development" down
-          docker compose -p "production-calculator-development" up -d
+        uses: and-fm/cloudflared-ssh-action@v3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          private_key_filename: ${{ secrets.SSH_PRIVATE_KEY_FILENAME }}
+          private_key_value: ${{ secrets.SSH_PRIVATE_KEY_VALUE }}
+          port: ${{ secrets.SSH_PORT }}
+          service_token_id: ${{ secrets.SERVICE_TOKEN_ID }}
+          service_token_secret: ${{ secrets.SERVICE_TOKEN_SECRET }}
+          commands: |
+            cd Production-Calculator
+            git pull origin main
+            set DB_PORT=5151
+            set BACKEND_PORT=5141
+            set ENV_NAME=${{ env.ENV_NAME }}
+            docker compose -p "production-calculator-development" down
+            docker compose -p "production-calculator-development" up -d
 
   deploy_staging:
     needs: deploy_development
