@@ -18,8 +18,8 @@ GRANT USAGE, CREATE ON SCHEMA public TO flyway;
 -- Run Flyway
 
 -- Add webserver/developer roles
--- CREATE USER web_user WITH LOGIN PASSWORD 'strong_password';
--- GRANT web_server_role TO web_user;
+-- CREATE USER server WITH LOGIN PASSWORD 'strong_password';
+-- GRANT web_server_role TO server;
 
 -- CREATE USER dev_user WITH LOGIN PASSWORD 'strong_password';
 -- GRANT developer_role TO dev_user;
