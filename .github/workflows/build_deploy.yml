@@ -39,6 +39,7 @@ jobs:
           sbom: true
 
   deploy_development:
+    if: false
     environment: Development
     env:
       ENV_NAME: Development

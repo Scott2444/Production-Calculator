@@ -1,14 +1,13 @@
+# Base Docker Compose file
+# Must be override with environment specific file (e.g., docker-compose.dev.yml)
 name: production-calculator
 services:
   backend:
-    image: production-calculator_backend
-    container_name: backend_${ENV_NAME:-Development}
+    image: production-calculator-backend
+    container_name: backend
     build: ./backend
     restart: always
-    ports:
-      - "${BACKEND_PORT:-5140}:5000"
     environment:
-      - ASPNETCORE_ENVIRONMENT=${ENV_NAME:-Development}
       - ASPNETCORE_URLS=http://0.0.0.0:5000
     volumes:
       - ./scripts/backend-entrypoint.sh:/backend-entrypoint.sh
@@ -24,7 +23,7 @@ services:
 
   postgres:
     image: postgres:18
-    container_name: postgres_${ENV_NAME:-Development}
+    container_name: postgres
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -34,8 +33,6 @@ services:
       - db_data:/var/lib/postgresql
       - ./database/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
       - ./database/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
-    ports:
-      - "${DB_PORT:-5150}:5432"
     secrets:
       - postgres_password
     healthcheck:
@@ -47,7 +44,7 @@ services:
 
   flyway:
     image: flyway/flyway:10
-    container_name: flyway_${ENV_NAME:-Development}
+    container_name: flyway
     depends_on:
       - postgres
     volumes:

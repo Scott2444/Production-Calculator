@@ -14,3 +14,12 @@ CREATE SCHEMA IF NOT EXISTS app AUTHORIZATION flyway;
 -- Allow connection and object creation in the managed schema
 GRANT CONNECT ON DATABASE production_calculator TO flyway;
 GRANT USAGE, CREATE ON SCHEMA public TO flyway;
+
+-- Run Flyway
+
+-- Add webserver/developer roles
+-- CREATE USER web_user WITH LOGIN PASSWORD 'strong_password';
+-- GRANT web_server_role TO web_user;
+
+-- CREATE USER dev_user WITH LOGIN PASSWORD 'strong_password';
+-- GRANT developer_role TO dev_user;
