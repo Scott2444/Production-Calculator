@@ -86,7 +86,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key \
             -o ProxyCommand="CF_ACCESS_CLIENT_ID=$CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET=$CF_ACCESS_CLIENT_SECRET cloudflared access ssh --hostname $CF_HOSTNAME" \
             -o StrictHostKeyChecking=no \
-            -p "${{ secrets.SERVER_SSH_PORT }}" \
+            -p 22 \
             "${{ secrets.SERVER_SSH_USERNAME }}"@"${{ secrets.SERVER_SSH_HOST }}" <<'EOF'
           cd Production-Calculator
           git pull origin main
@@ -128,7 +128,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key \
             -o ProxyCommand="CF_ACCESS_CLIENT_ID=$CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET=$CF_ACCESS_CLIENT_SECRET cloudflared access ssh --hostname $CF_HOSTNAME" \
             -o StrictHostKeyChecking=no \
-            -p "${{ secrets.SERVER_SSH_PORT }}" \
+            -p 22 \
             "${{ secrets.SERVER_SSH_USERNAME }}"@"${{ secrets.SERVER_SSH_HOST }}" <<'EOF'
           cd Production-Calculator
           git pull origin main
