@@ -39,6 +39,7 @@ jobs:
           sbom: true
 
   deploy_development:
+    # needs: build
     environment: Development
     runs-on: ubuntu-latest
     steps:
@@ -54,7 +55,25 @@ jobs:
           service_token_secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
           commands: cd ~/production-calculator; git pull origin main; docker compose -f "docker-compose.yml" -f "docker-compose.dev.yml" up -d
 
+  deploy_staging:
+    needs: deploy_development
+    environment: Staging
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remote deploy to Staging
+        uses: and-fm/cloudflared-ssh-action@v3
+        with:
+          host: ${{ secrets.SERVER_SSH_HOST }}
+          port: 22
+          username: ${{ secrets.SERVER_SSH_USERNAME }}
+          private_key_filename: "deploy_key"
+          private_key_value: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
+          service_token_id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          service_token_secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          commands: cd ~/production-calculator; git pull origin main; docker compose -f "docker-compose.yml" -f "docker-compose.staging.yml" up -d
+
   deploy_production:
+    needs: deploy_staging
     environment: Production
     runs-on: ubuntu-latest
     steps:
