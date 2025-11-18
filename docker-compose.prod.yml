@@ -1,0 +1,16 @@
+name: production-calculator-prod
+services:
+  backend:
+    container_name: backend-prod
+    ports:
+      - 5143:5000
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+
+  postgres:
+    container_name: postgres-prod
+    ports:
+      - 5153:5432
+
+  flyway:
+    container_name: flyway-prod

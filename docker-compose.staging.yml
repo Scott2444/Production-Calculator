@@ -1,0 +1,16 @@
+name: production-calculator-staging
+services:
+  backend:
+    container_name: backend-staging
+    ports:
+      - 5142:5000
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Staging
+
+  postgres:
+    container_name: postgres-staging
+    ports:
+      - 5152:5432
+
+  flyway:
+    container_name: flyway-staging
