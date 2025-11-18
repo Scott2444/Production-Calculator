@@ -41,6 +41,8 @@ jobs:
   deploy_development:
     environment: Development
     runs-on: ubuntu-latest
+    env:
+      Environment: dev
     steps:
       - name: Remote deploy to Development
         uses: and-fm/cloudflared-ssh-action@v3
@@ -52,4 +54,5 @@ jobs:
           private_key_value: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
           service_token_id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           service_token_secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-          commands: echo "Hello World!"
+          commands: cd ~/production-calculator; git pull origin main; docker compose -p "production-calculator-${{ env.Environment }}" down; docker compose -f "docker-compose.yml" -f "docker-compose.${{ env.Environment }}.yml" up -d
+
