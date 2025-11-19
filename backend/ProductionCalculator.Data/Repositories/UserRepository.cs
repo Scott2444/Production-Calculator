@@ -34,5 +34,14 @@ namespace ProductionCalculator.Data.Repositories
         {
             return await _db.Set<User>().FirstOrDefaultAsync(u => u.Email == email);
         }
+
+        public async Task<bool> DeleteUser(int id) {
+            var user = await _db.Set<User>().FindAsync(id);
+            if (user == null) return false;
+
+            _db.Set<User>().Remove(user);
+            await _db.SaveChangesAsync();
+            return true;
+        }
     }
 }

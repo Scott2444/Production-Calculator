@@ -70,5 +70,20 @@ namespace ProductionCalculator.Business.Services
 
             return ServiceResult<User>.SuccessResult(user, ServiceStatus.Ok200);
         }
+        public async Task<ServiceResult> DeleteUserByUsername(string username)
+        {
+            if (string.IsNullOrWhiteSpace(username))
+                return ServiceResult.Fail(ServiceStatus.BadRequest400);
+
+            var user = await _repo.GetByUsername(username);
+            if (user == null)
+                return ServiceResult.Fail(ServiceStatus.NotFound404);
+
+            var deleted = await _repo.DeleteUser(user.User_Id);
+            if (!deleted)
+                return ServiceResult.Fail(ServiceStatus.InternalServerError500);
+
+            return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
+        }
     }
 }

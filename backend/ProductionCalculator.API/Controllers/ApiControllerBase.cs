@@ -18,5 +18,10 @@ namespace ProductionCalculator.API.Controllers
 
             return StatusCode((int)result.Status);
         }
+
+        protected IActionResult FromServiceResult(ServiceResult result)
+        {
+            return StatusCode((int)result.Status);
+        }
     }
 }

@@ -9,5 +9,6 @@ namespace ProductionCalculator.Business.Interfaces
         Task<User?> GetByUsername(string username);
         Task<User?> GetByEmail(string email);
         Task AddUser(User user);
+        Task<bool> DeleteUser(int id);
     }
 }

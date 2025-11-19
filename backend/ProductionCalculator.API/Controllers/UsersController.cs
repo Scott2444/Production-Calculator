@@ -29,5 +29,12 @@ namespace ProductionCalculator.API.Controllers
             var result = await _service.GetUserByUsername(username);
             return FromServiceResult(result, u => new UserResponse { UserId = u.User_Id, Username = u.Username, Email = u.Email, CreatedAt = u.Created_At, UpdatedAt = u.Last_Updated });
         }
+
+        [HttpDelete("{username}")]
+        public async Task<IActionResult> DeleteByUsername(string username)
+        {
+            var result = await _service.DeleteUserByUsername(username);
+            return FromServiceResult(result);
+        }
     }
 }
