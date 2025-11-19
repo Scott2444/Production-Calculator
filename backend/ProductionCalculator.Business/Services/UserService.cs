@@ -43,7 +43,8 @@ namespace ProductionCalculator.Business.Services
                 Username = username,
                 Email = email,
                 Password_Hash = stored,
-                Created_At = DateTime.UtcNow
+                Created_At = DateTime.UtcNow,
+                Last_Updated = DateTime.UtcNow
             };
 
             await _repo.AddUser(user);
@@ -55,6 +56,16 @@ namespace ProductionCalculator.Business.Services
             if (id <= 0) return ServiceResult<User>.Fail(ServiceStatus.BadRequest400);
 
             var user = await _repo.GetById(id);
+            if (user == null) return ServiceResult<User>.Fail(ServiceStatus.NotFound404);
+
+            return ServiceResult<User>.SuccessResult(user, ServiceStatus.Ok200);
+        }
+
+        public async Task<ServiceResult<User>> GetUserByUsername(string username)
+        {
+            if (string.IsNullOrWhiteSpace(username)) return ServiceResult<User>.Fail(ServiceStatus.BadRequest400);
+
+            var user = await _repo.GetByUsername(username);
             if (user == null) return ServiceResult<User>.Fail(ServiceStatus.NotFound404);
 
             return ServiceResult<User>.SuccessResult(user, ServiceStatus.Ok200);

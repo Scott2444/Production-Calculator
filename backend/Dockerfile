@@ -7,6 +7,7 @@ RUN dotnet publish ProductionCalculator.API/ProductionCalculator.API.csproj -c R
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
+RUN apt-get update && apt-get install -y curl
 WORKDIR /app
 COPY --from=build /app/publish .
 ENV ASPNETCORE_URLS=http://+:5000

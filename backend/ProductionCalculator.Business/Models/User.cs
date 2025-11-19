@@ -9,5 +9,6 @@ namespace ProductionCalculator.Business.Models
         public required string Email { get; set; }
         public required string Password_Hash { get; set; }
         public required DateTime Created_At { get; set; }
+        public required DateTime Last_Updated { get; set; }
     }
 }

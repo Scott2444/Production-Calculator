@@ -43,6 +43,12 @@ namespace ProductionCalculator.Data.Configurations
                 .HasColumnType("timestamp with time zone")
                 .HasDefaultValueSql("now()")
                 .IsRequired();
+            
+            builder.Property(u => u.Last_Updated)
+                .HasColumnName("last_updated")
+                .HasColumnType("timestamp with time zone")
+                .HasDefaultValueSql("now()")
+                .IsRequired();
         }
     }
 }

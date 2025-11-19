@@ -3,9 +3,8 @@
 name: production-calculator
 services:
   backend:
-    image: production-calculator-backend
+    image: scott2444/production-calculator-backend
     container_name: backend
-    build: ./backend
     restart: always
     environment:
       - ASPNETCORE_URLS=http://0.0.0.0:5000
@@ -24,7 +23,7 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/HealthCheck"]
       interval: 10s
       retries: 5
-      start_period: 5s
+      start_period: 10s
       timeout: 10s
 
   postgres:
