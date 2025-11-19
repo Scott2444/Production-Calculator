@@ -20,6 +20,12 @@ services:
         condition: service_completed_successfully
     secrets:
       - server_password
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/HealthCheck"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+      timeout: 10s
 
   postgres:
     image: postgres:18

@@ -43,7 +43,7 @@ jobs:
     environment: Development
     runs-on: ubuntu-latest
     steps:
-      - name: Remote deploy to Development
+      - name: Remote deployment to Development
         uses: and-fm/cloudflared-ssh-action@v3
         with:
           host: ${{ secrets.SERVER_SSH_HOST }}
@@ -60,7 +60,7 @@ jobs:
     environment: Staging
     runs-on: ubuntu-latest
     steps:
-      - name: Remote deploy to Staging
+      - name: Remote deployment to Staging
         uses: and-fm/cloudflared-ssh-action@v3
         with:
           host: ${{ secrets.SERVER_SSH_HOST }}
@@ -77,7 +77,7 @@ jobs:
     environment: Production
     runs-on: ubuntu-latest
     steps:
-      - name: Remote deploy to Production
+      - name: Remote deployment to Production
         uses: and-fm/cloudflared-ssh-action@v3
         with:
           host: ${{ secrets.SERVER_SSH_HOST }}
