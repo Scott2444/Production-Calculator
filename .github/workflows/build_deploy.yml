@@ -54,7 +54,10 @@ jobs:
           private_key_value: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
           service_token_id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           service_token_secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-          commands: cd ~/production-calculator; git pull origin main; docker compose -f "docker-compose.yml" -f "docker-compose.dev.yml" up -d
+          commands: cd ~/production-calculator;
+            git pull origin main; 
+            docker compose -f "docker-compose.yml" -f "docker-compose.dev.yml" pull; 
+            docker compose -f "docker-compose.yml" -f "docker-compose.dev.yml" up -d
 
   deploy_staging:
     needs: deploy_development
@@ -71,7 +74,11 @@ jobs:
           private_key_value: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
           service_token_id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           service_token_secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-          commands: cd ~/production-calculator; git pull origin main; docker compose -f "docker-compose.yml" -f "docker-compose.staging.yml" up -d
+          commands: 
+            cd ~/production-calculator;
+            git pull origin main; 
+            docker compose -f "docker-compose.yml" -f "docker-compose.staging.yml" pull; 
+            docker compose -f "docker-compose.yml" -f "docker-compose.staging.yml" up -d
 
   deploy_production:
     needs: deploy_staging
@@ -88,4 +95,8 @@ jobs:
           private_key_value: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
           service_token_id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           service_token_secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-          commands: cd ~/production-calculator; git pull origin main; docker compose -f "docker-compose.yml" -f "docker-compose.prod.yml" up -d
+          commands: 
+            cd ~/production-calculator;
+            git pull origin main; 
+            docker compose -f "docker-compose.yml" -f "docker-compose.prod.yml" pull; 
+            docker compose -f "docker-compose.yml" -f "docker-compose.prod.yml" up -d
