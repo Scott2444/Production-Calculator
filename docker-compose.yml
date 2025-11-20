@@ -20,7 +20,7 @@ services:
     secrets:
       - server_password
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/HealthCheck"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/HealthCheck"]
       interval: 10s
       retries: 5
       start_period: 10s
