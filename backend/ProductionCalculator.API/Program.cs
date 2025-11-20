@@ -23,6 +23,8 @@ builder.Services.AddSingleton<JwtHelper>();
 // Add custom authorization policy for owner or admin
 builder.Services.AddAuthorization(options =>
 {
+    options.AddPolicy("IsPublic", policy =>
+        policy.RequireAssertion(context => true));  // Always allow
     options.AddPolicy("IsOwnerOrAdmin", policy =>
         policy.RequireAssertion(context =>
         {
@@ -33,6 +35,8 @@ builder.Services.AddAuthorization(options =>
             return roleClaim == "Admin";
         })
     );
+    options.AddPolicy("IsAdmin", policy =>
+        policy.RequireRole("Admin"));  // Admin only operations
 });
 
 

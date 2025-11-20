@@ -8,6 +8,7 @@ namespace ProductionCalculator.Business.Interfaces
         Task<ServiceResult<User>> RegisterAsync(string username, string email, string password);
         Task<ServiceResult<User>> GetUserById(int id);
         Task<ServiceResult<User>> GetUserByUsername(string username);
+        Task<ServiceResult> DeleteUserById(int id);
         Task<ServiceResult> DeleteUserByUsername(string username);
     }
 }

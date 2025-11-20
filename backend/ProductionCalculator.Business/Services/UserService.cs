@@ -61,6 +61,21 @@ namespace ProductionCalculator.Business.Services
 
             return ServiceResult<User>.SuccessResult(user, ServiceStatus.Ok200);
         }
+        public async Task<ServiceResult> DeleteUserById(int id)
+        {
+            if (id <= 0)
+                return ServiceResult.Fail(ServiceStatus.BadRequest400);
+
+            var user = await _repo.GetById(id);
+            if (user == null)
+                return ServiceResult.Fail(ServiceStatus.NotFound404, $"{id} not found.");
+
+            var deleted = await _repo.DeleteUser(user.User_Id);
+            if (!deleted)
+                return ServiceResult.Fail(ServiceStatus.InternalServerError500);
+
+            return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
+        }
         public async Task<ServiceResult> DeleteUserByUsername(string username)
         {
             if (string.IsNullOrWhiteSpace(username))
