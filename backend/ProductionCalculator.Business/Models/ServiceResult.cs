@@ -17,16 +17,18 @@ namespace ProductionCalculator.Business.Models
         public ServiceStatus Status { get; set; }
         public T? Data { get; set; }
         public bool Success => (int)Status >= 200 && (int)Status < 300;
+        public string? ErrorMessage { get; set; }
 
         public static ServiceResult<T> SuccessResult(T data, ServiceStatus status = ServiceStatus.Ok200) => new ServiceResult<T> { Data = data, Status = status };
-        public static ServiceResult<T> Fail(ServiceStatus status) => new ServiceResult<T> { Status = status };
+        public static ServiceResult<T> Fail(ServiceStatus status, string? errorMessage = null) => new ServiceResult<T> { Status = status, ErrorMessage = errorMessage };
     }
     public class ServiceResult
     {
         public ServiceStatus Status { get; set; }
         public bool Success => (int)Status >= 200 && (int)Status < 300;
+        public string? ErrorMessage { get; set; }
 
         public static ServiceResult SuccessResult(ServiceStatus status = ServiceStatus.Ok200) => new ServiceResult { Status = status };
-        public static ServiceResult Fail(ServiceStatus status) => new ServiceResult { Status = status };
+        public static ServiceResult Fail(ServiceStatus status, string? errorMessage = null) => new ServiceResult { Status = status, ErrorMessage = errorMessage };
     }
 }

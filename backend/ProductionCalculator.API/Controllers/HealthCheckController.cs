@@ -4,7 +4,7 @@ namespace ProductionCalculator.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class HealthCheckController : ControllerBase
+    public class HealthCheckController : ApiControllerBase
     {
         [HttpGet]
         public IActionResult Get()

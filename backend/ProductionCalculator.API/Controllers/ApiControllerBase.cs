@@ -11,17 +11,20 @@ namespace ProductionCalculator.API.Controllers
             if (result.Success && result.Data != null)
             {
                 var body = map(result.Data);
-                return result.Status == ServiceStatus.Created201
-                    ? Created(string.Empty, body)
-                    : StatusCode((int)result.Status, body);
+                return StatusCode((int)result.Status, body);
             }
 
-            return StatusCode((int)result.Status);
+            return StatusCode((int)result.Status, new { error = result.ErrorMessage });
         }
 
         protected IActionResult FromServiceResult(ServiceResult result)
         {
-            return StatusCode((int)result.Status);
+            if (result.Success) 
+            {
+                return StatusCode((int)result.Status); 
+            }
+
+            return StatusCode((int)result.Status, new { error = result.ErrorMessage });
         }
     }
 }

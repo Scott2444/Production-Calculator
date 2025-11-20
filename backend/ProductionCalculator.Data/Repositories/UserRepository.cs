@@ -43,5 +43,11 @@ namespace ProductionCalculator.Data.Repositories
             await _db.SaveChangesAsync();
             return true;
         }
+
+        public async Task<string> GetPasswordHash(int id)
+        {
+            var user = await _db.Set<User>().FindAsync(id);
+            return user?.Password_Hash ?? string.Empty;
+        }
     }
 }

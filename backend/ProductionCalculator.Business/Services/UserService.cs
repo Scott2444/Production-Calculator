@@ -1,9 +1,6 @@
-using System;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
+using ProductionCalculator.Business.Helpers;
 
 namespace ProductionCalculator.Business.Services
 {
@@ -24,25 +21,18 @@ namespace ProductionCalculator.Business.Services
             if (string.IsNullOrWhiteSpace(password) || password.Length < 8) return ServiceResult<User>.Fail(ServiceStatus.BadRequest400);
 
             var existingUsername = await _repo.GetByUsername(username);
-            if (existingUsername != null) return ServiceResult<User>.Fail(ServiceStatus.Conflict409);
+            if (existingUsername != null) return ServiceResult<User>.Fail(ServiceStatus.Conflict409, $"Username {username} already exists.");
             var existingEmail = await _repo.GetByEmail(email);
-            if (existingEmail != null) return ServiceResult<User>.Fail(ServiceStatus.Conflict409);
+            if (existingEmail != null) return ServiceResult<User>.Fail(ServiceStatus.Conflict409, $"Email {email} already exists.");
 
-            // Hash password with salt using PBKDF2
-            using var rng = RandomNumberGenerator.Create();
-            var salt = new byte[16];
-            rng.GetBytes(salt);
-
-            var hash = Rfc2898DeriveBytes.Pbkdf2(Encoding.UTF8.GetBytes(password), salt, 100_000, HashAlgorithmName.SHA256, 32);
-
-            var stored = Convert.ToBase64String(salt) + "." + Convert.ToBase64String(hash);
+            var passwordHash = PasswordHelper.HashPassword(password);
 
             var user = new User
             {
                 User_Id = 0,
                 Username = username,
                 Email = email,
-                Password_Hash = stored,
+                Password_Hash = passwordHash,
                 Created_At = DateTime.UtcNow,
                 Last_Updated = DateTime.UtcNow
             };
@@ -56,7 +46,7 @@ namespace ProductionCalculator.Business.Services
             if (id <= 0) return ServiceResult<User>.Fail(ServiceStatus.BadRequest400);
 
             var user = await _repo.GetById(id);
-            if (user == null) return ServiceResult<User>.Fail(ServiceStatus.NotFound404);
+            if (user == null) return ServiceResult<User>.Fail(ServiceStatus.NotFound404, $"User with ID {id} not found.");
 
             return ServiceResult<User>.SuccessResult(user, ServiceStatus.Ok200);
         }
@@ -66,7 +56,7 @@ namespace ProductionCalculator.Business.Services
             if (string.IsNullOrWhiteSpace(username)) return ServiceResult<User>.Fail(ServiceStatus.BadRequest400);
 
             var user = await _repo.GetByUsername(username);
-            if (user == null) return ServiceResult<User>.Fail(ServiceStatus.NotFound404);
+            if (user == null) return ServiceResult<User>.Fail(ServiceStatus.NotFound404, $"{username} not found.");
 
             return ServiceResult<User>.SuccessResult(user, ServiceStatus.Ok200);
         }
@@ -77,7 +67,7 @@ namespace ProductionCalculator.Business.Services
 
             var user = await _repo.GetByUsername(username);
             if (user == null)
-                return ServiceResult.Fail(ServiceStatus.NotFound404);
+                return ServiceResult.Fail(ServiceStatus.NotFound404, $"{username} not found.");
 
             var deleted = await _repo.DeleteUser(user.User_Id);
             if (!deleted)

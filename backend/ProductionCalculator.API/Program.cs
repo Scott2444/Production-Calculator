@@ -2,6 +2,7 @@ using Microsoft.OpenApi.Models;
 using ProductionCalculator.API.Helpers;
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Services;
+using ProductionCalculator.Business.Helpers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +18,8 @@ builder.Services.AddSwaggerGen(c =>
 ConfigurationHelper.SetupConnectionString(builder);
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddSingleton<JwtHelper>();
 
 var app = builder.Build();
 

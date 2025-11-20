@@ -5,7 +5,7 @@ using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
-namespace ProductionCalculator.API.Helpers
+namespace ProductionCalculator.Business.Helpers
 {
     public class JwtHelper
     {

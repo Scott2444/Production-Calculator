@@ -10,5 +10,6 @@ namespace ProductionCalculator.Business.Interfaces
         Task<User?> GetByEmail(string email);
         Task AddUser(User user);
         Task<bool> DeleteUser(int id);
+        Task<string> GetPasswordHash(int id);
     }
 }

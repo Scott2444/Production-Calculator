@@ -20,7 +20,7 @@ namespace ProductionCalculator.API.Controllers
         {
             var result = await _service.RegisterAsync(req.Username, req.Email, req.Password);
 
-            return FromServiceResult(result, (u) => new UserResponse { UserId = u.User_Id, Username = u.Username, Email = u.Email, CreatedAt = u.Created_At });
+            return FromServiceResult(result, (u) => new UserResponse { UserId = u.User_Id, Username = u.Username, Email = u.Email, CreatedAt = u.Created_At, UpdatedAt = u.Last_Updated });
         }
 
         [HttpGet("{username}")]
