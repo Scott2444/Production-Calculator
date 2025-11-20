@@ -33,6 +33,7 @@ namespace ProductionCalculator.Business.Services
                 Username = username,
                 Email = email,
                 Password_Hash = passwordHash,
+                Role_Id = 1, // Default role / unverified
                 Created_At = DateTime.UtcNow,
                 Last_Updated = DateTime.UtcNow
             };

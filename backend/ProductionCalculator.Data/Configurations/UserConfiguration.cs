@@ -37,6 +37,10 @@ namespace ProductionCalculator.Data.Configurations
                 .HasColumnName("password_hash")
                 .HasMaxLength(255)
                 .IsRequired();
+            
+            builder.Property(u => u.Role_Id)
+                .HasColumnName("role_id")
+                .IsRequired();
 
             builder.Property(u => u.Created_At)
                 .HasColumnName("created_at")
