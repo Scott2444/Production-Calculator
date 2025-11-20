@@ -16,7 +16,6 @@ builder.Services.AddSwaggerGen(c =>
 
 // Add application services and data
 ConfigurationHelper.SetupConnectionString(builder);
-builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<JwtHelper>();
