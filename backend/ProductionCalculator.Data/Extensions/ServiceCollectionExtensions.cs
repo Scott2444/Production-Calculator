@@ -14,7 +14,6 @@ namespace ProductionCalculator.Data.Extensions
             services.AddDbContext<ProductionCalculatorDbContext>(opts => opts.UseNpgsql(conn));
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IRoleRepository, RoleRepository>();
-            // Note: Business services should be registered by the Api project; register IUserService here if you prefer centralized registration.
             return services;
         }
     }

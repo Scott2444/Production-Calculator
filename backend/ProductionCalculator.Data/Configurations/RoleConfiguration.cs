@@ -10,6 +10,7 @@ namespace ProductionCalculator.Data.Configurations
         {
             builder.ToTable("roles", schema: "app");
 
+            builder.HasKey(u => u.Role_Id).HasName("roles_pkey");
             builder.Property(r => r.Role_Id)
                 .HasColumnName("role_id")
                 .ValueGeneratedOnAdd();

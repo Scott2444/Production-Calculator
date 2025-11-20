@@ -20,6 +20,23 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<JwtHelper>();
 
+// Add custom authorization policy for owner or admin
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("IsOwnerOrAdmin", policy =>
+        policy.RequireAssertion(context =>
+        {
+            var userIdClaim = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var roleClaim = context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+            // You will need to get the route userId from context.Resource in your controller
+            // For demonstration, always allow admin
+            return roleClaim == "Admin";
+        })
+    );
+});
+
+
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline

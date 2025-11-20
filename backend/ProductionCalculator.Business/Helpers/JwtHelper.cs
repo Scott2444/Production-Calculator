@@ -15,7 +15,8 @@ namespace ProductionCalculator.Business.Helpers
             _config = config;
         }
 
-        public string GenerateToken(string username)
+        // Add userId and role to token for authorization
+        public string GenerateToken(int userId, string role)
         {
             var jwtSettings = _config.GetSection("Jwt");
             var keyString = jwtSettings["Key"];
@@ -29,8 +30,9 @@ namespace ProductionCalculator.Business.Helpers
 
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.UniqueName, username),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+                new Claim(ClaimTypes.Role, role)
             };
 
             var token = new JwtSecurityToken(
