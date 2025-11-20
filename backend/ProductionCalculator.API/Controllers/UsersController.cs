@@ -5,7 +5,7 @@ using ProductionCalculator.API.APIModels;
 
 namespace ProductionCalculator.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     public class UsersController : ApiControllerBase
     {
         private readonly IUserService _service;
