@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ProductionCalculator.Business.Interfaces;
-using ProductionCalculator.Business.Models;
 using ProductionCalculator.API.APIModels;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ProductionCalculator.API.Controllers
 {
@@ -23,6 +23,7 @@ namespace ProductionCalculator.API.Controllers
             return FromServiceResult(result, (u) => new UserResponse { UserId = u.User_Id, Username = u.Username, Email = u.Email, Role_Id = u.Role_Id, CreatedAt = u.Created_At, UpdatedAt = u.Last_Updated });
         }
 
+        [Authorize(Policy = "IsOwnerOrAdmin")]
         [HttpGet("{user_id:int}")]
         public async Task<IActionResult> GetByUsername(int user_id)
         {
@@ -30,6 +31,7 @@ namespace ProductionCalculator.API.Controllers
             return FromServiceResult(result, u => new UserResponse { UserId = u.User_Id, Username = u.Username, Email = u.Email, Role_Id = u.Role_Id, CreatedAt = u.Created_At, UpdatedAt = u.Last_Updated });
         }
 
+        [Authorize(Policy = "IsOwnerOrAdmin")]
         [HttpDelete("{user_id:int}")]
         public async Task<IActionResult> DeleteByUsername(int user_id)
         {

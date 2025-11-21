@@ -45,37 +45,5 @@ namespace ProductionCalculator.Business.Helpers
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
-
-        public ClaimsPrincipal? ValidateToken(string token)
-        {
-            var jwtSettings = _config.GetSection("Jwt");
-            var keyString = jwtSettings["Key"];
-            if (string.IsNullOrEmpty(keyString))
-            {
-                throw new InvalidOperationException("JWT Key is not configured.");
-            }
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
-            var tokenHandler = new JwtSecurityTokenHandler();
-            try
-            {
-                var principal = tokenHandler.ValidateToken(token, new TokenValidationParameters
-                {
-                    // Explicit setting
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    // Additional security settings
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = jwtSettings["Issuer"],
-                    ValidAudience = jwtSettings["Audience"],
-                    IssuerSigningKey = key
-                }, out _);
-                return principal;
-            }
-            catch
-            {
-                return null;
-            }
-        }
     }
 }

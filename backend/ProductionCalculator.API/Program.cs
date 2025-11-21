@@ -1,8 +1,13 @@
+using System.Text;
 using Microsoft.OpenApi.Models;
 using ProductionCalculator.API.Helpers;
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Services;
 using ProductionCalculator.Business.Helpers;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Authorization;
+using ProductionCalculator.API.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,27 +24,8 @@ ConfigurationHelper.SetupConnectionString(builder);
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<JwtHelper>();
-
-// Add custom authorization policy for owner or admin
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("IsPublic", policy =>
-        policy.RequireAssertion(context => true));  // Always allow
-    options.AddPolicy("IsOwnerOrAdmin", policy =>
-        policy.RequireAssertion(context =>
-        {
-            var userIdClaim = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            var roleClaim = context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
-            // You will need to get the route userId from context.Resource in your controller
-            // For demonstration, always allow admin
-            return roleClaim == "Admin";
-        })
-    );
-    options.AddPolicy("IsAdmin", policy =>
-        policy.RequireRole("Admin"));  // Admin only operations
-});
-
-
+builder.Services.AddSingleton<IAuthorizationHandler, OwnerOrAdminHandler>();
+builder.Services.AddJwtAuthAndPolicies(builder.Configuration);
 
 var app = builder.Build();
 
@@ -50,6 +36,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "ProductionCalculator API v1"));
 }
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

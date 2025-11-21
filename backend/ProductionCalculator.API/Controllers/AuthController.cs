@@ -1,9 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using ProductionCalculator.Business.Helpers;
 using ProductionCalculator.API.APIModels;
 using ProductionCalculator.Business.Interfaces;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+
 
 namespace ProductionCalculator.API.Controllers
 {
@@ -17,6 +16,7 @@ namespace ProductionCalculator.API.Controllers
             _authService = authService;
         }
 
+        [Authorize(Policy = "IsPublic")]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest req)
         {
@@ -24,10 +24,12 @@ namespace ProductionCalculator.API.Controllers
             return FromServiceResult(result, (u) => new AuthResponse { Token = u });
         }
 
+        [Authorize(Policy = "IsAuthenticated")]
         [HttpPost("refresh")]
-        public async Task<IActionResult> Refresh([FromBody] RefreshRequest req)
+        public async Task<IActionResult> Refresh()
         {
-            var result = await _authService.RefreshToken(req.Token);
+            var user = HttpContext.User;
+            var result = await _authService.RefreshToken(user);
             return FromServiceResult(result, (u) => new AuthResponse { Token = u });
         }
     }

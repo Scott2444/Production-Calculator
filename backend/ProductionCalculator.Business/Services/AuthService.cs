@@ -1,7 +1,3 @@
-using System;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Helpers;
@@ -42,12 +38,8 @@ namespace ProductionCalculator.Business.Services
             var token = _jwtHelper.GenerateToken(userId, role.Role_Name);
             return ServiceResult<string>.SuccessResult(token);
         }
-        public async Task<ServiceResult<string>> RefreshToken(string token)
+        public async Task<ServiceResult<string>> RefreshToken(ClaimsPrincipal principal)
         {
-            var principal = _jwtHelper.ValidateToken(token);
-            if (principal == null)
-                return ServiceResult<string>.Fail(ServiceStatus.Unauthorized401, "Invalid or expired token.");
-
             var userId = Convert.ToInt32(principal.FindFirst(ClaimTypes.NameIdentifier)?.Value);
             var roleName = principal.FindFirst(ClaimTypes.Role)?.Value;
             if (userId == 0 || string.IsNullOrEmpty(roleName))
