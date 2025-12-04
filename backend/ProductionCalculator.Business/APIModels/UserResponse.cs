@@ -1,4 +1,4 @@
-namespace ProductionCalculator.API.APIModels
+namespace ProductionCalculator.Business.APIModels
 {
     public class UserResponse
     {

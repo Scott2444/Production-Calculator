@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using ProductionCalculator.API.APIModels;
+using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 
@@ -21,7 +21,7 @@ namespace ProductionCalculator.API.Controllers
         public async Task<IActionResult> Login([FromBody] LoginRequest req)
         {
             var result = await _authService.Login(req.Username, req.Password);
-            return FromServiceResult(result, (u) => new AuthResponse { Token = u });
+            return FromServiceResult(result, u => u);
         }
 
         [Authorize(Policy = "IsAuthenticated")]
@@ -30,7 +30,7 @@ namespace ProductionCalculator.API.Controllers
         {
             var user = HttpContext.User;
             var result = await _authService.RefreshToken(user);
-            return FromServiceResult(result, (u) => new AuthResponse { Token = u });
+            return FromServiceResult(result, u => u);
         }
     }
 }

@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using ProductionCalculator.Business.Interfaces;
-using ProductionCalculator.API.APIModels;
+using ProductionCalculator.Business.APIModels;
 using Microsoft.AspNetCore.Authorization;
 
 namespace ProductionCalculator.API.Controllers
