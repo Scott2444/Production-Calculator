@@ -5,10 +5,9 @@ namespace ProductionCalculator.Business.Interfaces
 {
     public interface IUserService
     {
-        Task<ServiceResult<User>> RegisterAsync(string username, string email, string password);
-        Task<ServiceResult<User>> GetUserById(int id);
+        Task<ServiceResult<User>> Register(string username, string email, string password);
+        Task<ServiceResult<User>> GetUserByPubId(string pubId);
         Task<ServiceResult<User>> GetUserByUsername(string username);
-        Task<ServiceResult> DeleteUserById(int id);
-        Task<ServiceResult> DeleteUserByUsername(string username);
+        Task<ServiceResult> DeleteUserById(string pubId);
     }
 }

@@ -23,23 +23,23 @@ namespace ProductionCalculator.API.Authorization
             return Task.CompletedTask;
         }
 
-        // Extract the {user_id} route value
-        var userIdFromRoute = context.Resource as HttpContext; // Resource is usually HttpContext when using policies on endpoints
+        // Extract the {pubId} route value
+        var pubIdFromRoute = context.Resource as HttpContext; // Resource is usually HttpContext when using policies on endpoints
 
-        if (userIdFromRoute == null)
+        if (pubIdFromRoute == null)
         {
             context.Fail();
             return Task.CompletedTask;
         }
 
-        if (!userIdFromRoute.Request.RouteValues.TryGetValue("user_id", out var routeUserIdObj))
+        if (!pubIdFromRoute.Request.RouteValues.TryGetValue("pubId", out var routePubIdObj))
         {
             context.Fail();
             return Task.CompletedTask;
         }
 
-        var routeUserId = routeUserIdObj?.ToString();
-        if (string.IsNullOrEmpty(routeUserId))
+        var routePubId = routePubIdObj?.ToString();
+        if (string.IsNullOrEmpty(routePubId))
         {
             context.Fail();
             return Task.CompletedTask;
@@ -48,7 +48,7 @@ namespace ProductionCalculator.API.Authorization
         // Get the claim from the JWT
         var claimUserId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        if (claimUserId != null && routeUserId == claimUserId)
+        if (claimUserId != null && routePubId == claimUserId)
         {
             context.Succeed(requirement);
         }

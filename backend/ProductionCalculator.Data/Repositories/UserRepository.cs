@@ -34,7 +34,10 @@ namespace ProductionCalculator.Data.Repositories
         {
             return await _db.Set<User>().FirstOrDefaultAsync(u => u.Email == email);
         }
-
+        public async Task<User?> GetByPuid(string puid)
+        {
+            return await _db.Set<User>().FirstOrDefaultAsync(u => u.Puid == puid);
+        }
         public async Task<bool> DeleteUser(int id) {
             var user = await _db.Set<User>().FindAsync(id);
             if (user == null) return false;
@@ -48,6 +51,11 @@ namespace ProductionCalculator.Data.Repositories
         {
             var user = await _db.Set<User>().FindAsync(id);
             return user?.Password_Hash ?? string.Empty;
+        }
+
+        public async Task<bool> PuidExists(string puid)
+        {
+            return await _db.Set<User>().AnyAsync(u => u.Puid == puid);
         }
     }
 }

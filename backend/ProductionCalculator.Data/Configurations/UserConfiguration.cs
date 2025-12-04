@@ -53,6 +53,11 @@ namespace ProductionCalculator.Data.Configurations
                 .HasColumnType("timestamp with time zone")
                 .HasDefaultValueSql("now()")
                 .IsRequired();
+            
+            builder.Property(u => u.Puid)
+                .HasColumnName("puid")
+                .HasColumnType("char(10)")
+                .IsRequired();
         }
     }
 }

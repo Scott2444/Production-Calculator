@@ -29,23 +29,23 @@ namespace ProductionCalculator.Business.Services
                 return ServiceResult<string>.Fail(ServiceStatus.Unauthorized401, "Invalid username or password.");
             
             // Get claims for JWT
-            var userId = userResult.User_Id;
+            var pubId = userResult.Puid;
             var role = await _roleRepo.GetRole(userResult.Role_Id);
             if (role == null)
                 return ServiceResult<string>.Fail(ServiceStatus.InternalServerError500, $"User id {userResult.Role_Id} not found.");
 
             // Generate JWT
-            var token = _jwtHelper.GenerateToken(userId, role.Role_Name);
+            var token = _jwtHelper.GenerateToken(pubId, role.Role_Name);
             return ServiceResult<string>.SuccessResult(token);
         }
         public async Task<ServiceResult<string>> RefreshToken(ClaimsPrincipal principal)
         {
-            var userId = Convert.ToInt32(principal.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            var pubId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var roleName = principal.FindFirst(ClaimTypes.Role)?.Value;
-            if (userId == 0 || string.IsNullOrEmpty(roleName))
+            if (string.IsNullOrEmpty(pubId) || string.IsNullOrEmpty(roleName))
                 return ServiceResult<string>.Fail(ServiceStatus.Unauthorized401, "Invalid token claims.");
 
-            var newToken = _jwtHelper.GenerateToken(userId, roleName);
+            var newToken = _jwtHelper.GenerateToken(pubId, roleName);
             return ServiceResult<string>.SuccessResult(newToken);
         }
     }

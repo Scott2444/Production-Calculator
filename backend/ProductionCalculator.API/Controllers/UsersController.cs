@@ -18,24 +18,24 @@ namespace ProductionCalculator.API.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterUserRequest req)
         {
-            var result = await _service.RegisterAsync(req.Username, req.Email, req.Password);
+            var result = await _service.Register(req.Username, req.Email, req.Password);
 
-            return FromServiceResult(result, (u) => new UserResponse { UserId = u.User_Id, Username = u.Username, Email = u.Email, Role_Id = u.Role_Id, CreatedAt = u.Created_At, UpdatedAt = u.Last_Updated });
+            return FromServiceResult(result, (u) => new UserResponse { Username = u.Username, Email = u.Email, Puid = u.Puid, CreatedAt = u.Created_At, UpdatedAt = u.Last_Updated });
         }
 
         [Authorize(Policy = "IsOwnerOrAdmin")]
-        [HttpGet("{user_id:int}")]
-        public async Task<IActionResult> GetByUsername(int user_id)
+        [HttpGet("{pubId}")]
+        public async Task<IActionResult> GetByPubId(string pubId)
         {
-            var result = await _service.GetUserById(user_id);
-            return FromServiceResult(result, u => new UserResponse { UserId = u.User_Id, Username = u.Username, Email = u.Email, Role_Id = u.Role_Id, CreatedAt = u.Created_At, UpdatedAt = u.Last_Updated });
+            var result = await _service.GetUserByPubId(pubId);
+            return FromServiceResult(result, u => new UserResponse { Username = u.Username, Email = u.Email, Puid = u.Puid, CreatedAt = u.Created_At, UpdatedAt = u.Last_Updated });
         }
 
         [Authorize(Policy = "IsOwnerOrAdmin")]
-        [HttpDelete("{user_id:int}")]
-        public async Task<IActionResult> DeleteByUsername(int user_id)
+        [HttpDelete("{pubId}")]
+        public async Task<IActionResult> DeleteByPubId(string pubId)
         {
-            var result = await _service.DeleteUserById(user_id);
+            var result = await _service.DeleteUserById(pubId);
             return FromServiceResult(result);
         }
     }

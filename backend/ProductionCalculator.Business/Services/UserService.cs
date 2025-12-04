@@ -13,7 +13,7 @@ namespace ProductionCalculator.Business.Services
             _repo = repo;
         }
 
-        public async Task<ServiceResult<User>> RegisterAsync(string username, string email, string password)
+        public async Task<ServiceResult<User>> Register(string username, string email, string password)
         {
             // basic checks
             if (string.IsNullOrWhiteSpace(username)) return ServiceResult<User>.Fail(ServiceStatus.BadRequest400);
@@ -27,6 +27,8 @@ namespace ProductionCalculator.Business.Services
 
             var passwordHash = PasswordHelper.HashPassword(password);
 
+            var puid = await PuidHelper.GenerateUniquePuidAsync(_repo.PuidExists);
+
             var user = new User
             {
                 User_Id = 0,
@@ -34,6 +36,7 @@ namespace ProductionCalculator.Business.Services
                 Email = email,
                 Password_Hash = passwordHash,
                 Role_Id = 1, // Default role / unverified
+                Puid = puid,
                 Created_At = DateTime.UtcNow,
                 Last_Updated = DateTime.UtcNow
             };
@@ -42,12 +45,12 @@ namespace ProductionCalculator.Business.Services
             return ServiceResult<User>.SuccessResult(user, ServiceStatus.Created201);
         }
 
-        public async Task<ServiceResult<User>> GetUserById(int id)
+        public async Task<ServiceResult<User>> GetUserByPubId(string pubId)
         {
-            if (id <= 0) return ServiceResult<User>.Fail(ServiceStatus.BadRequest400);
+            if (string.IsNullOrWhiteSpace(pubId)) return ServiceResult<User>.Fail(ServiceStatus.BadRequest400);
 
-            var user = await _repo.GetById(id);
-            if (user == null) return ServiceResult<User>.Fail(ServiceStatus.NotFound404, $"User with ID {id} not found.");
+            var user = await _repo.GetByPuid(pubId);
+            if (user == null) return ServiceResult<User>.Fail(ServiceStatus.NotFound404, $"User with PUID {pubId} not found.");
 
             return ServiceResult<User>.SuccessResult(user, ServiceStatus.Ok200);
         }
@@ -61,29 +64,14 @@ namespace ProductionCalculator.Business.Services
 
             return ServiceResult<User>.SuccessResult(user, ServiceStatus.Ok200);
         }
-        public async Task<ServiceResult> DeleteUserById(int id)
+        public async Task<ServiceResult> DeleteUserById(string pubId)
         {
-            if (id <= 0)
+            if (string.IsNullOrWhiteSpace(pubId))
                 return ServiceResult.Fail(ServiceStatus.BadRequest400);
 
-            var user = await _repo.GetById(id);
+            var user = await _repo.GetByPuid(pubId);
             if (user == null)
-                return ServiceResult.Fail(ServiceStatus.NotFound404, $"{id} not found.");
-
-            var deleted = await _repo.DeleteUser(user.User_Id);
-            if (!deleted)
-                return ServiceResult.Fail(ServiceStatus.InternalServerError500);
-
-            return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
-        }
-        public async Task<ServiceResult> DeleteUserByUsername(string username)
-        {
-            if (string.IsNullOrWhiteSpace(username))
-                return ServiceResult.Fail(ServiceStatus.BadRequest400);
-
-            var user = await _repo.GetByUsername(username);
-            if (user == null)
-                return ServiceResult.Fail(ServiceStatus.NotFound404, $"{username} not found.");
+                return ServiceResult.Fail(ServiceStatus.NotFound404, $"User with PUID {pubId} not found.");
 
             var deleted = await _repo.DeleteUser(user.User_Id);
             if (!deleted)
