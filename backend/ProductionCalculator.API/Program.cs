@@ -24,6 +24,8 @@ ConfigurationHelper.SetupConnectionString(builder);
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<JwtHelper>();
+builder.Services.AddSingleton<IAuthorizationHandler, UserHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, OwnerHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, OwnerOrAdminHandler>();
 builder.Services.AddJwtAuthAndPolicies(builder.Configuration);
 

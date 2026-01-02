@@ -36,10 +36,14 @@ namespace ProductionCalculator.API.Helpers
                     policy.RequireAssertion(context => true));  // Always allow
                 options.AddPolicy("IsAuthenticated", policy =>
                     policy.RequireAuthenticatedUser());  // Any authenticated user
-                options.AddPolicy("IsOwnerOrAdmin", policy =>
-                    policy.Requirements.Add(new OwnerOrAdminRequirement()));  // Owner or Admin
+                options.AddPolicy("IsUser", policy =>
+                    policy.Requirements.Add(new UserRequirement()));  // Verified user
+                options.AddPolicy("IsOwner", policy =>
+                    policy.Requirements.Add(new OwnerRequirement()));  // Owner
                 options.AddPolicy("IsAdmin", policy =>
                     policy.RequireRole("Admin"));  // Admin only operations
+                options.AddPolicy("IsOwnerOrAdmin", policy =>
+                    policy.Requirements.Add(new OwnerOrAdminRequirement()));  // Owner or Admin
             });
 
             return services;
