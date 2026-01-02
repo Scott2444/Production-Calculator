@@ -15,14 +15,12 @@ namespace ProductionCalculator.API.Authorization
 
         protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, UserRequirement requirement)
         {
-            Console.WriteLine("UserHandler: Handling requirement");
             var user = context.User;
             // Must be authenticated
             if (!user.Identity?.IsAuthenticated ?? true) { context.Fail(); return; }
 
             var roleName = user.FindFirst(ClaimTypes.Role)?.Value;
             // Check if user is role User or higher
-            Console.WriteLine($"User role from claims: {roleName}");
             var isUser = roleName != null && 
                 (roleName.Equals("User", StringComparison.OrdinalIgnoreCase) || 
                  roleName.Equals("Admin", StringComparison.OrdinalIgnoreCase));

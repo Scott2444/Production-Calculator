@@ -14,6 +14,7 @@ namespace ProductionCalculator.Data.Extensions
             services.AddDbContext<ProductionCalculatorDbContext>(opts => opts.UseNpgsql(conn));
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IRoleRepository, RoleRepository>();
+            services.AddScoped<IProjectRepository, ProjectRepository>();
             return services;
         }
     }

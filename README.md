@@ -6,9 +6,8 @@ This full-stack project will enable users to create projects of production pipel
 ## Architecture
 
 ### Frontend
-This uses Next.js framework with client-side rendering (main calculator interface) and server-side rendering (shareable proejct pages).
+This uses React framework with client-side rendering (main calculator interface) and server-side rendering (shareable project pages).
 The styling is done in Tailwind CSS.
-The API communication uses Axios and JWT for authentication.
 The state management is done with React Context API + Hooks.
 For data visualization, this uses React Flow or D3.js???
 
@@ -18,18 +17,9 @@ Authentication will be done with JWT.
 
 ### Database
 This will use PostgreSQL.
+Flyway for DB migration and versioning.
 #### Entity Relation Diagram
 https://michiganstate-my.sharepoint.com/personal/haakens3_msu_edu/_layouts/15/Doc.aspx?sourcedoc={a9564c30-e26d-4955-9261-0c8381a41fcf}&action=embedview
 
 ## Hosting
-These are just recommendations, likely to change. 
-
-### Frontend
-Deployed on AWS Amplify
-
-### Backend
-Stored in Dockerfile on AWS ECR
-Deployed on AWS Fargate
-
-### Database
-Deployed on AWS RDS
+This is runs on a self-hosted server proxied through Cloudflare Tunnels.

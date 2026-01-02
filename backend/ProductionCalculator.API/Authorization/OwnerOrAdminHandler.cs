@@ -17,12 +17,11 @@ namespace ProductionCalculator.API.Authorization
             var httpContext = context.Resource as HttpContext;
             if (httpContext == null) { context.Fail(); return; }
 
-            // Try to get pubId from route
-            string? routePubId = null;
-            if (httpContext.Request.RouteValues.TryGetValue("pubId", out var pubIdObj))
-                routePubId = pubIdObj?.ToString();
-            if (string.IsNullOrEmpty(routePubId)) { context.Fail(); return; }
-
+            // Try to get puid from route
+            string? routePuid = null;
+            if (httpContext.Request.RouteValues.TryGetValue("puid", out var puidObj))
+                routePuid = puidObj?.ToString();
+            if (string.IsNullOrEmpty(routePuid)) { context.Fail(); return; }
             var route = httpContext.Request.Path.Value;
             if (string.IsNullOrEmpty(route)) { context.Fail(); return; }
 
@@ -30,7 +29,7 @@ namespace ProductionCalculator.API.Authorization
             var authService = httpContext.RequestServices.GetService(typeof(IAuthService)) as IAuthService;
             if (authService == null) { context.Fail(); return; }
 
-            var isOwner = await authService.IsOwner(context.User, pubId: routePubId, route: route);
+            var isOwner = await authService.IsOwner(context.User, routePuid: routePuid, route: route);
             var isAdmin = await authService.IsAdmin(context.User);
 
             if (isOwner || isAdmin)

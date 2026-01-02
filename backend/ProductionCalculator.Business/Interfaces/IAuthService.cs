@@ -8,7 +8,7 @@ namespace ProductionCalculator.Business.Interfaces
     {
         Task<ServiceResult<AuthResponse>> Login(string username, string password);
         Task<ServiceResult<AuthResponse>> RefreshToken(ClaimsPrincipal token);
-        Task<bool> IsOwner(ClaimsPrincipal user, string? pubId, string? route);
+        Task<bool> IsOwner(ClaimsPrincipal user, string? routePuid, string? route);
         Task<bool> IsAdmin(ClaimsPrincipal user);
     }
 }

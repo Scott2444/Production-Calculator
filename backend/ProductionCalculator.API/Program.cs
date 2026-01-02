@@ -21,8 +21,11 @@ builder.Services.AddSwaggerGen(c =>
 
 // Add application services and data
 ConfigurationHelper.SetupConnectionString(builder);
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddSingleton<JwtHelper>();
 builder.Services.AddSingleton<IAuthorizationHandler, UserHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, OwnerHandler>();

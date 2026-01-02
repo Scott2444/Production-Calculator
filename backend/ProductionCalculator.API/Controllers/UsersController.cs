@@ -24,18 +24,18 @@ namespace ProductionCalculator.API.Controllers
         }
 
         [Authorize(Policy = "IsOwnerOrAdmin")]
-        [HttpGet("{pubId}")]
-        public async Task<IActionResult> GetByPubId(string pubId)
+        [HttpGet("{puid}")]
+        public async Task<IActionResult> GetBypuid(string puid)
         {
-            var result = await _service.GetUserByPubId(pubId);
+            var result = await _service.GetUserBypuid(puid);
             return FromServiceResult(result, u => new UserResponse { Username = u.Username, Email = u.Email, Puid = u.Puid, CreatedAt = u.Created_At, UpdatedAt = u.Last_Updated });
         }
 
         [Authorize(Policy = "IsOwnerOrAdmin")]
-        [HttpDelete("{pubId}")]
-        public async Task<IActionResult> DeleteByPubId(string pubId)
+        [HttpDelete("{puid}")]
+        public async Task<IActionResult> DeleteBypuid(string puid)
         {
-            var result = await _service.DeleteUserById(pubId);
+            var result = await _service.DeleteUserById(puid);
             return FromServiceResult(result);
         }
     }
