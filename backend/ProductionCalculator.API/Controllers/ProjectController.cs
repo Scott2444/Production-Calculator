@@ -33,14 +33,6 @@ namespace ProductionCalculator.API.Controllers
         }
 
         [Authorize(Policy = "IsOwnerOrAdmin")]
-        [HttpGet("users/{puid}")]
-        public async Task<IActionResult> GetProjectsbyUserPuid(string puid)
-        {
-            var result = await _service.GetProjectsByUserPuid(puid);
-            return FromServiceResult(result, projects => projects.Select(p => new ProjectResponse { Puid = p.Puid, Name = p.Name, Description = p.Description, CreatedAt = p.Created_At, UpdatedAt = p.Last_Updated }).ToList());
-        }
-
-        [Authorize(Policy = "IsOwnerOrAdmin")]
         [HttpDelete("{puid}")]
         public async Task<IActionResult> DeleteProject(string puid)
         {
