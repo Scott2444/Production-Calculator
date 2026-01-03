@@ -18,8 +18,8 @@ pub_ids are 10 char strings in base58 (4e17 possible numbers)
 ## Main Resources
 /users/{pub_user_id}
 /projects/{pub_project_id}
-/workflows/{pub_workflow_id}
-/recipes/{pub_recipe_id}
-/machines/{pub_machine_id}
-/modifiers/{pub_modifier_id}
-/products/{pub_product_id}
+/projects/{pub_project_id}/workflows/{pub_workflow_id}
+/projects/{pub_project_id}/recipes/{pub_recipe_id}
+/projects/{pub_project_id}/machines/{pub_machine_id}
+/projects/{pub_project_id}/modifiers/{pub_modifier_id}
+/projects/{pub_project_id}/products/{pub_product_id}

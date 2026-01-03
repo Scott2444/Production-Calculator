@@ -24,26 +24,26 @@ namespace ProductionCalculator.API.Controllers
         }
 
         [Authorize(Policy = "IsOwnerOrAdmin")]
-        [HttpGet("{puid}")]
-        public async Task<IActionResult> GetBypuid(string puid)
+        [HttpGet("{userPuid}")]
+        public async Task<IActionResult> GetBypuid(string userPuid)
         {
-            var result = await _service.GetUserBypuid(puid);
+            var result = await _service.GetUserBypuid(userPuid);
             return FromServiceResult(result, u => new UserResponse { Username = u.Username, Email = u.Email, Puid = u.Puid, CreatedAt = u.Created_At, UpdatedAt = u.Last_Updated });
         }
 
         [Authorize(Policy = "IsOwnerOrAdmin")]
-        [HttpGet("{puid}/projects")]
-        public async Task<IActionResult> GetProjectsByUserPuid(string puid, [FromServices] IProjectService projectService)
+        [HttpGet("{userPuid}/projects")]
+        public async Task<IActionResult> GetProjectsByUserPuid(string userPuid, [FromServices] IProjectService projectService)
         {
-            var result = await projectService.GetProjectsByUserPuid(puid);
+            var result = await projectService.GetProjectsByUserPuid(userPuid);
             return FromServiceResult(result, projects => projects.Select(p => new ProjectResponse { Puid = p.Puid, Name = p.Name, Description = p.Description, CreatedAt = p.Created_At, UpdatedAt = p.Last_Updated }).ToList());
         }
 
         [Authorize(Policy = "IsOwnerOrAdmin")]
-        [HttpDelete("{puid}")]
-        public async Task<IActionResult> DeleteBypuid(string puid)
+        [HttpDelete("{userPuid}")]
+        public async Task<IActionResult> DeleteBypuid(string userPuid)
         {
-            var result = await _service.DeleteUserById(puid);
+            var result = await _service.DeleteUserById(userPuid);
             return FromServiceResult(result);
         }
     }

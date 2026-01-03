@@ -15,6 +15,7 @@ namespace ProductionCalculator.Data.Extensions
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IProjectRepository, ProjectRepository>();
+            services.AddScoped<IProductRepository, ProductRepository>();
             return services;
         }
     }

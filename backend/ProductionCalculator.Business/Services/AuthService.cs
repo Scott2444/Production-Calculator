@@ -14,22 +14,27 @@ namespace ProductionCalculator.Business.Services
         private readonly IRoleRepository _roleRepo;
         private readonly JwtHelper _jwtHelper;
         private readonly IProjectRepository _projectRepository;
+        private readonly IHttpContextAccessor _httpContextAccessor;
         public AuthService
         (
             IUserRepository repo, 
             IRoleRepository roleRepo, 
             JwtHelper jwtHelper, 
-            IProjectRepository projectRepository)
+            IProjectRepository projectRepository,
+            IHttpContextAccessor httpContextAccessor
+        )
         {
             _repo = repo;
             _roleRepo = roleRepo;
             _jwtHelper = jwtHelper;
             _projectRepository = projectRepository;
+            _httpContextAccessor = httpContextAccessor;
+
         }
         /// <summary>
         /// Checks if the user is the owner of the resource identified by puid in the route.
         /// </summary>
-        public async Task<bool> IsOwner(ClaimsPrincipal user, string? routePuid, string? route)
+        public async Task<bool> IsOwner(ClaimsPrincipal user, string? route)
         {
             // Must be authenticated
             if (!user.Identity?.IsAuthenticated ?? true)
@@ -42,17 +47,22 @@ namespace ProductionCalculator.Business.Services
                 return false;
             int claimUserId = int.Parse(claimUserIdStr);
 
+            // Extract puid from route
+            var routeData = _httpContextAccessor.HttpContext?.GetRouteData();
+            var userPuid = routeData?.Values["userPuid"]?.ToString();
+            var projectPuid = routeData?.Values["projectPuid"]?.ToString();
+
             // If accessing user resource, compare directly
-            if (route?.Contains("/users/") == true)
+            if (userPuid != null)
             {
-                return claimUserPuid != null && routePuid == claimUserPuid;
+                return claimUserPuid != null && userPuid == claimUserPuid;
             }
 
             // For projects or workflows, fetch resource and compare owner
             // Uncomment and implement these as needed:
-            if (route?.Contains("/projects/") == true)
+            if (projectPuid != null)
             {
-                var project = await _projectRepository.GetProjectByPuid(routePuid!);
+                var project = await _projectRepository.GetProjectByPuid(projectPuid!);
                 if (project != null && claimUserPuid != null && project.User_Id == claimUserId)
                         return true;
                 return false;
