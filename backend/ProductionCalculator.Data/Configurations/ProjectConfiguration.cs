@@ -46,6 +46,14 @@ namespace ProductionCalculator.Data.Configurations
             builder.HasIndex(u => u.Puid)
                 .IsUnique()
                 .HasDatabaseName("projects_puid_key");
+
+            builder.Property(u => u.Is_Public)
+                .HasColumnName("is_public")
+                .IsRequired()
+                .HasDefaultValue(false);
+            
+            builder.Property(u => u.Alias_Project_Puid)
+                .HasColumnName("alias_project_puid");
         }
     }
 }

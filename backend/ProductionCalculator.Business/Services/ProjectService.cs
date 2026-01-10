@@ -18,7 +18,7 @@ namespace ProductionCalculator.Business.Services
 
         // Use _currentUser.UserId or _currentUser.Username as needed
 
-        public async Task<ServiceResult<Project>> AddProject(string name, string? description)
+        public async Task<ServiceResult<Project>> AddProject(string name, string? description, bool? isPublic, string? aliasProjectPuid)
         {
             if (string.IsNullOrWhiteSpace(name)) return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Project name is required.");
 
@@ -46,12 +46,47 @@ namespace ProductionCalculator.Business.Services
                 Puid = puid,
                 Name = name,
                 Description = description ?? string.Empty,
+                Is_Public = isPublic ?? false,
+                Alias_Project_Puid = aliasProjectPuid,
                 Created_At = DateTime.UtcNow,
                 Last_Updated = DateTime.UtcNow
             };
 
             await _repo.AddProject(project);
             return ServiceResult<Project>.SuccessResult(project, ServiceStatus.Created201);
+        }
+        public async Task<ServiceResult<Project>> UpdateProject(string projectPuid, string name, string? description, bool? isPublic, string? aliasProjectPuid)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Project name is required.");
+
+            // Get userId from current user
+            var userId = _currentUser.UserId;
+            if (userId == null) return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Unable to determine current user.");
+
+            var project = await _repo.GetProjectByPuid(projectPuid);
+            if (project == null) return ServiceResult<Project>.Fail(ServiceStatus.NotFound404, $"Project with PUID {projectPuid} not found.");
+
+            // Check if name already exists for this user
+            var existingProjects = await _repo.GetProjectsByUserId(userId.Value);
+            if (existingProjects.Any(p => p.Name == name && p.Project_Id != project.Project_Id)) return ServiceResult<Project>.Fail(ServiceStatus.Conflict409, "Project name already exists for this user.");
+
+            // Limit description length
+            if (description != null && description.Length > 1000)
+            {
+                description = description.Substring(0, 1000);
+            }
+
+            // Generate new PUID
+            var puid = await PuidHelper.GenerateUniquePuidAsync(_repo.PuidExists);
+
+            project.Name = name ?? project.Name;
+            project.Description = description ?? project.Description;
+            project.Is_Public = isPublic ?? project.Is_Public;
+            project.Alias_Project_Puid = aliasProjectPuid ?? project.Alias_Project_Puid;
+            project.Last_Updated = DateTime.UtcNow;
+
+            await _repo.UpdateProject(project);
+            return ServiceResult<Project>.SuccessResult(project, ServiceStatus.Ok200);
         }
         public async Task<ServiceResult<Project>> GetProjectByPuid(string puid)
         {

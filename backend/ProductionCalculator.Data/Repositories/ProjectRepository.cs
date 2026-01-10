@@ -18,6 +18,11 @@ namespace ProductionCalculator.Data.Repositories
             await _db.Set<Project>().AddAsync(project);
             await _db.SaveChangesAsync();
         }
+        public async Task UpdateProject(Project project)
+        {
+            _db.Set<Project>().Update(project);
+            await _db.SaveChangesAsync();
+        }
 
         public async Task<Project?> GetProjectById(int id)
         {
