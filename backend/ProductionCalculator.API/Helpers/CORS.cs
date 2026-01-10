@@ -1,5 +1,3 @@
-using ProductionCalculator.Data.Extensions;
-
 namespace ProductionCalculator.API.Helpers
 {
     public static class CorsPolicyHelper
@@ -17,7 +15,8 @@ namespace ProductionCalculator.API.Helpers
                                     policy.WithOrigins("http://localhost:3000",
                                                         "https://www.production-calculator.com")
                                             .AllowAnyHeader()
-                                            .AllowAnyMethod();
+                                            .AllowAnyMethod()
+                                            .AllowCredentials();
                                 });
             });
 

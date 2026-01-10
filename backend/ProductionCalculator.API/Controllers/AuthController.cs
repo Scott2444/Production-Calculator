@@ -21,6 +21,18 @@ namespace ProductionCalculator.API.Controllers
             int.TryParse(_configuration["Jwt:ExpireMinutes"], out tokenExpiryMinutes);
         }
 
+        private CookieOptions BuildAuthCookieOptions()
+        {
+            return new CookieOptions
+            {
+                Path = "/",
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTimeOffset.UtcNow.AddMinutes(tokenExpiryMinutes)
+            };
+        }
+
         [Authorize(Policy = "IsPublic")]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest req)
@@ -32,13 +44,7 @@ namespace ProductionCalculator.API.Controllers
                 Response.Cookies.Append(
                     "token",
                     token,
-                    new CookieOptions
-                    {
-                        HttpOnly = true,
-                        Secure = true,
-                        SameSite = SameSiteMode.Strict,
-                        Expires = DateTimeOffset.UtcNow.AddMinutes(tokenExpiryMinutes)
-                    }
+                    BuildAuthCookieOptions()
                 );
             }
             return FromServiceResult(result, u => u);
@@ -56,13 +62,7 @@ namespace ProductionCalculator.API.Controllers
                 Response.Cookies.Append(
                     "token",
                     token,
-                    new CookieOptions
-                    {
-                        HttpOnly = true,
-                        Secure = true,
-                        SameSite = SameSiteMode.Strict,
-                        Expires = DateTimeOffset.UtcNow.AddMinutes(tokenExpiryMinutes)
-                    }
+                    BuildAuthCookieOptions()
                 );
             }
             return FromServiceResult(result, u => u);
