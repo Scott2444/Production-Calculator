@@ -96,40 +96,40 @@ namespace ProductionCalculator.Business.Services
             // Check if user is admin
             return roleName != null && roleName.Equals("Admin", StringComparison.OrdinalIgnoreCase);
         }
-        public async Task<ServiceResult<AuthResponse>> Login(string username, string password)
+        public async Task<(ServiceResult<AuthResponse> result, string? token)> Login(string username, string password)
         {
             // Validate user credentials
             var userResult = await _repo.GetByUsername(username);
             if (userResult == null)
-                return ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "Invalid username or password.");
+                return (ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "Invalid username or password."), null);
 
             var storedHash = await _repo.GetPasswordHash(userResult.User_Id);
             if (!PasswordHelper.VerifyPassword(password, storedHash))
-                return ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "Invalid username or password.");
+                return (ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "Invalid username or password."), null);
             
             // Get claims for JWT
             var puid = userResult.Puid;
             var role = await _roleRepo.GetRole(userResult.Role_Id);
             if (role == null)
-                return ServiceResult<AuthResponse>.Fail(ServiceStatus.InternalServerError500, $"User id {userResult.Role_Id} not found.");
+                return (ServiceResult<AuthResponse>.Fail(ServiceStatus.InternalServerError500, $"User id {userResult.Role_Id} not found."), null);
 
             // Generate JWT
             var token = _jwtHelper.GenerateToken(userResult.User_Id, puid, role.Role_Name);
-            return ServiceResult<AuthResponse>.SuccessResult(new AuthResponse { Puid = puid, Token = token });
+            return (ServiceResult<AuthResponse>.SuccessResult(new AuthResponse { Puid = puid }), token);
         }
-        public async Task<ServiceResult<AuthResponse>> RefreshToken(ClaimsPrincipal principal)
+        public async Task<(ServiceResult<AuthResponse> result, string? token)> RefreshToken(ClaimsPrincipal principal)
         {
             var puid = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var roleName = principal.FindFirst(ClaimTypes.Role)?.Value;
             if (string.IsNullOrEmpty(puid) || string.IsNullOrEmpty(roleName))
-                return ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "Invalid token claims.");
+                return (ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "Invalid token claims."), null);
             
             var userResult = await _repo.GetByPuid(puid);
             if (userResult == null)
-                return ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "User not found.");
+                return (ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "User not found."), null);
 
             var newToken = _jwtHelper.GenerateToken(userResult.User_Id, puid, roleName);
-            return ServiceResult<AuthResponse>.SuccessResult(new AuthResponse { Puid = puid, Token = newToken });
+            return (ServiceResult<AuthResponse>.SuccessResult(new AuthResponse { Puid = puid }), newToken);
         }
 
         

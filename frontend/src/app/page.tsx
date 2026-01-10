@@ -2,6 +2,6 @@ import NavBar from '@/components/NavBar';
 
 export default function Home() {
   return (
-    <><NavBar loggedIn={true} currentPage='projects'/></>
+    <><NavBar loggedIn={false} currentPage='projects'/></>
   );
 }

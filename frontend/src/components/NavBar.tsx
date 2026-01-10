@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 export default function NavBar({ loggedIn, accountLogoUrl, currentPage }: NavBarProps): React.ReactElement {
    return (
-        <nav className="flex items-center justify-between py-5 px-8 border-b-2 border-black bg-slate-950/50">
+        <nav className="flex items-center justify-between py-5 px-8 border-b-2 border-black bg-slate-900/80">
             <div className="flex items-center gap-14 text-xl">
                 <Link href="/">
                     <img src="/Medium_Logo.svg" alt="Logo" className="h-8" />
@@ -46,7 +46,7 @@ export default function NavBar({ loggedIn, accountLogoUrl, currentPage }: NavBar
                         />
                     </Link>
                 ) : (
-                    <Link href="/login" className="px-6 py-2 bg-purple-700 text-white rounded-md no-underline font-medium hover:bg-purple-600">
+                    <Link href="/login" className="px-6 py-2 bg-purple-700 text-white rounded-md no-underline font-medium hover:bg-purple-600 transition-colors">
                         Login
                     </Link>
                 )}

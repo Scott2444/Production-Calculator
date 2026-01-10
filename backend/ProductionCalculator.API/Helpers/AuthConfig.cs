@@ -28,6 +28,21 @@ namespace ProductionCalculator.API.Helpers
                         ValidAudience = jwtSettings["Audience"],
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString))
                     };
+                    options.Events = new JwtBearerEvents
+                    {
+                        OnMessageReceived = context =>
+                        {
+                            if (string.IsNullOrEmpty(context.Token))
+                            {
+                                var token = context.HttpContext.Request.Cookies["token"];
+                                if (!string.IsNullOrEmpty(token))
+                                {
+                                    context.Token = token;
+                                }
+                            }
+                            return Task.CompletedTask;
+                        }
+                    };
                 });
 
             services.AddAuthorization(options =>

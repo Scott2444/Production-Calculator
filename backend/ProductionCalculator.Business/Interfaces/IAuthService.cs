@@ -6,8 +6,8 @@ namespace ProductionCalculator.Business.Interfaces
 {
     public interface IAuthService
     {
-        Task<ServiceResult<AuthResponse>> Login(string username, string password);
-        Task<ServiceResult<AuthResponse>> RefreshToken(ClaimsPrincipal token);
+        Task<(ServiceResult<AuthResponse> result, string? token)> Login(string username, string password);
+        Task<(ServiceResult<AuthResponse> result, string? token)> RefreshToken(ClaimsPrincipal token);
         Task<bool> IsOwner(ClaimsPrincipal user, string? route);
         Task<bool> IsAdmin(ClaimsPrincipal user);
     }
