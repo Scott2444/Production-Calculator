@@ -2,6 +2,15 @@ using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Helpers;
 
+/**
+ * Project last modified date should be updated when products are written to
+ * !
+ * !
+ * ! 
+ * !
+*/
+
+
 namespace ProductionCalculator.Business.Services
 {
     public class ProductService : IProductService

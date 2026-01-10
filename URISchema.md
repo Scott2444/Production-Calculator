@@ -4,12 +4,19 @@ The following are the route structure for the frontend and backend api resources
 pub_ids are 10 char strings in base58 (4e17 possible numbers)
 
 # Frontend
+## General
+/login
+/register
+/home
+/explore
+/projects
+/settings
 ## Users
-/{username}/{project_name}/workflows/{pub_workflow_id}
-/{username}/{project_name}/recipes/{pub_recipe_id}
-/{username}/{project_name}/machines/{pub_machines_id}
-/{username}/{project_name}/modifiers/{pub_modifiers_id}
-/{username}/{project_name}/products/{pub_products_id}
+/{username}/{project_name}/workflows/{workflow_name}
+/{username}/{project_name}/recipes/
+/{username}/{project_name}/machines/
+/{username}/{project_name}/modifiers/
+/{username}/{project_name}/products/
 
 # Backend
 ## Auth
