@@ -5,12 +5,12 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace ProductionCalculator.API.Controllers
 {
-    [Route("projects")]
-    public class ProjectController : ApiControllerBase
+    [Route("api/[controller]")]
+    public class ProjectsController : ApiControllerBase
     {
         private readonly IProjectService _service;
 
-        public ProjectController(IProjectService service)
+        public ProjectsController(IProjectService service)
         {
             _service = service;
         }

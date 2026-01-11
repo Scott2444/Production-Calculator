@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace ProductionCalculator.API.Controllers
 {
-    [Route("auth")]
+    [Route("api/[controller]")]
     public class AuthController : ApiControllerBase
     {
         private readonly IAuthService _authService;

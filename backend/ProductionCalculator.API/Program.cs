@@ -36,11 +36,14 @@ builder.Services.AddJwtAuthAndPolicies(builder.Configuration);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "ProductionCalculator API v1"));
+    app.UseSwaggerUI(c =>
+        {
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "ProductionCalculator API v1");
+            c.RoutePrefix = "api/swagger";
+        });
 }
 
 app.UseCors("_myAllowSpecificOrigins");
