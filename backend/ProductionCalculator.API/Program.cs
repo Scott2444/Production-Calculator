@@ -38,12 +38,15 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
+    app.UseSwagger(c =>
+    {
+        c.RouteTemplate = "api/swagger/{documentName}/swagger.json";
+    });
     app.UseSwaggerUI(c =>
-        {
-            c.SwaggerEndpoint("/swagger/v1/swagger.json", "ProductionCalculator API v1");
-            c.RoutePrefix = "api/swagger";
-        });
+    {
+        c.SwaggerEndpoint("v1/swagger.json", "ProductionCalculator API v1");
+        c.RoutePrefix = "api/swagger";
+    });
 }
 
 app.UseCors("_myAllowSpecificOrigins");
