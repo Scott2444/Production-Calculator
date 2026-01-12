@@ -34,7 +34,7 @@ namespace ProductionCalculator.API.Helpers
                         {
                             if (string.IsNullOrEmpty(context.Token))
                             {
-                                var token = context.HttpContext.Request.Cookies["token"];
+                                var token = context.HttpContext.Request.Cookies["access_token"];
                                 if (!string.IsNullOrEmpty(token))
                                 {
                                     context.Token = token;

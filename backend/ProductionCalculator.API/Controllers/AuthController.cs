@@ -1,5 +1,5 @@
-
 using Microsoft.AspNetCore.Mvc;
+using ProductionCalculator.API.Helpers;
 using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -11,58 +11,48 @@ namespace ProductionCalculator.API.Controllers
     public class AuthController : ApiControllerBase
     {
         private readonly IAuthService _authService;
-        private readonly IConfiguration _configuration;
-        private readonly int tokenExpiryMinutes;
-        public AuthController(IAuthService authService, IConfiguration configuration)
+        private CookieOptionsHelper _cookieOptionsHelper;
+        public AuthController(IAuthService authService, CookieOptionsHelper cookieOptionsHelper)
         {
             _authService = authService;
-            _configuration = configuration;
-
-            int.TryParse(_configuration["Jwt:ExpireMinutes"], out tokenExpiryMinutes);
-        }
-
-        private CookieOptions BuildAuthCookieOptions()
-        {
-            return new CookieOptions
-            {
-                Path = "/",
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict,
-                Expires = DateTimeOffset.UtcNow.AddMinutes(tokenExpiryMinutes)
-            };
+            _cookieOptionsHelper = cookieOptionsHelper;
         }
 
         [Authorize(Policy = "IsPublic")]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest req)
         {
-            var (result, token) = await _authService.Login(req.Username, req.Password);
-            // Set token cookie
-            if (token != null)
+            var (result, access_token, refresh_token) = await _authService.Login(req.Username, req.Password);
+            // Set token cookies
+            if (access_token != null && refresh_token != null)
             {
                 Response.Cookies.Append(
-                    "token",
-                    token,
-                    BuildAuthCookieOptions()
+                    "access_token",
+                    access_token,
+                    _cookieOptionsHelper.BuildAccessCookieOptions()
+                );
+                Response.Cookies.Append(
+                    "refresh_token",
+                    refresh_token.Token,
+                    _cookieOptionsHelper.BuildRefreshCookieOptions()
                 );
             }
             return FromServiceResult(result, u => u);
         }
 
-        [Authorize(Policy = "IsAuthenticated")]
+        [Authorize(Policy = "IsPublic")]
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh()
         {
-            var user = HttpContext.User;
-            var (result, token) = await _authService.RefreshToken(user);
+            var refreshToken = Request.Cookies["refresh_token"];
+            var (result, access_token) = await _authService.RefreshToken(refreshToken);
             // Set token cookie
-            if (token != null)
+            if (access_token != null)
             {
                 Response.Cookies.Append(
-                    "token",
-                    token,
-                    BuildAuthCookieOptions()
+                    "access_token",
+                    access_token,
+                    _cookieOptionsHelper.BuildAccessCookieOptions()
                 );
             }
             return FromServiceResult(result, u => u);

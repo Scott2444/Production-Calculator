@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 export default function Projects() {
     useEffect(() => {
-        fetch("http://localhost:5076/users/zq9Ln4D92s", { credentials: "include" })
+        fetch("/api/users/zq9Ln4D92s", { credentials: "include" })
         .then(res => {
             if (!res.ok) {
             throw new Error(`HTTP error! status: ${res.status}`);

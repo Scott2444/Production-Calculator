@@ -17,7 +17,7 @@ export default function Login() {
         setError("");
         setLoading(true);
         try {
-            const res = await fetch("http://localhost:5076/auth/login", {
+            const res = await fetch("/api/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
@@ -69,9 +69,9 @@ export default function Login() {
                         {error && <div className="text-red-500 text-center mt-2">{error}</div>}
                     </form>
                     <div className="my-6 flex items-center">
-                        <hr className="flex-grow border-slate-700" />
+                        <hr className="grow border-slate-700" />
                         <span className="mx-4 text-slate-400">or</span>
-                        <hr className="flex-grow border-slate-700" />
+                        <hr className="grow border-slate-700" />
                     </div>
                     <div className="flex flex-col gap-3">
                         {/* Google login placeholder */}
