@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect } from "react";
+import { useProtectedApiFetch } from "@/lib/api";
+import NavBar from '@/components/NavBar';
 
 export default function Projects() {
+    const protectedApiFetch = useProtectedApiFetch();
+
     useEffect(() => {
-        fetch("/api/users/zq9Ln4D92s", { credentials: "include" })
+        protectedApiFetch("/api/users/zq9Ln4D92s")
         .then(res => {
             if (!res.ok) {
             throw new Error(`HTTP error! status: ${res.status}`);
@@ -18,5 +22,10 @@ export default function Projects() {
             console.error("Failed to fetch user:", err);
         });
     }, []);
-    return <div>Projects Page</div>;
+    return (
+        <>
+            <NavBar />
+            <div>Project Page</div>
+        </>
+    );
 }
