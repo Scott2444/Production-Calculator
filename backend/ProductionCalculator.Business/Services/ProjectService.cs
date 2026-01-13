@@ -30,6 +30,12 @@ namespace ProductionCalculator.Business.Services
             var existingProjects = await _repo.GetProjectsByUserId(userId.Value);
             if (existingProjects.Any(p => p.Name == name)) return ServiceResult<Project>.Fail(ServiceStatus.Conflict409, "Project name already exists for this user.");
 
+            // Check alias project validity
+            if (!await CheckProjectAlias(aliasProjectPuid, userId.Value))
+            {
+                return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Alias project PUID is invalid.");
+            }
+
             // Limit description length
             if (description != null && description.Length > 1000)
             {
@@ -70,19 +76,22 @@ namespace ProductionCalculator.Business.Services
             var existingProjects = await _repo.GetProjectsByUserId(userId.Value);
             if (existingProjects.Any(p => p.Name == name && p.Project_Id != project.Project_Id)) return ServiceResult<Project>.Fail(ServiceStatus.Conflict409, "Project name already exists for this user.");
 
+            // Check alias project validity
+            if (!await CheckProjectAlias(aliasProjectPuid, userId.Value, projectPuid))
+            {
+                return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Alias project PUID is invalid.");
+            }
+
             // Limit description length
             if (description != null && description.Length > 1000)
             {
                 description = description.Substring(0, 1000);
             }
 
-            // Generate new PUID
-            var puid = await PuidHelper.GenerateUniquePuidAsync(_repo.PuidExists);
-
-            project.Name = name ?? project.Name;
-            project.Description = description ?? project.Description;
-            project.Is_Public = isPublic ?? project.Is_Public;
-            project.Alias_Project_Puid = aliasProjectPuid ?? project.Alias_Project_Puid;
+            project.Name = name;
+            project.Description = description;
+            project.Is_Public = isPublic ?? false;
+            project.Alias_Project_Puid = aliasProjectPuid;
             project.Last_Updated = DateTime.UtcNow;
 
             await _repo.UpdateProject(project);
@@ -105,6 +114,11 @@ namespace ProductionCalculator.Business.Services
             if (user == null) return ServiceResult<List<Project>>.Fail(ServiceStatus.NotFound404, $"User with PUID {userPuid} not found.");
             
             var projects = await _repo.GetProjectsByUserId(user.User_Id);
+            Console.WriteLine($"Found {projects.Count} projects for user PUID {userPuid}");
+            for (int i = 0; i < projects.Count; i++)
+            {
+                Console.WriteLine($"Project {i + 1}: PUID={projects[i].Puid}, Name={projects[i].Name}, alias={projects[i].Alias_Project_Puid}");
+            }
             return ServiceResult<List<Project>>.SuccessResult(projects, ServiceStatus.Ok200);
         }
         public async Task<ServiceResult> DeleteProject(string puid)
@@ -118,6 +132,21 @@ namespace ProductionCalculator.Business.Services
             if (!success) return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete project.");
 
             return ServiceResult.SuccessResult(ServiceStatus.Ok200);
+        }
+
+        /// <summary>
+        /// Checks if the project can use the alias provided
+        /// If not alias provided, returns true
+        /// </summary>
+        private async Task<bool> CheckProjectAlias(string? aliasProjectPuid, int userId, string? currentProjectPuid = null)
+        {
+            if (string.IsNullOrWhiteSpace(aliasProjectPuid)) return true;
+
+            if (currentProjectPuid != null && aliasProjectPuid == currentProjectPuid) return false;
+            var aliasProject = await _repo.GetProjectByPuid(aliasProjectPuid);
+            if (aliasProject == null) return false;
+            if (aliasProject.User_Id != userId && !aliasProject.Is_Public) return false; // Check authorization
+            return true;
         }
     }
 }

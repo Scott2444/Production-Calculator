@@ -68,6 +68,12 @@ namespace ProductionCalculator.Business.Services
             var project = await _projectRepo.GetProjectByPuid(projectPuid);
             if (project == null) return ServiceResult<Product>.Fail(ServiceStatus.NotFound404, "Project not found.");
 
+            // Redirect aliased project to canonical project PUID
+            if (!string.IsNullOrWhiteSpace(project.Alias_Project_Puid))
+            {
+                return ServiceResult<Product>.Redirection(ServiceStatus.SeeOther303, $"/api/projects/{project.Alias_Project_Puid}/products/{puid}");
+            }
+
             // Check if product exists and belongs to project (IMPORTANT FOR AUTHORIZATION!)
             var product = await _repo.GetProductByPuid(puid);
             if (product == null || product.Project_Id != project.Project_Id) return ServiceResult<Product>.Fail(ServiceStatus.NotFound404, "Product not found.");
@@ -75,10 +81,17 @@ namespace ProductionCalculator.Business.Services
             return ServiceResult<Product>.SuccessResult(product);
         }
         public async Task<ServiceResult<List<Product>>> GetProductsByProjectPuid(string projectPuid)
-        {
+        {   
             // Authorization already checked if project exists, otherwise they would not have access to it
+            // i.e. this should never fail
             var project = await _projectRepo.GetProjectByPuid(projectPuid);
             if (project == null) return ServiceResult<List<Product>>.Fail(ServiceStatus.NotFound404, "Project not found.");
+
+            // Redirect aliased project to canonical project PUID
+            if (!string.IsNullOrWhiteSpace(project.Alias_Project_Puid))
+            {
+                return ServiceResult<List<Product>>.Redirection(ServiceStatus.SeeOther303, $"/api/projects/{project.Alias_Project_Puid}/products");
+            }
 
             var products = await _repo.GetProductsByProjectId(project.Project_Id);
 
@@ -97,8 +110,8 @@ namespace ProductionCalculator.Business.Services
             if (product == null || product.Project_Id != project.Project_Id) return ServiceResult<Product>.Fail(ServiceStatus.NotFound404, "Product not found.");
 
             // Update fields if provided
-            product.Name = name ?? product.Name;
-            product.Description = description ?? product.Description;
+            product.Name = name;
+            product.Description = description;
             product.Last_Updated = DateTime.UtcNow;
 
             await _repo.UpdateProduct(product);
