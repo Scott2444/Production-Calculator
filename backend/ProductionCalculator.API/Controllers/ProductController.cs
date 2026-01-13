@@ -14,14 +14,14 @@ namespace ProductionCalculator.API.Controllers
         {
             _service = service;
         }
-        [Authorize(Policy = "IsOwnerOrAdmin")]
+        [Authorize(Policy = "IsPublic")]
         [HttpGet("{productPuid}")]
         public async Task<IActionResult> GetProductByPuid(string projectPuid, string productPuid)
         {
             var result = await _service.GetProductByPuid(projectPuid, productPuid);
             return FromServiceResult(result, p => new ProductResponse { Puid = p.Puid, Name = p.Name, Description = p.Description, CreatedAt = p.Created_At, UpdatedAt = p.Last_Updated});
         }
-        [Authorize(Policy = "IsOwnerOrAdmin")]
+        [Authorize(Policy = "IsPublic")]
         [HttpGet]
         public async Task<IActionResult> GetProductsByProjectPuid(string projectPuid)
         {

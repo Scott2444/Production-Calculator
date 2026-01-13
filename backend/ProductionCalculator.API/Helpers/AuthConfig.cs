@@ -47,12 +47,14 @@ namespace ProductionCalculator.API.Helpers
 
             services.AddAuthorization(options =>
             {
-                options.AddPolicy("IsPublic", policy =>
+                options.AddPolicy("None", policy =>
                     policy.RequireAssertion(context => true));  // Always allow
                 options.AddPolicy("IsAuthenticated", policy =>
                     policy.RequireAuthenticatedUser());  // Any authenticated user
                 options.AddPolicy("IsUser", policy =>
                     policy.Requirements.Add(new UserRequirement()));  // Verified user
+                options.AddPolicy("IsPublic", policy =>
+                    policy.Requirements.Add(new PublicRequirement()));  // Is the resource being read public or user is owner or admin
                 options.AddPolicy("IsOwner", policy =>
                     policy.Requirements.Add(new OwnerRequirement()));  // Owner
                 options.AddPolicy("IsAdmin", policy =>

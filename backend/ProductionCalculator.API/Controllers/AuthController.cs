@@ -18,7 +18,7 @@ namespace ProductionCalculator.API.Controllers
             _cookieOptionsHelper = cookieOptionsHelper;
         }
 
-        [Authorize(Policy = "IsPublic")]
+        [Authorize(Policy = "None")]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest req)
         {
@@ -40,7 +40,7 @@ namespace ProductionCalculator.API.Controllers
             return FromServiceResult(result, u => u);
         }
 
-        [Authorize(Policy = "IsPublic")]
+        [Authorize(Policy = "None")]
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh()
         {

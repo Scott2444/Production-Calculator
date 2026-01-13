@@ -17,14 +17,11 @@ namespace ProductionCalculator.API.Authorization
             var httpContext = context.Resource as HttpContext;
             if (httpContext == null) { context.Fail(); return; }
 
-            var route = httpContext.Request.Path.Value;
-            if (string.IsNullOrEmpty(route)) { context.Fail(); return; }
-
             // Resolve IAuthService from the request scope
             var authService = httpContext.RequestServices.GetService(typeof(IAuthService)) as IAuthService;
             if (authService == null) { context.Fail(); return; }
 
-            var isOwner = await authService.IsOwner(context.User, route: route);
+            var isOwner = await authService.IsOwner(context.User);
             var isAdmin = await authService.IsAdmin(context.User);
 
             if (isOwner || isAdmin)

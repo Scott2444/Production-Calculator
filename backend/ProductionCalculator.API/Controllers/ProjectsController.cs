@@ -33,7 +33,7 @@ namespace ProductionCalculator.API.Controllers
             return FromServiceResult(result, (p) => new ProjectResponse { Puid = p.Puid, Name = p.Name, Description = p.Description, IsPublic = p.Is_Public, AliasProjectPuid = p.Alias_Project_Puid, CreatedAt = p.Created_At, UpdatedAt = p.Last_Updated });
         }
 
-        [Authorize(Policy = "IsOwnerOrAdmin")]
+        [Authorize(Policy = "IsPublic")]
         [HttpGet("{projectPuid}")]
         public async Task<IActionResult> GetProjectByPuid(string projectPuid)
         {

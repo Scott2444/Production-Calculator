@@ -41,9 +41,27 @@ namespace ProductionCalculator.Business.Services
             _configuration = configuration;
         }
         /// <summary>
+        /// Checks if the resource identified by puid in the route is public.
+        /// </summary>
+        public async Task<bool> IsPublic()
+        {
+            // Extract puid from route
+            var routeData = _httpContextAccessor.HttpContext?.GetRouteData();
+            var projectPuid = routeData?.Values["projectPuid"]?.ToString();
+
+            if (projectPuid == null) 
+                return false;
+
+            var project = await _projectRepository.GetProjectByPuid(projectPuid!);
+            if (project == null)
+                return false;
+
+            return project.Is_Public;
+        }
+        /// <summary>
         /// Checks if the user is the owner of the resource identified by puid in the route.
         /// </summary>
-        public async Task<bool> IsOwner(ClaimsPrincipal user, string? route)
+        public async Task<bool> IsOwner(ClaimsPrincipal user)
         {
             // Must be authenticated
             if (!user.Identity?.IsAuthenticated ?? true)

@@ -34,6 +34,7 @@ builder.Services.AddSingleton<RefreshTokenHelper>();
 builder.Services.AddSingleton<IAuthorizationHandler, UserHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, OwnerHandler>();
 builder.Services.AddSingleton<IAuthorizationHandler, OwnerOrAdminHandler>();
+builder.Services.AddSingleton<IAuthorizationHandler, PublicHandler>();
 builder.Services.AddJwtAuthAndPolicies(builder.Configuration);
 
 var app = builder.Build();
