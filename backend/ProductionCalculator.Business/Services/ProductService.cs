@@ -35,9 +35,9 @@ namespace ProductionCalculator.Business.Services
             var project = await _projectRepo.GetProjectByPuid(projectPuid);
             if (project == null) return ServiceResult<Product>.Fail(ServiceStatus.NotFound404, "Project not found.");
 
-            // Check if name already exists for this user
-            var existingProjects = await _repo.GetProductsByProjectId(project.Project_Id);
-            if (existingProjects.Any(p => p.Name == name)) return ServiceResult<Product>.Fail(ServiceStatus.Conflict409, "Product name already exists for this user.");
+            // Check if name already exists for this project
+            var existingProducts = await _repo.GetProductsByProjectId(project.Project_Id);
+            if (existingProducts.Any(p => p.Name == name)) return ServiceResult<Product>.Fail(ServiceStatus.Conflict409, "Product name already exists for this project.");
 
             // Limit description length
             if (description != null && description.Length > 1000)
@@ -109,6 +109,10 @@ namespace ProductionCalculator.Business.Services
             var product = await _repo.GetProductByPuid(puid);
             if (product == null || product.Project_Id != project.Project_Id) return ServiceResult<Product>.Fail(ServiceStatus.NotFound404, "Product not found.");
 
+            // Check if name already exists for this project
+            var existingProducts = await _repo.GetProductsByProjectId(project.Project_Id);
+            if (existingProducts.Any(p => p.Name == name && p.Product_Id != product.Product_Id)) return ServiceResult<Product>.Fail(ServiceStatus.Conflict409, "Product name already exists for this project.");
+            
             // Update fields if provided
             product.Name = name;
             product.Description = description;
@@ -131,7 +135,7 @@ namespace ProductionCalculator.Business.Services
             var isDeleted = await _repo.DeleteProduct(product.Product_Id);
             if (!isDeleted) return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete product.");
 
-            return ServiceResult.SuccessResult();
+            return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
         }
     }
 }

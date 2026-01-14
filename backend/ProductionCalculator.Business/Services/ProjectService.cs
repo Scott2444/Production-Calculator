@@ -131,7 +131,7 @@ namespace ProductionCalculator.Business.Services
             var success = await _repo.DeleteProject(project.Project_Id);
             if (!success) return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete project.");
 
-            return ServiceResult.SuccessResult(ServiceStatus.Ok200);
+            return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
         }
 
         /// <summary>
