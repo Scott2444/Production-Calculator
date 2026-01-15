@@ -22,6 +22,8 @@ namespace ProductionCalculator.Data
             modelBuilder.ApplyConfiguration(new ProductConfiguration());
             modelBuilder.ApplyConfiguration(new RecipeConfiguration());
             modelBuilder.ApplyConfiguration(new RecipeProductConfiguration());
+            modelBuilder.ApplyConfiguration(new MachineConfiguration());
+            modelBuilder.ApplyConfiguration(new MachineRecipeConfiguration());
             modelBuilder.ApplyConfiguration(new RefreshTokenConfiguration());
         }
     }

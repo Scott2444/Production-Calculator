@@ -363,29 +363,6 @@ namespace ProductionCalculator.Business.Services
             return recipeProducts;
         }
 
-        /// <summary>
-        /// Updates existing recipe products with new quantities from the updated exchanges
-        /// Only updates those that exist in both collections
-        /// </summary>
-        private IEnumerable<RecipeProduct> UpdateRecipeProducts(IEnumerable<RecipeProduct> existingRecipeProducts, IEnumerable<RecipeProductExchange> incomingExchanges, IEnumerable<Product> cachedProducts)
-        {
-            var recipeProductsToUpdate = new List<RecipeProduct>();
-            foreach (var existingRp in existingRecipeProducts)
-            {
-                var updatedExchange = incomingExchanges.FirstOrDefault(ue => 
-                    {
-                        var product = cachedProducts.First(p => p.Puid == ue.Puid);
-                        return product.Product_Id == existingRp.Product_Id && existingRp.Is_Input == (ue is { });
-                    });
-                if (updatedExchange != null)
-                {
-                    existingRp.Quantity = updatedExchange.Quantity;
-                    recipeProductsToUpdate.Add(existingRp);
-                }
-            }
-            return recipeProductsToUpdate;
-        }
-
         private RecipeResponse ConvertToApiModel(Recipe recipe, IEnumerable<RecipeProduct> recipeProducts, IEnumerable<Product> cachedProducts)
         {
             var inputResponses = new List<RecipeProductExchange>();
