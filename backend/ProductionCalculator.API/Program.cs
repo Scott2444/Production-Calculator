@@ -21,6 +21,7 @@ builder.Services.AddSwaggerGen(c =>
 
 // Add application services and data
 ConfigurationHelper.SetupConnectionString(builder);
+ConfigurationHelper.SetupResend(builder);
 CorsPolicyHelper.SetupCorsPolicy(builder);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUserService, UserService>();

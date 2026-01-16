@@ -19,6 +19,11 @@ namespace ProductionCalculator.Data.Repositories
             await _db.Set<User>().AddAsync(user);
             await _db.SaveChangesAsync();
         }
+        public async Task UpdateUser(User user)
+        {
+            _db.Set<User>().Update(user);
+            await _db.SaveChangesAsync();
+        }
 
         public async Task<User?> GetById(int id)
         {

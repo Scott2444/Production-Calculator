@@ -1,4 +1,5 @@
 using ProductionCalculator.Data.Extensions;
+using Resend;
 
 namespace ProductionCalculator.API.Helpers
 {
@@ -23,6 +24,25 @@ namespace ProductionCalculator.API.Helpers
             {
                 builder.Services.AddProductionCalculatorData(builder.Configuration);
             }
+        }
+
+        public static void SetupResend(WebApplicationBuilder builder)
+        {
+            var config = builder.Configuration;
+            var apiToken = config["RESEND_APITOKEN"] // For locally set environment variable
+                ?? (File.Exists("/run/secrets/resend_apitoken") ? File.ReadAllText("/run/secrets/resend_apitoken") : null);  // For Docker secret
+            if (string.IsNullOrEmpty(apiToken))
+            {
+                throw new InvalidOperationException("Resend API token is not set in environment variables.");
+            }
+
+            builder.Services.AddOptions();
+            builder.Services.AddHttpClient<ResendClient>();
+            builder.Services.Configure<ResendClientOptions>( o =>
+            {
+                o.ApiToken = apiToken;
+            } );
+            builder.Services.AddTransient<IResend, ResendClient>();
         }
     }
 }

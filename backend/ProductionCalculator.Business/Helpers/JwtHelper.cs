@@ -16,7 +16,7 @@ namespace ProductionCalculator.Business.Helpers
         }
 
         // Add puid and role to token for authorization
-        public string GenerateToken(int userId, string puid, string role)
+        public string GenerateToken(string puid, string role)
         {
             var jwtSettings = _config.GetSection("Jwt");
             var keyString = jwtSettings["Key"];
@@ -31,7 +31,6 @@ namespace ProductionCalculator.Business.Helpers
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.Name, userId.ToString()),
                 new Claim(ClaimTypes.NameIdentifier, puid),
                 new Claim(ClaimTypes.Role, role)
             };

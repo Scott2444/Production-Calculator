@@ -10,6 +10,7 @@ namespace ProductionCalculator.Business.Interfaces
         Task<User?> GetByUsername(string username);
         Task<User?> GetByEmail(string email);
         Task AddUser(User user);
+        Task UpdateUser(User user);
         Task<bool> DeleteUser(int id);
         Task<string> GetPasswordHash(int id);
         Task<bool> PuidExists(string puid);

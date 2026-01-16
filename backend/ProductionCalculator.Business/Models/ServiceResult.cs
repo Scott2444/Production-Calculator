@@ -10,6 +10,7 @@ namespace ProductionCalculator.Business.Models
         Unauthorized401 = 401,
         NotFound404 = 404,
         Conflict409 = 409,
+        TooManyRequests429 = 429,
         InternalServerError500 = 500
     }
 

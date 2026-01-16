@@ -71,3 +71,5 @@ secrets:
     file: ./secrets/flyway_password.txt
   server_password:
     file: ./secrets/server_password.txt
+  resend_apitoken:
+    file: ./secrets/resend_apitoken.txt

@@ -23,15 +23,18 @@ namespace ProductionCalculator.Business.Services
             if (string.IsNullOrWhiteSpace(name)) return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Project name is required.");
 
             // Get userId from current user
-            var userId = _currentUser.UserId;
-            if (userId == null) return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Unable to determine current user.");
+            var userPuid = _currentUser.UserPuid;
+            if (userPuid == null) return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Unable to determine current user.");
+
+            var user = await _userRepo.GetByPuid(userPuid);
+            if (user == null) return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Unable to determine current user.");
 
             // Check if name already exists for this user
-            var existingProjects = await _repo.GetProjectsByUserId(userId.Value);
+            var existingProjects = await _repo.GetProjectsByUserId(user.User_Id);
             if (existingProjects.Any(p => p.Name == name)) return ServiceResult<Project>.Fail(ServiceStatus.Conflict409, "Project name already exists for this user.");
 
             // Check alias project validity
-            if (!await CheckProjectAlias(aliasProjectPuid, userId.Value))
+            if (!await CheckProjectAlias(aliasProjectPuid, user.User_Id))
             {
                 return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Alias project PUID is invalid.");
             }
@@ -48,7 +51,7 @@ namespace ProductionCalculator.Business.Services
             var project = new Project
             {
                 Project_Id = 0,
-                User_Id = userId.Value,
+                User_Id = user.User_Id,
                 Puid = puid,
                 Name = name,
                 Description = description ?? string.Empty,
@@ -66,18 +69,21 @@ namespace ProductionCalculator.Business.Services
             if (string.IsNullOrWhiteSpace(name)) return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Project name is required.");
 
             // Get userId from current user
-            var userId = _currentUser.UserId;
-            if (userId == null) return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Unable to determine current user.");
+            var userPuid = _currentUser.UserPuid;
+            if (userPuid == null) return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Unable to determine current user.");
+
+            var user = await _userRepo.GetByPuid(userPuid);
+            if (user == null) return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Unable to determine current user.");
 
             var project = await _repo.GetProjectByPuid(projectPuid);
             if (project == null) return ServiceResult<Project>.Fail(ServiceStatus.NotFound404, $"Project with PUID {projectPuid} not found.");
 
             // Check if name already exists for this user
-            var existingProjects = await _repo.GetProjectsByUserId(userId.Value);
+            var existingProjects = await _repo.GetProjectsByUserId(user.User_Id);
             if (existingProjects.Any(p => p.Name == name && p.Project_Id != project.Project_Id)) return ServiceResult<Project>.Fail(ServiceStatus.Conflict409, "Project name already exists for this user.");
 
             // Check alias project validity
-            if (!await CheckProjectAlias(aliasProjectPuid, userId.Value, projectPuid))
+            if (!await CheckProjectAlias(aliasProjectPuid, user.User_Id, projectPuid))
             {
                 return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Alias project PUID is invalid.");
             }

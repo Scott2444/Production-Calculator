@@ -57,5 +57,21 @@ namespace ProductionCalculator.API.Controllers
             }
             return FromServiceResult(result, u => u);
         }
+
+        [Authorize(Policy = "IsAuthenticated")]
+        [HttpPost("request-code")]
+        public async Task<IActionResult> RequestVerificationCode()
+        {
+            var result = await _authService.RequestVerificationCode();
+            return FromServiceResult(result);
+        }
+
+        [Authorize(Policy = "IsAuthenticated")]
+        [HttpPost("verify-code")]
+        public async Task<IActionResult> VerifyCode([FromBody] VerificationCodeRequest req)
+        {
+            var result = await _authService.VerifyCode(req.Code);
+            return FromServiceResult(result);
+        }
     }
 }

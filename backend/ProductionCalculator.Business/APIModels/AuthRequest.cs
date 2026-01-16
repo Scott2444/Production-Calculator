@@ -10,10 +10,4 @@ namespace ProductionCalculator.Business.APIModels
         [Required]
         public string Password { get; set; } = string.Empty;
     }
-
-    public class RefreshRequest
-    {
-        [Required]
-        public string Token { get; set; } = string.Empty;
-    }
 }
