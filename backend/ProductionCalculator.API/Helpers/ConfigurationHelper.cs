@@ -30,7 +30,7 @@ namespace ProductionCalculator.API.Helpers
         {
             var config = builder.Configuration;
             var apiToken = config["RESEND_APITOKEN"] // For locally set environment variable
-                ?? (File.Exists("/run/secrets/resend_apitoken") ? File.ReadAllText("/run/secrets/resend_apitoken") : null);  // For Docker secret
+                ?? (File.Exists("/run/secrets/resend_apitoken.txt") ? File.ReadAllText("/run/secrets/resend_apitoken.txt") : null);  // For Docker secret
             if (string.IsNullOrEmpty(apiToken))
             {
                 throw new InvalidOperationException("Resend API token is not set in environment variables.");
