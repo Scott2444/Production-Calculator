@@ -19,6 +19,7 @@ services:
         condition: service_completed_successfully
     secrets:
       - server_password
+      - resend_apitoken
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/HealthCheck"]
       interval: 10s
