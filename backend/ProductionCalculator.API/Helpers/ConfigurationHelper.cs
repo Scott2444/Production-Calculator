@@ -19,6 +19,7 @@ namespace ProductionCalculator.API.Helpers
                 var connectionString = baseConnStr.Replace("Password=x", $"Password={password}");
                 config["ConnectionStrings:DefaultConnection"] = connectionString;
                 builder.Services.AddProductionCalculatorData(config);
+                Console.WriteLine("Connection String: " + connectionString);
             }
             else
             {
@@ -35,6 +36,8 @@ namespace ProductionCalculator.API.Helpers
             {
                 throw new InvalidOperationException("Resend API token is not set in environment variables.");
             }
+            apiToken = apiToken.Trim();
+
 
             builder.Services.AddOptions();
             builder.Services.AddHttpClient<ResendClient>();
