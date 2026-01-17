@@ -35,31 +35,38 @@ export default function NavBar(): React.ReactElement {
                     <img src="/Medium_Logo.svg" alt="Logo" className="h-8" />
                 </Link>
                 {/* Navigation buttons */}
-                {navItems.map((item) => (
-                    <Link
-                        key={item.name}
-                        href={item.href}
-                        className={`mr-4 no-underline ${pathname === item.href ? 'text-slate-200 font-medium' : 'text-slate-200 font-light '}`}
-                    >
-                        {item.name}
-                    </Link>
-                ))}
+                    {navItems.map((item) => (
+                        <Link
+                            key={item.name}
+                            href={item.href}
+                            className={`mr-4 no-underline transition-colors duration-200 ${
+                                pathname === item.href
+                                    ? 'text-slate-200 font-medium'
+                                    : 'text-slate-200 font-light hover:text-purple-400 hover:scale-105'
+                            } `}
+                        >
+                            {item.name}
+                        </Link>
+                    ))}
             </div>
             {/* Drop down menu */}
             <div>
-                {loggedIn ? (
-                    <Link href="/settings" className="flex items-center no-underline">
-                        <img
-                            src={accountLogoUrl}
-                            alt="Account"
-                            className="w-9 h-9 rounded-full object-cover border border-gray-300"
-                        />
-                    </Link>
-                ) : (
-                    <Link href="/login" className="px-6 py-2 bg-purple-700 text-white rounded-md no-underline font-medium hover:bg-purple-600 transition-colors">
-                        Login
-                    </Link>
-                )}
+                    {loggedIn ? (
+                        <Link href="/settings" className="flex items-center no-underline">
+                            <img
+                                src={accountLogoUrl}
+                                alt="Account"
+                                className="w-9 h-9 rounded-full object-cover border border-gray-300 transition-transform duration-200 hover:scale-105 hover:border-purple-400"
+                            />
+                        </Link>
+                    ) : (
+                        <Link
+                            href="/login"
+                            className="px-6 py-2 bg-purple-700 text-white rounded-md no-underline font-medium transition-colors duration-200 hover:bg-purple-600 hover:scale-105 shadow-md hover:shadow-lg"
+                        >
+                            Login
+                        </Link>
+                    )}
             </div>
         </nav>
     );

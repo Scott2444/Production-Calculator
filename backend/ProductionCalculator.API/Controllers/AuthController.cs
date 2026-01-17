@@ -24,7 +24,7 @@ namespace ProductionCalculator.API.Controllers
         {
             var (result, access_token, refresh_token) = await _authService.Login(req.Username, req.Password);
             // Set token cookies
-            if (access_token != null && refresh_token != null)
+            if (access_token != null && refresh_token != null && result.Data != null)
             {
                 Response.Cookies.Append(
                     "access_token",
@@ -35,6 +35,11 @@ namespace ProductionCalculator.API.Controllers
                     "refresh_token",
                     refresh_token.Token,
                     _cookieOptionsHelper.BuildRefreshCookieOptions()
+                );
+                Response.Cookies.Append(
+                    "user_id",
+                    result.Data.Puid,
+                    _cookieOptionsHelper.BuildUserIdCookieOptions()
                 );
             }
             return FromServiceResult(result, u => u);

@@ -120,11 +120,6 @@ namespace ProductionCalculator.Business.Services
             if (user == null) return ServiceResult<List<Project>>.Fail(ServiceStatus.NotFound404, $"User with PUID {userPuid} not found.");
             
             var projects = await _repo.GetProjectsByUserId(user.User_Id);
-            Console.WriteLine($"Found {projects.Count} projects for user PUID {userPuid}");
-            for (int i = 0; i < projects.Count; i++)
-            {
-                Console.WriteLine($"Project {i + 1}: PUID={projects[i].Puid}, Name={projects[i].Name}, alias={projects[i].Alias_Project_Puid}");
-            }
             return ServiceResult<List<Project>>.SuccessResult(projects, ServiceStatus.Ok200);
         }
         public async Task<ServiceResult> DeleteProject(string puid)

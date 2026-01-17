@@ -36,5 +36,16 @@ namespace ProductionCalculator.API.Helpers
                 Path = "/"
             };
         }
+        public CookieOptions BuildUserIdCookieOptions()
+        {
+            return new CookieOptions
+            {
+                HttpOnly = false,
+                Secure = !_isDevelopment,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTimeOffset.UtcNow.AddDays(refreshTokenExpiryDays),
+                Path = "/"
+            };
+        }
     }
 }

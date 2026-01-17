@@ -15,9 +15,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loggedIn, setLoggedIn] = useState(false);
   const [userId, setUserId] = useState<string | undefined>(undefined);
   useEffect(() => {
-    const hasToken = document.cookie.split(';').some(cookie => cookie.trim().startsWith('refresh_token='));
-    setLoggedIn(hasToken);
-  }, []);
+  const checkAuth = async () => {
+    // Check if the user is logged in
+    const hasToken = document.cookie.split(';').some(cookie => cookie.trim().startsWith('user_id='));
+    if (hasToken) {
+      setLoggedIn(hasToken);
+      // Grab new access token
+      let response = await fetch("/api/auth/refresh", { method: "POST" });
+      if (response.ok) {
+        const data = await response.json();
+        setUserId(data.puid);
+      }
+    }
+  };
+  checkAuth();
+}, []);
 
   return (
     <AuthContext.Provider value={{ loggedIn, setLoggedIn, userId, setUserId }}>
