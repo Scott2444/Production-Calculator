@@ -157,6 +157,12 @@ namespace ProductionCalculator.Business.Services
             var project = await _projectRepo.GetProjectByPuid(projectPuid);
             if (project == null) return ServiceResult<RecipeResponse>.Fail(ServiceStatus.NotFound404, "Project not found.");
 
+            // Redirect aliased project to canonical project PUID
+            if (!string.IsNullOrWhiteSpace(project.Alias_Project_Puid))
+            {
+                return ServiceResult<RecipeResponse>.Redirection(ServiceStatus.SeeOther303, $"/api/projects/{project.Alias_Project_Puid}/recipes/{puid}");
+            }
+
             // Check if recipe exists and belongs to project (IMPORTANT FOR AUTHORIZATION!)
             var recipe = await _repo.GetByPuid(puid);
             if (recipe == null || recipe.Project_Id != project.Project_Id) return ServiceResult<RecipeResponse>.Fail(ServiceStatus.NotFound404, "Recipe not found.");
@@ -177,6 +183,12 @@ namespace ProductionCalculator.Business.Services
             // Get projectId from projectPuid
             var project = await _projectRepo.GetProjectByPuid(projectPuid);
             if (project == null) return ServiceResult<List<RecipeResponse>>.Fail(ServiceStatus.NotFound404, "Project not found.");
+
+            // Redirect aliased project to canonical project PUID
+            if (!string.IsNullOrWhiteSpace(project.Alias_Project_Puid))
+            {
+                return ServiceResult<List<RecipeResponse>>.Redirection(ServiceStatus.SeeOther303, $"/api/projects/{project.Alias_Project_Puid}/recipes");
+            }
 
             // Get all recipes for the project
             var recipes = await _repo.GetByProjectId(project.Project_Id);

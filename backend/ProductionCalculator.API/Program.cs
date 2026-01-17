@@ -31,6 +31,7 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IRecipeService, RecipeService>();
 builder.Services.AddScoped<IMachineService, MachineService>();
+builder.Services.AddScoped<IModifierService, ModifierService>();
 builder.Services.AddSingleton<JwtHelper>();
 builder.Services.AddSingleton<CookieOptionsHelper>();
 builder.Services.AddSingleton<RefreshTokenHelper>();

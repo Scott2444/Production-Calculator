@@ -101,7 +101,7 @@ namespace ProductionCalculator.Business.Services
                 UpdatedAt = machine.Last_Updated
             };
 
-            return ServiceResult<MachineResponse>.SuccessResult(machineResponse);
+            return ServiceResult<MachineResponse>.SuccessResult(machineResponse, ServiceStatus.Created201);
         }
         public async Task<ServiceResult<MachineResponse>> UpdateMachine(string projectPuid, string puid, string? name, string? description, double baseSpeed, List<string> recipePuids)
         {
