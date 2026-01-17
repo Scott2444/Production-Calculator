@@ -4,12 +4,15 @@ import Navbar from '@/components/NavBar';
 import Link from 'next/link';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Login() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+
+    const { setLoggedIn, setUserId } = useAuth();
     const router = useRouter();
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -23,13 +26,15 @@ export default function Login() {
                 credentials: "include",
                 body: JSON.stringify({ username, password })
             });
+            const data = await res.json();
             if (!res.ok) {
-                const data = await res.json();
                 setError(data.message || "Incorrect Username or Password");
                 setLoading(false);
                 return;
             }
-            router.push("/home");
+            setLoggedIn(true);
+            setUserId(data.puid);
+            router.push("/");
         } catch (err) {
             setError("An unexpected error occurred");
             setLoading(false);
@@ -38,7 +43,7 @@ export default function Login() {
 
     return (
         <>
-            <Navbar loggedIn={false} />
+            <Navbar />
             <div className="flex flex-col items-center justify-center min-h-[80vh] bg-slate-950/80">
                 <div className="w-full max-w-md bg-slate-900/80 rounded-lg shadow-lg p-8">
                     <h2 className="text-3xl font-bold text-slate-200 mb-6 text-center">Log In</h2>

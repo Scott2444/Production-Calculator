@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function NavBar(): React.ReactElement {
     const pathname = usePathname();
-    const loggedIn = useAuth();
+    const { loggedIn } = useAuth();
     const [accountLogoUrl, setAccountLogoUrl] = useState<string>('/Default_Avatar.svg');
 
     useEffect(() => {
@@ -25,7 +25,7 @@ export default function NavBar(): React.ReactElement {
         { name: 'Home', href: '/' },
         { name: 'Projects', href: '/projects' },
         { name: 'Explore', href: '/explore' },
-        { name: 'Settings', href: '/settings' },
+        { name: 'Docs', href: '/docs' },
     ];
 
     return (

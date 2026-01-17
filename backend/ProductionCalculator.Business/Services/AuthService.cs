@@ -154,7 +154,7 @@ namespace ProductionCalculator.Business.Services
         public async Task<(ServiceResult<AuthResponse> result, string? accessToken)> RefreshToken(string? refreshToken)
         {
             if (string.IsNullOrEmpty(refreshToken))
-                return (ServiceResult<AuthResponse>.Fail(ServiceStatus.BadRequest400, "Refresh token is required."), null);
+                return (ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "Refresh token is required."), null);
 
             // Validate refresh token
             var storedToken = await _refreshTokenRepo.GetRefreshTokenByToken(refreshToken);
