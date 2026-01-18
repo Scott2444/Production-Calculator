@@ -32,7 +32,7 @@ namespace ProductionCalculator.Data.Repositories
 
         public async Task<User?> GetByUsername(string username)
         {
-            return await _db.Set<User>().FirstOrDefaultAsync(u => u.Username == username);
+            return await _db.Set<User>().FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
         }
 
         public async Task<User?> GetByEmail(string email)

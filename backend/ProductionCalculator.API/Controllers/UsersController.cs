@@ -22,12 +22,18 @@ namespace ProductionCalculator.API.Controllers
 
             return FromServiceResult(result, (u) => new UserResponse { Username = u.Username, Email = u.Email, Puid = u.Puid, CreatedAt = u.Created_At, UpdatedAt = u.Last_Updated });
         }
+        [HttpPost("validate")]
+        public async Task<IActionResult> ValidateNewUser([FromBody] ValidateNewUserRequest req)
+        {
+            var result = await _service.ValidateNewUser(req.Username, req.Email);
+            return FromServiceResult(result);
+        }
 
         [Authorize(Policy = "IsOwnerOrAdmin")]
         [HttpGet("{userPuid}")]
-        public async Task<IActionResult> GetBypuid(string userPuid)
+        public async Task<IActionResult> GetByPuid(string userPuid)
         {
-            var result = await _service.GetUserBypuid(userPuid);
+            var result = await _service.GetUserByPuid(userPuid);
             return FromServiceResult(result, u => new UserResponse { Username = u.Username, Email = u.Email, Puid = u.Puid, CreatedAt = u.Created_At, UpdatedAt = u.Last_Updated });
         }
 

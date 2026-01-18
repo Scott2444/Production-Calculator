@@ -49,7 +49,7 @@ export default function DropDown({ label, children, align = "right" }: DropDownP
         </svg>
       </button>
       <div
-        className={`absolute z-50 mt-2 min-w-[10rem] ${
+        className={`absolute z-50 mt-2 min-w-40 ${
           align === "right" ? "right-0" : "left-0"
         } bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden transition-all duration-200 ease-in-out transform ${
           open
