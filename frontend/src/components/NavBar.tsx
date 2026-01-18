@@ -4,6 +4,11 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useProtectedApiFetch } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
+import { fetchUser } from '@/lib/user';
+import { IconSettings, IconLogout } from '@tabler/icons-react';
+import { useLogout } from '@/lib/logout';
 
 export default function NavBar(): React.ReactElement {
     const pathname = usePathname();
@@ -52,13 +57,7 @@ export default function NavBar(): React.ReactElement {
             {/* Drop down menu */}
             <div>
                     {loggedIn ? (
-                        <Link href="/settings" className="flex items-center no-underline">
-                            <img
-                                src={accountLogoUrl}
-                                alt="Account"
-                                className="w-9 h-9 rounded-full object-cover border border-gray-300 transition-transform duration-200 hover:scale-105 hover:border-purple-400"
-                            />
-                        </Link>
+                        <AccountDropdown accountLogoUrl={accountLogoUrl} />
                     ) : (
                         <Link
                             href="/login"
@@ -69,5 +68,90 @@ export default function NavBar(): React.ReactElement {
                     )}
             </div>
         </nav>
+    );
+}
+
+function AccountDropdown({ accountLogoUrl }: { accountLogoUrl: string }) {
+    const [menuOpen, setMenuOpen] = useState(false);
+    const { userId } = useAuth();
+    const protectedApiFetch = useProtectedApiFetch();
+    const { data: user, isLoading, error } = useQuery({
+        queryKey: ['user'],
+        queryFn: () => fetchUser(userId!, protectedApiFetch),
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    });
+    const logout = useLogout();
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        if (!menuOpen) return;
+        const handleClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (!target.closest('#account-menu-btn') && !target.closest('#account-dropdown')) {
+                setMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [menuOpen]);
+
+    return (
+        <>
+            <button
+                id="account-menu-btn"
+                type="button"
+                aria-haspopup="true"
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((open) => !open)}
+                className="flex items-center focus:outline-none"
+            >
+                <img
+                    src={accountLogoUrl}
+                    alt="Account"
+                    className="w-9 h-9 rounded-full object-cover border border-gray-300 transition-transform duration-200 hover:scale-105 hover:border-purple-400"
+                />
+            </button>
+            {menuOpen && (
+                <div
+                    id="account-dropdown"
+                    className="absolute right-0 mt-2 mr-4 w-70 bg-slate-50 rounded-md shadow-lg border border-gray-200 z-50 animate-fade-in"
+                >
+                    {/* User info section */}
+                    <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
+                        <img
+                            src={user?.profilePictureUrl || accountLogoUrl}
+                            alt="Profile"
+                            className="w-10 h-10 rounded-full object-cover border border-gray-300"
+                        />
+                        <div className="flex flex-col min-w-0">
+                            <span className="font-medium text-gray-900 truncate">{user?.name || user?.username || 'User'}</span>
+                            <span className="text-sm text-gray-500 truncate">{user?.email || ''}</span>
+                        </div>
+                    </div>
+                    {/* Settings and Logout */}
+                    <div className="flex flex-col gap-1 px-2 py-2">
+                        <Link
+                            href="/settings"
+                            className="px-4 py-2 text-gray-800 no-underline transition-all duration-150 rounded-xl hover:bg-purple-100 hover:text-purple-700 flex items-center gap-2"
+                            onClick={() => setMenuOpen(false)}
+                        >
+                            <span className="inline-block"><IconSettings size={18} /></span>
+                            <span>Settings</span>
+                        </Link>
+                        <button
+                            className="w-full text-left px-4 py-2 text-gray-800 transition-all duration-150 rounded-xl cursor-pointer hover:bg-purple-100 hover:text-purple-700 border-t border-white flex items-center gap-2"
+                            style={{ marginTop: '2px' }}
+                            onClick={() => {
+                                setMenuOpen(false);
+                                logout();
+                            }}
+                        >
+                            <span className="inline-block"><IconLogout size={18} /></span>
+                            <span>Sign Out</span>
+                        </button>
+                    </div>
+                </div>
+            )}
+        </>
     );
 }

@@ -1,33 +1,28 @@
 "use client";
 
-import { useEffect } from "react";
-import { useProtectedApiFetch } from "@/lib/api";
 import NavBar from '@/components/NavBar';
+import DropDown from "@/components/DropDown";
+import { fetchUser } from "@/lib/user";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
+import { useProtectedApiFetch } from "@/lib/api";
 
 export default function Projects() {
     const { userId } = useAuth();
     const protectedApiFetch = useProtectedApiFetch();
-
-    useEffect(() => {
-        protectedApiFetch(`/api/users/${userId}/projects`)
-        .then(res => {
-            if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
-            }
-            return res.json();
-        })
-        .then(data => {
-            console.log("User:", data);
-        })
-        .catch(err => {
-            console.error("Failed to fetch user:", err);
-        });
-    }, [userId]);
+    const { data: user, isLoading, error } = useQuery({
+        queryKey: ['user'],
+        queryFn: () => fetchUser(userId!, protectedApiFetch),
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    });
     return (
         <>
             <NavBar />
             <div>Project Page</div>
+            <div>{isLoading ? "Loading..." : error ? "Error loading user" : JSON.stringify(user)}</div>
+            <DropDown label="Options" align="left">
+                <div className="p-4">Dropdown Content</div>
+            </DropDown>
         </>
     );
 }

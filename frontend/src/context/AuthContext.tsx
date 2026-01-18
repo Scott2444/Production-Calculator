@@ -6,7 +6,7 @@ interface AuthContextType {
   loggedIn: boolean;
   userId?: string;
   setLoggedIn: (value: boolean) => void;
-  setUserId: (id: string) => void;
+  setUserId: (id: string | undefined) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
