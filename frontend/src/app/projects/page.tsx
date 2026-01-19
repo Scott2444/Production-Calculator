@@ -11,7 +11,7 @@ export default function Projects() {
     const { userId } = useAuth();
     const protectedApiFetch = useProtectedApiFetch();
     const { data: user, isLoading, error } = useQuery({
-        queryKey: ['user'],
+        queryKey: ["user", userId],
         queryFn: () => fetchUser(userId!, protectedApiFetch),
         staleTime: 5 * 60 * 1000, // 5 minutes
     });

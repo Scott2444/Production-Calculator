@@ -37,7 +37,7 @@ export default function Verify() {
     const protectedApiFetch = useProtectedApiFetch();
 
     const { data: user, isLoading: isUserLoading } = useQuery({
-        queryKey: ["user"],
+        queryKey: ["user", userId],
         queryFn: () => fetchUser(userId!, protectedApiFetch),
         staleTime: 5 * 60 * 1000,
         enabled: Boolean(userId),
@@ -233,7 +233,7 @@ export default function Verify() {
                     <div className="flex flex-col gap-2 mb-6">
                         <h2 className="text-3xl font-bold text-slate-200 text-center">Verify Your Account</h2>
                         <p className="text-slate-400 text-center">
-                            Enter the 6-digit code we sent{emailText ? ` to ${emailText}` : " to your email"}.
+                            Enter the 6-digit code we sent to your email.
                         </p>
                     </div>
 

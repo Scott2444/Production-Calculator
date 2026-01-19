@@ -7,8 +7,8 @@ namespace ProductionCalculator.Business.Interfaces
     {
         Task<ServiceResult<User>> Register(string username, string email, string password);
         Task<ServiceResult> ValidateNewUser(string username, string email);
-        Task<ServiceResult<User>> GetUserByPuid(string puid);
-        Task<ServiceResult<User>> GetUserByUsername(string username);
+        Task<ServiceResult<(User, bool)>> GetUserByPuid(string puid);
+        Task<ServiceResult<(User, bool)>> GetUserByUsername(string username);
         Task<ServiceResult> DeleteUserById(string puid);
     }
 }

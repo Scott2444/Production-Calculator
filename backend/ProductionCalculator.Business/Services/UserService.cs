@@ -7,10 +7,12 @@ namespace ProductionCalculator.Business.Services
     public class UserService : IUserService
     {
         private readonly IUserRepository _repo;
+        private readonly IRoleRepository _roleRepo;
 
-        public UserService(IUserRepository repo)
+        public UserService(IUserRepository repo, IRoleRepository roleRepo)
         {
             _repo = repo;
+            _roleRepo = roleRepo;
         }
 
         public async Task<ServiceResult<User>> Register(string username, string email, string password)
@@ -65,24 +67,32 @@ namespace ProductionCalculator.Business.Services
             return ServiceResult.SuccessResult(ServiceStatus.Ok200);
         }
 
-        public async Task<ServiceResult<User>> GetUserByPuid(string puid)
+        public async Task<ServiceResult<(User, bool)>> GetUserByPuid(string puid)
         {
-            if (string.IsNullOrWhiteSpace(puid)) return ServiceResult<User>.Fail(ServiceStatus.BadRequest400);
+            if (string.IsNullOrWhiteSpace(puid)) return ServiceResult<(User, bool)>.Fail(ServiceStatus.BadRequest400);
 
             var user = await _repo.GetByPuid(puid);
-            if (user == null) return ServiceResult<User>.Fail(ServiceStatus.NotFound404, $"User with PUID {puid} not found.");
+            if (user == null) return ServiceResult<(User, bool)>.Fail(ServiceStatus.NotFound404, $"User with PUID {puid} not found.");
 
-            return ServiceResult<User>.SuccessResult(user, ServiceStatus.Ok200);
+            var role = await _roleRepo.GetRole(user.Role_Id);
+            if (role == null) return ServiceResult<(User, bool)>.Fail(ServiceStatus.InternalServerError500, "User role not found.");
+            bool isVerified = role.Role_Name != "Unverified";
+
+            return ServiceResult<(User, bool)>.SuccessResult((user, isVerified), ServiceStatus.Ok200);
         }
 
-        public async Task<ServiceResult<User>> GetUserByUsername(string username)
+        public async Task<ServiceResult<(User, bool)>> GetUserByUsername(string username)
         {
-            if (string.IsNullOrWhiteSpace(username)) return ServiceResult<User>.Fail(ServiceStatus.BadRequest400);
+            if (string.IsNullOrWhiteSpace(username)) return ServiceResult<(User, bool)>.Fail(ServiceStatus.BadRequest400);
 
             var user = await _repo.GetByUsername(username);
-            if (user == null) return ServiceResult<User>.Fail(ServiceStatus.NotFound404, $"{username} not found.");
+            if (user == null) return ServiceResult<(User, bool)>.Fail(ServiceStatus.NotFound404, $"{username} not found.");
 
-            return ServiceResult<User>.SuccessResult(user, ServiceStatus.Ok200);
+            var role = await _roleRepo.GetRole(user.Role_Id);
+            if (role == null) return ServiceResult<(User, bool)>.Fail(ServiceStatus.InternalServerError500, "User role not found.");
+            bool isVerified = role.Role_Name != "Unverified";
+
+            return ServiceResult<(User, bool)>.SuccessResult((user, isVerified), ServiceStatus.Ok200);
         }
         public async Task<ServiceResult> DeleteUserById(string puid)
         {

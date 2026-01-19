@@ -33,8 +33,16 @@ namespace ProductionCalculator.API.Controllers
         [HttpGet("{userPuid}")]
         public async Task<IActionResult> GetByPuid(string userPuid)
         {
-            var result = await _service.GetUserByPuid(userPuid);
-            return FromServiceResult(result, u => new UserResponse { Username = u.Username, Email = u.Email, Puid = u.Puid, CreatedAt = u.Created_At, UpdatedAt = u.Last_Updated });
+            var serviceResult = await _service.GetUserByPuid(userPuid);
+            return FromServiceResult(serviceResult, tuple => new UserResponse
+            {
+                Username = tuple.Item1.Username,
+                Email = tuple.Item1.Email,
+                Puid = tuple.Item1.Puid,
+                CreatedAt = tuple.Item1.Created_At,
+                UpdatedAt = tuple.Item1.Last_Updated,
+                IsVerified = tuple.Item2
+            });
         }
 
         [Authorize(Policy = "IsOwnerOrAdmin")]

@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useProtectedApiFetch } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
 import { fetchUser } from '@/lib/user';
-import { IconSettings, IconLogout } from '@tabler/icons-react';
+import { IconSettings, IconLogout, IconSquareRoundedCheck } from '@tabler/icons-react';
 import { useLogout } from '@/lib/logout';
 
 export default function NavBar(): React.ReactElement {
@@ -76,7 +76,7 @@ function AccountDropdown({ accountLogoUrl }: { accountLogoUrl: string }) {
     const { userId } = useAuth();
     const protectedApiFetch = useProtectedApiFetch();
     const { data: user, isLoading, error } = useQuery({
-        queryKey: ['user'],
+        queryKey: ["user", userId],
         queryFn: () => fetchUser(userId!, protectedApiFetch),
         staleTime: 5 * 60 * 1000, // 5 minutes
     });
@@ -128,8 +128,19 @@ function AccountDropdown({ accountLogoUrl }: { accountLogoUrl: string }) {
                             <span className="text-sm text-gray-500 truncate">{user?.email || ''}</span>
                         </div>
                     </div>
-                    {/* Settings and Logout */}
+                    {/* Verify, Settings, Logout */}
                     <div className="flex flex-col gap-1 px-2 py-2">
+                        {(user && !user.isVerified) && (
+                            <Link
+                            href="/verify"
+                            className="px-4 py-2 text-gray-800 no-underline transition-all duration-150 rounded-xl hover:bg-purple-100 hover:text-purple-700 flex items-center gap-2"
+                            onClick={() => setMenuOpen(false)}
+
+                        >
+                            <span className="inline-block"><IconSquareRoundedCheck size={18} /></span>
+                            <span>Verify Email</span>
+                        </Link>
+                        )}
                         <Link
                             href="/settings"
                             className="px-4 py-2 text-gray-800 no-underline transition-all duration-150 rounded-xl hover:bg-purple-100 hover:text-purple-700 flex items-center gap-2"
