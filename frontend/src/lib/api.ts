@@ -11,32 +11,37 @@ import { useAuth } from "../context/AuthContext";
  */
 
 export function useProtectedApiFetch() {
-	const { setLoggedIn } = useAuth();
+    const { setLoggedIn } = useAuth();
 
-	return async function protectedApiFetch(
-		input: RequestInfo,
-		init: RequestInit = {}
-	) {
-		const fetchWithCookies = (url: RequestInfo, options: RequestInit = {}) =>
-			fetch(url, { ...options });
+    return async function protectedApiFetch(
+        input: RequestInfo,
+        init: RequestInit = {},
+    ) {
+        const fetchWithCookies = (
+            url: RequestInfo,
+            options: RequestInit = {},
+        ) => fetch(url, { ...options });
 
-		let response = await fetchWithCookies(input, init);
+        let response = await fetchWithCookies(input, init);
 
-		if (response.status === 401) {
-			// Try to refresh the access token
-			const refreshResponse = await fetchWithCookies("/api/auth/refresh", { method: "POST" });
-			if (refreshResponse.status === 401) {
-				// Refresh failed, log out
-				setLoggedIn(false);
-				return refreshResponse;
-			}
-			// Retry original request after refresh
-			response = await fetchWithCookies(input, init);
-			if (response.status === 401) {
-				// Still unauthorized, log out
-				setLoggedIn(false);
-			}
-		}
-		return response;
-	};
+        if (response.status === 401) {
+            // Try to refresh the access token
+            const refreshResponse = await fetchWithCookies(
+                "/api/auth/refresh",
+                { method: "POST" },
+            );
+            if (refreshResponse.status === 401) {
+                // Refresh failed, log out
+                setLoggedIn(false);
+                return refreshResponse;
+            }
+            // Retry original request after refresh
+            response = await fetchWithCookies(input, init);
+            if (response.status === 401) {
+                // Still unauthorized, log out
+                setLoggedIn(false);
+            }
+        }
+        return response;
+    };
 }

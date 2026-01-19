@@ -1,10 +1,10 @@
 "use client";
 
-import Navbar from '@/components/NavBar';
-import Link from 'next/link';
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
+import Navbar from "@/components/NavBar";
+import Link from "next/link";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Login() {
     const [username, setUsername] = useState("");
@@ -24,7 +24,7 @@ export default function Login() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username, password }),
             });
             const data = await res.json();
             if (!res.ok) {
@@ -46,15 +46,20 @@ export default function Login() {
             <Navbar />
             <div className="flex flex-col items-center justify-center min-h-[80vh] bg-slate-950/80">
                 <div className="w-full max-w-md bg-slate-900/80 rounded-lg shadow-lg p-8">
-                    <h2 className="text-3xl font-bold text-slate-200 mb-6 text-center">Log In</h2>
-                    <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+                    <h2 className="text-3xl font-bold text-slate-200 mb-6 text-center">
+                        Log In
+                    </h2>
+                    <form
+                        className="flex flex-col gap-5"
+                        onSubmit={handleSubmit}
+                    >
                         <input
                             type="text"
                             placeholder="Username"
                             className="px-4 py-3 rounded-md bg-slate-800 text-slate-200 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-700"
                             required
                             value={username}
-                            onChange={e => setUsername(e.target.value)}
+                            onChange={(e) => setUsername(e.target.value)}
                         />
                         <input
                             type="password"
@@ -62,7 +67,7 @@ export default function Login() {
                             className="px-4 py-3 rounded-md bg-slate-800 text-slate-200 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-700"
                             required
                             value={password}
-                            onChange={e => setPassword(e.target.value)}
+                            onChange={(e) => setPassword(e.target.value)}
                         />
                         <button
                             type="submit"
@@ -71,7 +76,11 @@ export default function Login() {
                         >
                             {loading ? "Logging in..." : "Log In"}
                         </button>
-                        {error && <div className="text-red-500 text-center mt-2">{error}</div>}
+                        {error && (
+                            <div className="text-red-500 text-center mt-2">
+                                {error}
+                            </div>
+                        )}
                     </form>
                     <div className="my-6 flex items-center">
                         <hr className="grow border-slate-700" />
@@ -84,10 +93,17 @@ export default function Login() {
                             className="w-full py-3 bg-white text-slate-900 rounded-md font-semibold border border-slate-300 flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors"
                             disabled
                         >
-                            <img src="/google-logo.svg" alt="Google" className="h-5 w-5" />
+                            <img
+                                src="/google-logo.svg"
+                                alt="Google"
+                                className="h-5 w-5"
+                            />
                             Continue with Google
                         </button>
-                        <Link href="/signup" className="w-full py-3 bg-slate-800 text-purple-400 rounded-md font-semibold text-center border border-slate-700 hover:bg-slate-700 transition-colors no-underline">
+                        <Link
+                            href="/signup"
+                            className="w-full py-3 bg-slate-800 text-purple-400 rounded-md font-semibold text-center border border-slate-700 hover:bg-slate-700 transition-colors no-underline"
+                        >
                             Don&apos;t have an account? Sign Up
                         </Link>
                     </div>

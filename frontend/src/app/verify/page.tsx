@@ -1,4 +1,3 @@
-
 "use client";
 
 import NavBar from "@/components/NavBar";
@@ -13,16 +12,20 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 function maskEmail(email: string) {
     const [local, domain] = email.split("@");
     if (!local || !domain) return email;
-    const maskedLocal = local.length <= 2
-        ? `${local[0] ?? ""}*`
-        : `${local.slice(0, 2)}***${local.slice(-1)}`;
+    const maskedLocal =
+        local.length <= 2
+            ? `${local[0] ?? ""}*`
+            : `${local.slice(0, 2)}***${local.slice(-1)}`;
     const domainParts = domain.split(".");
-    const tld = domainParts.length > 1 ? domainParts[domainParts.length - 1] : "";
+    const tld =
+        domainParts.length > 1 ? domainParts[domainParts.length - 1] : "";
     const domainName = domainParts[0] ?? domain;
-    const maskedDomainName = domainName.length <= 2
-        ? `${domainName[0] ?? ""}*`
-        : `${domainName.slice(0, 2)}***${domainName.slice(-1)}`;
-    const rest = domainParts.length > 2 ? `.${domainParts.slice(1, -1).join(".")}` : "";
+    const maskedDomainName =
+        domainName.length <= 2
+            ? `${domainName[0] ?? ""}*`
+            : `${domainName.slice(0, 2)}***${domainName.slice(-1)}`;
+    const rest =
+        domainParts.length > 2 ? `.${domainParts.slice(1, -1).join(".")}` : "";
     const suffix = tld ? `.${tld}` : "";
     return `${maskedLocal}@${maskedDomainName}${rest}${suffix}`;
 }
@@ -65,7 +68,8 @@ export default function Verify() {
 
     useEffect(() => {
         if (!loggedIn || !userId || !user?.email) return;
-        const alreadyAutoRequested = sessionStorage.getItem("verificationCodeAutoRequested") === "1";
+        const alreadyAutoRequested =
+            sessionStorage.getItem("verificationCodeAutoRequested") === "1";
         if (alreadyAutoRequested) return;
         sessionStorage.setItem("verificationCodeAutoRequested", "1");
         void requestCode();
@@ -163,7 +167,10 @@ export default function Verify() {
         });
     }
 
-    function handlePaste(e: React.ClipboardEvent<HTMLInputElement>, startIndex: number) {
+    function handlePaste(
+        e: React.ClipboardEvent<HTMLInputElement>,
+        startIndex: number,
+    ) {
         const text = e.clipboardData.getData("text").trim();
         if (!text) return;
         const cleaned = text.replace(/\D/g, "").slice(0, 6);
@@ -182,7 +189,10 @@ export default function Verify() {
         inputsRef.current[nextIndex]?.focus();
     }
 
-    function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>, index: number) {
+    function handleKeyDown(
+        e: React.KeyboardEvent<HTMLInputElement>,
+        index: number,
+    ) {
         if (e.key === "Backspace") {
             if (digits[index]) {
                 setDigitAt(index, "");
@@ -193,8 +203,10 @@ export default function Verify() {
                 setDigitAt(index - 1, "");
             }
         }
-        if (e.key === "ArrowLeft" && index > 0) inputsRef.current[index - 1]?.focus();
-        if (e.key === "ArrowRight" && index < 5) inputsRef.current[index + 1]?.focus();
+        if (e.key === "ArrowLeft" && index > 0)
+            inputsRef.current[index - 1]?.focus();
+        if (e.key === "ArrowRight" && index < 5)
+            inputsRef.current[index + 1]?.focus();
     }
 
     useEffect(() => {
@@ -209,9 +221,16 @@ export default function Verify() {
                 <NavBar />
                 <div className="flex flex-col items-center justify-center min-h-[80vh] bg-slate-950/80 px-4">
                     <div className="w-full max-w-md bg-slate-900/80 rounded-lg shadow-lg p-8 border border-slate-800">
-                        <h2 className="text-3xl font-bold text-slate-200 mb-2 text-center">Verify Your Account</h2>
-                        <p className="text-slate-400 text-center mb-6">Please log in to verify your account.</p>
-                        <Link href="/login" className="w-full block py-3 bg-purple-700 text-white rounded-md font-semibold text-center hover:bg-purple-600 transition-colors no-underline">
+                        <h2 className="text-3xl font-bold text-slate-200 mb-2 text-center">
+                            Verify Your Account
+                        </h2>
+                        <p className="text-slate-400 text-center mb-6">
+                            Please log in to verify your account.
+                        </p>
+                        <Link
+                            href="/login"
+                            className="w-full block py-3 bg-purple-700 text-white rounded-md font-semibold text-center hover:bg-purple-600 transition-colors no-underline"
+                        >
                             Go to Login
                         </Link>
                     </div>
@@ -226,7 +245,9 @@ export default function Verify() {
             <div className="flex flex-col items-center justify-center min-h-[80vh] bg-slate-950/80 px-4">
                 <div className="w-full max-w-lg bg-slate-900/80 rounded-lg shadow-lg p-8 border border-slate-800">
                     <div className="flex flex-col gap-2 mb-6">
-                        <h2 className="text-3xl font-bold text-slate-200 text-center">Verify Your Account</h2>
+                        <h2 className="text-3xl font-bold text-slate-200 text-center">
+                            Verify Your Account
+                        </h2>
                         <p className="text-slate-400 text-center">
                             Enter the 6-digit code we sent to your email.
                         </p>
@@ -235,9 +256,13 @@ export default function Verify() {
                     <div className="bg-slate-950/40 border border-slate-800 rounded-lg p-4 mb-6">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
                             <div className="text-slate-300">
-                                <div className="text-sm text-slate-400">Email</div>
+                                <div className="text-sm text-slate-400">
+                                    Email
+                                </div>
                                 <div className="font-medium">
-                                    {isUserLoading ? "Loading..." : (user?.email ?? "")}
+                                    {isUserLoading
+                                        ? "Loading..."
+                                        : (user?.email ?? "")}
                                 </div>
                             </div>
                             <button
@@ -249,8 +274,8 @@ export default function Verify() {
                                 {requestLoading
                                     ? "Sending..."
                                     : cooldownSeconds > 0
-                                        ? `Resend in ${cooldownSeconds}s`
-                                        : "Resend Code"}
+                                      ? `Resend in ${cooldownSeconds}s`
+                                      : "Resend Code"}
                             </button>
                         </div>
                         <p className="text-xs text-slate-500 mt-3">
@@ -263,9 +288,13 @@ export default function Verify() {
                             {digits.map((d, i) => (
                                 <input
                                     key={i}
-                                    ref={(el) => { inputsRef.current[i] = el; }}
+                                    ref={(el) => {
+                                        inputsRef.current[i] = el;
+                                    }}
                                     inputMode="numeric"
-                                    autoComplete={i === 0 ? "one-time-code" : "off"}
+                                    autoComplete={
+                                        i === 0 ? "one-time-code" : "off"
+                                    }
                                     pattern="[0-9]*"
                                     maxLength={1}
                                     value={d}
@@ -277,10 +306,12 @@ export default function Verify() {
                                             setDigitAt(i, "");
                                             return;
                                         }
-                                        const lastChar = value[value.length - 1] ?? "";
+                                        const lastChar =
+                                            value[value.length - 1] ?? "";
                                         if (!isDigit(lastChar)) return;
                                         setDigitAt(i, lastChar);
-                                        if (i < 5) inputsRef.current[i + 1]?.focus();
+                                        if (i < 5)
+                                            inputsRef.current[i + 1]?.focus();
                                     }}
                                     className="w-12 h-12 text-center text-lg font-semibold tracking-widest rounded-md bg-slate-800 text-slate-200 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-700"
                                     aria-label={`Digit ${i + 1}`}
@@ -310,7 +341,10 @@ export default function Verify() {
                     </form>
 
                     <div className="mt-6 text-center">
-                        <Link href="/" className="text-slate-400 hover:text-purple-300 transition-colors no-underline">
+                        <Link
+                            href="/"
+                            className="text-slate-400 hover:text-purple-300 transition-colors no-underline"
+                        >
                             Back to Home
                         </Link>
                     </div>

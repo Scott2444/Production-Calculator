@@ -6,10 +6,10 @@ import { useAuth } from "../context/AuthContext";
  */
 
 export function useAccessTokenFetch() {
-	const { setUserId } = useAuth();
+    const { setUserId } = useAuth();
 
-	return async function accessTokenFetch() {
-		const response = await fetch("/api/auth/refresh", { method: "POST" });
+    return async function accessTokenFetch() {
+        const response = await fetch("/api/auth/refresh", { method: "POST" });
         if (response.ok) {
             const data = await response.json();
             setUserId(data.puid);

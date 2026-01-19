@@ -1,12 +1,11 @@
 "use client";
 
-import Navbar from '@/components/NavBar';
-import Link from 'next/link';
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Navbar from "@/components/NavBar";
+import Link from "next/link";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from '@/context/AuthContext';
-
+import { useAuth } from "@/context/AuthContext";
 
 export default function SignUp() {
     const [step, setStep] = useState(1);
@@ -25,7 +24,9 @@ export default function SignUp() {
         setError("");
         // Username: 6-20 chars, letters, numbers, _ or -
         if (!/^[a-zA-Z0-9_-]{6,20}$/.test(username)) {
-            setError("Username must be 6-20 characters, letters, numbers, _ or -");
+            setError(
+                "Username must be 6-20 characters, letters, numbers, _ or -",
+            );
             return;
         }
         // Email validation
@@ -39,7 +40,7 @@ export default function SignUp() {
             const res = await fetch("/api/users/validate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, email })
+                body: JSON.stringify({ username, email }),
             });
             isValid = res.ok;
             if (!isValid) {
@@ -82,7 +83,7 @@ export default function SignUp() {
             const registerRes = await fetch("/api/users/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, email, password })
+                body: JSON.stringify({ username, email, password }),
             });
             const data = await registerRes.json();
             if (!registerRes.ok) {
@@ -107,7 +108,7 @@ export default function SignUp() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username, password }),
             });
             const data = await res.json();
             if (!res.ok) {
@@ -135,15 +136,22 @@ export default function SignUp() {
                             className="w-full max-w-md"
                         >
                             <div className="bg-slate-900/80 rounded-lg shadow-lg p-8">
-                                <h2 className="text-3xl font-bold text-slate-200 mb-6 text-center">Sign Up</h2>
-                                <form className="flex flex-col gap-5" onSubmit={handleNext}>
+                                <h2 className="text-3xl font-bold text-slate-200 mb-6 text-center">
+                                    Sign Up
+                                </h2>
+                                <form
+                                    className="flex flex-col gap-5"
+                                    onSubmit={handleNext}
+                                >
                                     <input
                                         type="text"
                                         placeholder="Username"
                                         className="px-4 py-3 rounded-md bg-slate-800 text-slate-200 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-700"
                                         required
                                         value={username}
-                                        onChange={e => setUsername(e.target.value)}
+                                        onChange={(e) =>
+                                            setUsername(e.target.value)
+                                        }
                                     />
                                     <input
                                         type="email"
@@ -151,18 +159,28 @@ export default function SignUp() {
                                         className="px-4 py-3 rounded-md bg-slate-800 text-slate-200 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-700"
                                         required
                                         value={email}
-                                        onChange={e => setEmail(e.target.value)}
+                                        onChange={(e) =>
+                                            setEmail(e.target.value)
+                                        }
                                     />
                                     <button
                                         type="submit"
                                         className="w-full py-3 bg-purple-700 text-white rounded-md font-semibold hover:bg-purple-600 transition-colors"
                                         disabled={loading}
-                                    >{loading ? "Validating..." : "Next"}</button>
+                                    >
+                                        {loading ? "Validating..." : "Next"}
+                                    </button>
                                 </form>
-                                {error && <div className="text-red-500 text-center mt-2 w-full left-0">{error}</div>}
+                                {error && (
+                                    <div className="text-red-500 text-center mt-2 w-full left-0">
+                                        {error}
+                                    </div>
+                                )}
                                 <div className="my-6 flex items-center">
                                     <hr className="grow border-slate-700" />
-                                    <span className="mx-4 text-slate-400">or</span>
+                                    <span className="mx-4 text-slate-400">
+                                        or
+                                    </span>
                                     <hr className="grow border-slate-700" />
                                 </div>
                                 <div className="flex flex-col gap-3">
@@ -171,10 +189,17 @@ export default function SignUp() {
                                         className="w-full py-3 bg-white text-slate-900 rounded-md font-semibold border border-slate-300 flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors"
                                         disabled
                                     >
-                                        <img src="/google-logo.svg" alt="Google" className="h-5 w-5" />
+                                        <img
+                                            src="/google-logo.svg"
+                                            alt="Google"
+                                            className="h-5 w-5"
+                                        />
                                         Continue with Google
                                     </button>
-                                    <Link href="/login" className="w-full py-3 bg-slate-800 text-purple-400 rounded-md font-semibold text-center border border-slate-700 hover:bg-slate-700 transition-colors no-underline">
+                                    <Link
+                                        href="/login"
+                                        className="w-full py-3 bg-slate-800 text-purple-400 rounded-md font-semibold text-center border border-slate-700 hover:bg-slate-700 transition-colors no-underline"
+                                    >
                                         Already have an account? Log In
                                     </Link>
                                 </div>
@@ -191,15 +216,22 @@ export default function SignUp() {
                             className="w-full max-w-md"
                         >
                             <div className="bg-slate-900/80 rounded-lg shadow-lg p-8">
-                                <h2 className="text-3xl font-bold text-slate-200 mb-6 text-center">Sign Up</h2>
-                                <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+                                <h2 className="text-3xl font-bold text-slate-200 mb-6 text-center">
+                                    Sign Up
+                                </h2>
+                                <form
+                                    className="flex flex-col gap-5"
+                                    onSubmit={handleSubmit}
+                                >
                                     <input
                                         type="password"
                                         placeholder="Password (8-32 characters)"
                                         className="px-4 py-3 rounded-md bg-slate-800 text-slate-200 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-700"
                                         required
                                         value={password}
-                                        onChange={e => setPassword(e.target.value)}
+                                        onChange={(e) =>
+                                            setPassword(e.target.value)
+                                        }
                                     />
                                     <input
                                         type="password"
@@ -207,7 +239,9 @@ export default function SignUp() {
                                         className="px-4 py-3 rounded-md bg-slate-800 text-slate-200 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-700"
                                         required
                                         value={confirmPassword}
-                                        onChange={e => setConfirmPassword(e.target.value)}
+                                        onChange={(e) =>
+                                            setConfirmPassword(e.target.value)
+                                        }
                                     />
                                     <div className="flex flex-row gap-3">
                                         <button
@@ -215,18 +249,30 @@ export default function SignUp() {
                                             className="w-1/2 py-3 bg-slate-700 text-white rounded-md font-semibold hover:bg-slate-600 transition-colors"
                                             onClick={handleBack}
                                             disabled={loading}
-                                        >Back</button>
+                                        >
+                                            Back
+                                        </button>
                                         <button
                                             type="submit"
                                             className="w-1/2 py-3 bg-purple-700 text-white rounded-md font-semibold hover:bg-purple-600 transition-colors"
                                             disabled={loading}
-                                        >{loading ? "Signing up..." : "Sign Up"}</button>
+                                        >
+                                            {loading
+                                                ? "Signing up..."
+                                                : "Sign Up"}
+                                        </button>
                                     </div>
                                 </form>
-                                {error && <div className="text-red-500 text-center mt-2 w-full left-0">{error}</div>}
+                                {error && (
+                                    <div className="text-red-500 text-center mt-2 w-full left-0">
+                                        {error}
+                                    </div>
+                                )}
                                 <div className="my-6 flex items-center">
                                     <hr className="grow border-slate-700" />
-                                    <span className="mx-4 text-slate-400">or</span>
+                                    <span className="mx-4 text-slate-400">
+                                        or
+                                    </span>
                                     <hr className="grow border-slate-700" />
                                 </div>
                                 <div className="flex flex-col gap-3">
@@ -235,10 +281,17 @@ export default function SignUp() {
                                         className="w-full py-3 bg-white text-slate-900 rounded-md font-semibold border border-slate-300 flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors"
                                         disabled
                                     >
-                                        <img src="/google-logo.svg" alt="Google" className="h-5 w-5" />
+                                        <img
+                                            src="/google-logo.svg"
+                                            alt="Google"
+                                            className="h-5 w-5"
+                                        />
                                         Continue with Google
                                     </button>
-                                    <Link href="/login" className="w-full py-3 bg-slate-800 text-purple-400 rounded-md font-semibold text-center border border-slate-700 hover:bg-slate-700 transition-colors no-underline">
+                                    <Link
+                                        href="/login"
+                                        className="w-full py-3 bg-slate-800 text-purple-400 rounded-md font-semibold text-center border border-slate-700 hover:bg-slate-700 transition-colors no-underline"
+                                    >
                                         Already have an account? Log In
                                     </Link>
                                 </div>
