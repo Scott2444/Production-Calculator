@@ -10,10 +10,36 @@ import { fetchUser } from '@/lib/user';
 import { IconSettings, IconLogout, IconSquareRoundedCheck } from '@tabler/icons-react';
 import { useLogout } from '@/lib/logout';
 
-export default function NavBar(): React.ReactElement {
+type NavBarProps = {
+  currentPage?: "Home" | "Projects" | "Explore" | "Docs";
+};
+
+function getCurrentNavSection(
+        pathname: string,
+): NonNullable<NavBarProps["currentPage"]> {
+        if (pathname === '/') return 'Home';
+
+        const firstSlug = pathname.split('/').filter(Boolean)[0]?.toLowerCase();
+        if (firstSlug === 'explore') return 'Explore';
+        if (firstSlug === 'docs') return 'Docs';
+
+        // Anything else at the top-level is treated as a username route.
+        return 'Projects';
+}
+
+export default function NavBar({ currentPage }: NavBarProps): React.ReactElement {
     const pathname = usePathname();
+    const derivedCurrentPage = currentPage ?? getCurrentNavSection(pathname);
     const { loggedIn } = useAuth();
     const [accountLogoUrl, setAccountLogoUrl] = useState<string>('/Default_Avatar.svg');
+    const { userId } = useAuth();
+    const protectedApiFetch = useProtectedApiFetch();
+    const { data: user, isLoading, error } = useQuery({
+        queryKey: ["user", userId],
+        queryFn: () => fetchUser(userId!, protectedApiFetch),
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        enabled: Boolean(userId),
+    });
 
     useEffect(() => {
         // Example: fetch account logo from API or context
@@ -28,7 +54,7 @@ export default function NavBar(): React.ReactElement {
 
     const navItems = [
         { name: 'Home', href: '/' },
-        { name: 'Projects', href: '/projects' },
+        { name: 'Projects', href: `/${user?.username ?? ''}` },
         { name: 'Explore', href: '/explore' },
         { name: 'Docs', href: '/docs' },
     ];
@@ -41,11 +67,12 @@ export default function NavBar(): React.ReactElement {
                 </Link>
                 {/* Navigation buttons */}
                     {navItems.map((item) => (
+                        // Determine active state from the first slug in the route hierarchy.
                         <Link
                             key={item.name}
                             href={item.href}
                             className={`mr-4 no-underline transition-colors duration-200 ${
-                                pathname === item.href
+                                derivedCurrentPage === item.name
                                     ? 'text-slate-200 font-medium'
                                     : 'text-slate-200 font-light hover:text-purple-400 hover:scale-105'
                             } `}
@@ -57,7 +84,7 @@ export default function NavBar(): React.ReactElement {
             {/* Drop down menu */}
             <div>
                     {loggedIn ? (
-                        <AccountDropdown accountLogoUrl={accountLogoUrl} />
+                        <AccountDropdown accountLogoUrl={accountLogoUrl} user={user} />
                     ) : (
                         <Link
                             href="/login"
@@ -71,15 +98,16 @@ export default function NavBar(): React.ReactElement {
     );
 }
 
-function AccountDropdown({ accountLogoUrl }: { accountLogoUrl: string }) {
+type NavUser = {
+    profilePictureUrl?: string;
+    name?: string;
+    username?: string;
+    email?: string;
+    isVerified?: boolean;
+};
+
+function AccountDropdown({ accountLogoUrl, user }: { accountLogoUrl: string; user?: NavUser }) {
     const [menuOpen, setMenuOpen] = useState(false);
-    const { userId } = useAuth();
-    const protectedApiFetch = useProtectedApiFetch();
-    const { data: user, isLoading, error } = useQuery({
-        queryKey: ["user", userId],
-        queryFn: () => fetchUser(userId!, protectedApiFetch),
-        staleTime: 5 * 60 * 1000, // 5 minutes
-    });
     const logout = useLogout();
 
     // Close dropdown on outside click

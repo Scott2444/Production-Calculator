@@ -53,11 +53,6 @@ export default function Verify() {
     const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
     const code = useMemo(() => digits.join(""), [digits]);
-    const emailText = useMemo(() => {
-        const rawEmail = user?.email as string | undefined;
-        if (!rawEmail) return "";
-        return maskEmail(rawEmail);
-    }, [user]);
 
     useEffect(() => {
         if (!loggedIn) return;
