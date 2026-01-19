@@ -88,7 +88,7 @@ export default function Login() {
                             Continue with Google
                         </button>
                         <Link href="/signup" className="w-full py-3 bg-slate-800 text-purple-400 rounded-md font-semibold text-center border border-slate-700 hover:bg-slate-700 transition-colors no-underline">
-                            Don't have an account? Sign Up
+                            Don&apos;t have an account? Sign Up
                         </Link>
                     </div>
                 </div>

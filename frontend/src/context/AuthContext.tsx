@@ -21,7 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (hasToken) {
       setLoggedIn(hasToken);
       // Grab new access token
-      let response = await fetch("/api/auth/refresh", { method: "POST" });
+      const response = await fetch("/api/auth/refresh", { method: "POST" });
       if (response.ok) {
         const data = await response.json();
         setUserId(data.puid);

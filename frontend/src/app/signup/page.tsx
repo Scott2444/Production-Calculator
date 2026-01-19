@@ -5,6 +5,7 @@ import Link from 'next/link';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from '@/context/AuthContext';
 
 
 export default function SignUp() {
@@ -15,6 +16,7 @@ export default function SignUp() {
     const [confirmPassword, setConfirmPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const { setLoggedIn, setUserId } = useAuth();
 
     const router = useRouter();
 
@@ -32,7 +34,7 @@ export default function SignUp() {
             return;
         }
         setLoading(true);
-        var isValid = false;
+        let isValid = false;
         try {
             const res = await fetch("/api/users/validate", {
                 method: "POST",
@@ -64,6 +66,7 @@ export default function SignUp() {
         e.preventDefault();
         setError("");
 
+        // Validate password
         if (password.length < 8 || password.length > 32) {
             setError("Password must be 8-32 characters.");
             return;
@@ -75,21 +78,45 @@ export default function SignUp() {
 
         setLoading(true);
         try {
-            const res = await fetch("/api/users/register", {
+            // Register user
+            const registerRes = await fetch("/api/users/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, email, password })
             });
-            const data = await res.json();
-            if (!res.ok) {
+            const data = await registerRes.json();
+            if (!registerRes.ok) {
                 setError(data.error || "Signup failed");
                 setLoading(false);
                 return;
             }
-            router.push(`/verify?email=${encodeURIComponent(email)}`);
+            // Auto-login after successful signup, get credentials set
+            await Login();
+            // Redirect to verification page
+            router.push(`/verify`);
         } catch (err) {
             setError("An unexpected error occurred");
             setLoading(false);
+        }
+    }
+
+    async function Login() {
+        setError("");
+        try {
+            const res = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                return;
+            }
+            setLoggedIn(true);
+            setUserId(data.puid);
+        } catch (err) {
+            setError("An unexpected error occurred");
         }
     }
 

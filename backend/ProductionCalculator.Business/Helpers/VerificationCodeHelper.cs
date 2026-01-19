@@ -19,7 +19,7 @@ namespace ProductionCalculator.Business.Helpers
             var body = $"""
             <div style="font-family:Segoe UI, Arial, sans-serif; max-width:480px; margin:0 auto; padding:32px 24px; background:#ffffff; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.05); color:#1f2937;">
                 
-                <h2 style="margin:0 0 12px 0; font-size:1.4rem; font-weight:600; color:#2563eb;">
+                <h2 style="margin:0 0 12px 0; font-size:1.4rem; font-weight:600; color:#432dd7;">
                     Verify your email address
                 </h2>
 
