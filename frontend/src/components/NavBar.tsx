@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { useProtectedApiFetch } from "@/lib/api";
+import { useProtectedApi } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { fetchUser } from "@/lib/user";
 import {
@@ -41,14 +41,14 @@ export default function NavBar({
         "/Default_Avatar.svg",
     );
     const { userId } = useAuth();
-    const protectedApiFetch = useProtectedApiFetch();
+    const protectedApi = useProtectedApi();
     const {
         data: user,
         isLoading,
         error,
     } = useQuery({
         queryKey: ["user", userId],
-        queryFn: () => fetchUser(userId!, protectedApiFetch),
+        queryFn: () => fetchUser(userId!, protectedApi),
         staleTime: 5 * 60 * 1000, // 5 minutes
         enabled: Boolean(userId),
     });

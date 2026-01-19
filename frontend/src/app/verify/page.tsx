@@ -2,7 +2,7 @@
 
 import NavBar from "@/components/NavBar";
 import { useAuth } from "@/context/AuthContext";
-import { useProtectedApiFetch } from "@/lib/api";
+import { useProtectedApi } from "@/lib/api";
 import { fetchUser } from "@/lib/user";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -37,11 +37,11 @@ function isDigit(value: string) {
 export default function Verify() {
     const router = useRouter();
     const { loggedIn, userId } = useAuth();
-    const protectedApiFetch = useProtectedApiFetch();
+    const protectedApi = useProtectedApi();
 
     const { data: user, isLoading: isUserLoading } = useQuery({
         queryKey: ["user", userId],
-        queryFn: () => fetchUser(userId!, protectedApiFetch),
+        queryFn: () => fetchUser(userId!, protectedApi),
         staleTime: 5 * 60 * 1000,
         enabled: Boolean(userId),
     });
@@ -93,7 +93,7 @@ export default function Verify() {
         setStatus("");
         setRequestLoading(true);
         try {
-            const res = await protectedApiFetch("/api/auth/request-code", {
+            const res = await protectedApi("/api/auth/request-code", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
             });
@@ -131,7 +131,7 @@ export default function Verify() {
 
         setVerifyLoading(true);
         try {
-            const res = await protectedApiFetch("/api/auth/verify-code", {
+            const res = await protectedApi("/api/auth/verify-code", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ code: trimmed }),

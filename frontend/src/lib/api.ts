@@ -10,10 +10,10 @@ import { useAuth } from "../context/AuthContext";
  * @param init - RequestInit (fetch options)
  */
 
-export function useProtectedApiFetch() {
+export function useProtectedApi() {
     const { setLoggedIn } = useAuth();
 
-    return async function protectedApiFetch(
+    return async function protectedApi(
         input: RequestInfo,
         init: RequestInit = {},
     ) {

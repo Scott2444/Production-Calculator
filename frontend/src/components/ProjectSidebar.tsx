@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useParams } from "next/navigation";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
-import { useProtectedApiFetch } from "@/lib/api";
+import { useProtectedApi } from "@/lib/api";
 import { fetchProjects } from "@/lib/projects";
 import DropDown from "@/components/DropDown";
-import Popup from "@/components/Popup";
+import CreateProject from "@/components/CreateProject";
 import {
     IconAdjustments,
     IconBox,
@@ -41,34 +41,26 @@ export default function ProjectSidebar() {
     const pathname = usePathname();
     const router = useRouter();
     const params = useParams<{ username?: string; project_name?: string }>();
-    const queryClient = useQueryClient();
     const username = params?.username ?? "";
     const routeProjectName = params?.project_name
         ? decodeURIComponent(params.project_name)
         : "";
 
     const { userId, loggedIn } = useAuth();
-    const protectedApiFetch = useProtectedApiFetch();
+    const protectedApi = useProtectedApi();
     const {
         data: projects,
         isLoading,
         error,
     } = useQuery({
         queryKey: ["projects", userId],
-        queryFn: () => fetchProjects(userId!, protectedApiFetch),
+        queryFn: () => fetchProjects(userId!, protectedApi),
         staleTime: 5 * 60 * 1000,
         enabled: Boolean(userId),
     });
 
     const [currentProject, setCurrentProject] = useState<Project | null>(null);
-
-    // Create Project State
     const [createOpen, setCreateOpen] = useState(false);
-    const [createName, setCreateName] = useState("");
-    const [createDescription, setCreateDescription] = useState("");
-    const [createIsPublic, setCreateIsPublic] = useState(false);
-    const [createError, setCreateError] = useState<string | null>(null);
-    const createNameRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!projects || !routeProjectName) return;
@@ -103,64 +95,6 @@ export default function ProjectSidebar() {
             `/${encodeURIComponent(username)}/${encodeURIComponent(project.name)}/`,
         );
     };
-
-    const createProjectMutation = useMutation({
-        mutationFn: async (payload: {
-            name: string;
-            description: string | null;
-            isPublic: boolean;
-        }) => {
-            const response = await protectedApiFetch("/api/projects", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    name: payload.name,
-                    description: payload.description,
-                    isPublic: payload.isPublic,
-                }),
-            });
-
-            if (!response.ok) {
-                let message = "Failed to create project.";
-                try {
-                    const data = (await response.json()) as { error?: string };
-                    if (data?.error) message = data.error;
-                } catch {
-                    // ignore json parse errors
-                }
-                throw new Error(message);
-            }
-
-            return (await response.json()) as Project;
-        },
-        onSuccess: async (project) => {
-            setCreateOpen(false);
-            setCreateName("");
-            setCreateDescription("");
-            setCreateIsPublic(false);
-            setCreateError(null);
-
-            setCurrentProject(project);
-            await queryClient.invalidateQueries({
-                queryKey: ["projects", userId],
-            });
-
-            if (username) {
-                router.push(
-                    `/${encodeURIComponent(username)}/${encodeURIComponent(project.name)}/`,
-                );
-            }
-        },
-        onError: (err) => {
-            setCreateError(
-                err instanceof Error
-                    ? err.message
-                    : "Failed to create project.",
-            );
-        },
-    });
 
     const linksDisabled = !currentProject;
 
@@ -277,7 +211,6 @@ export default function ProjectSidebar() {
                                     className="flex w-full items-center justify-center gap-2 rounded-lg bg-purple-600/20 px-4 py-2 text-sm font-medium text-purple-200 transition-colors cursor-pointer hover:bg-purple-600/30"
                                     onClick={() => {
                                         close();
-                                        setCreateError(null);
                                         setCreateOpen(true);
                                     }}
                                 >
@@ -371,115 +304,19 @@ export default function ProjectSidebar() {
                     )}
                 </div>
 
-                <Popup
+                <CreateProject
                     open={createOpen}
-                    onOpenChange={(next) => {
-                        setCreateOpen(next);
-                        if (next) {
-                            setCreateError(null);
-                            // Keep existing values if user reopens quickly; only clear on success.
+                    onOpenChange={setCreateOpen}
+                    username={username}
+                    onCreated={(project) => {
+                        setCurrentProject(project);
+                        if (username) {
+                            router.push(
+                                `/${encodeURIComponent(username)}/${encodeURIComponent(project.name)}/`,
+                            );
                         }
                     }}
-                    title="Create project"
-                    description="Create a new project for your account."
-                    initialFocusRef={createNameRef}
-                    footer={
-                        <div className="flex items-center justify-end gap-2">
-                            <button
-                                type="button"
-                                className="rounded-lg border border-slate-700 bg-slate-900/60 px-4 py-2 text-sm font-medium text-slate-200 transition-colors hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                onClick={() => setCreateOpen(false)}
-                                disabled={createProjectMutation.isPending}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                className="rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors hover:bg-purple-600/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                onClick={() => {
-                                    setCreateError(null);
-                                    const trimmed = createName.trim();
-                                    if (!trimmed) {
-                                        setCreateError(
-                                            "Project name is required.",
-                                        );
-                                        return;
-                                    }
-                                    createProjectMutation.mutate({
-                                        name: trimmed,
-                                        description: createDescription.trim()
-                                            ? createDescription.trim()
-                                            : null,
-                                        isPublic: createIsPublic,
-                                    });
-                                }}
-                                disabled={createProjectMutation.isPending}
-                            >
-                                {createProjectMutation.isPending
-                                    ? "Creating…"
-                                    : "Create"}
-                            </button>
-                        </div>
-                    }
-                >
-                    <div className="flex flex-col gap-4">
-                        {createError && (
-                            <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-                                {createError}
-                            </div>
-                        )}
-
-                        <div className="flex flex-col gap-2">
-                            <label className="text-sm font-medium text-slate-200">
-                                Name
-                            </label>
-                            <input
-                                ref={createNameRef}
-                                value={createName}
-                                onChange={(e) => setCreateName(e.target.value)}
-                                placeholder="My project"
-                                className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                disabled={createProjectMutation.isPending}
-                            />
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                            <label className="text-sm font-medium text-slate-200">
-                                Description
-                            </label>
-                            <textarea
-                                value={createDescription}
-                                onChange={(e) =>
-                                    setCreateDescription(e.target.value)
-                                }
-                                placeholder="Optional"
-                                rows={3}
-                                className="resize-none rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                disabled={createProjectMutation.isPending}
-                            />
-                        </div>
-
-                        <label className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2 text-sm text-slate-200">
-                            <input
-                                type="checkbox"
-                                checked={createIsPublic}
-                                onChange={(e) =>
-                                    setCreateIsPublic(e.target.checked)
-                                }
-                                disabled={createProjectMutation.isPending}
-                                className="h-4 w-4 accent-purple-500"
-                            />
-                            <div className="min-w-0">
-                                <div className="font-medium">
-                                    Public project
-                                </div>
-                                <div className="text-xs text-slate-400">
-                                    Allow others to view this project.
-                                </div>
-                            </div>
-                        </label>
-                    </div>
-                </Popup>
+                />
             </div>
         </aside>
     );
