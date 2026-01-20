@@ -64,6 +64,10 @@ namespace ProductionCalculator.Business.Services
                 validRecipes.Add(recipe);
             }
 
+            // Limit string lengths
+            name = TruncateHelper.TruncateString(name, 255);
+            description = TruncateHelper.TruncateStringNullable(description, 1000);
+
             var puid = PuidHelper.GeneratePuid();
 
             // Create machine and save to database
@@ -134,6 +138,10 @@ namespace ProductionCalculator.Business.Services
                 }
                 validRecipes.Add(recipe);
             }
+
+            // Limit string lengths
+            name = TruncateHelper.TruncateString(name, 255);
+            description = TruncateHelper.TruncateStringNullable(description, 1000);
 
             // Update machine and save to database
             machine.Name = name;

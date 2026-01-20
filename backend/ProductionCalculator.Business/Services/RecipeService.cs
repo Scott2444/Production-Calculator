@@ -62,11 +62,9 @@ namespace ProductionCalculator.Business.Services
             // Check baseCraftingTime is positive
             if (baseCraftingTime <= 0) return ServiceResult<RecipeResponse>.Fail(ServiceStatus.BadRequest400, "Base crafting time must be positive.");
 
-            // Limit description length
-            if (description != null && description.Length > 1000)
-            {
-                description = description.Substring(0, 1000);
-            }
+            // Limit string lengths
+            name = TruncateHelper.TruncateString(name, 255);
+            description = TruncateHelper.TruncateStringNullable(description, 1000);
 
             // Generate new PUID
             var puid = await PuidHelper.GenerateUniquePuidAsync(_repo.PuidExists);
@@ -126,11 +124,9 @@ namespace ProductionCalculator.Business.Services
             // Check baseCraftingTime is positive
             if (baseCraftingTime <= 0) return ServiceResult<RecipeResponse>.Fail(ServiceStatus.BadRequest400, "Base crafting time must be positive.");
 
-            // Limit description length
-            if (description != null && description.Length > 1000)
-            {
-                description = description.Substring(0, 1000);
-            }
+            // Limit string lengths
+            name = TruncateHelper.TruncateString(name, 255);
+            description = TruncateHelper.TruncateStringNullable(description, 1000);
 
             // Update recipe in DB
             recipe.Name = name;

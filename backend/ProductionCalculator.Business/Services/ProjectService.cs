@@ -39,11 +39,9 @@ namespace ProductionCalculator.Business.Services
                 return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Alias project PUID is invalid.");
             }
 
-            // Limit description length
-            if (description != null && description.Length > 1000)
-            {
-                description = description.Substring(0, 1000);
-            }
+            // Limit string lengths
+            name = TruncateHelper.TruncateString(name, 255);
+            description = TruncateHelper.TruncateStringNullable(description, 1000);
 
             // Generate new PUID
             var puid = await PuidHelper.GenerateUniquePuidAsync(_repo.PuidExists);
@@ -88,11 +86,9 @@ namespace ProductionCalculator.Business.Services
                 return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Alias project PUID is invalid.");
             }
 
-            // Limit description length
-            if (description != null && description.Length > 1000)
-            {
-                description = description.Substring(0, 1000);
-            }
+            // Limit string lengths
+            name = TruncateHelper.TruncateString(name, 255);
+            description = TruncateHelper.TruncateStringNullable(description, 1000);
 
             project.Name = name;
             project.Description = description;

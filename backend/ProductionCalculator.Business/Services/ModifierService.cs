@@ -40,11 +40,9 @@ namespace ProductionCalculator.Business.Services
             var existingModifiers = await _repo.GetModifiersByProjectId(project.Project_Id);
             if (existingModifiers.Any(p => p.Name == name)) return ServiceResult<Modifier>.Fail(ServiceStatus.Conflict409, "Modifier name already exists for this project.");
 
-            // Limit description length
-            if (description != null && description.Length > 1000)
-            {
-                description = description.Substring(0, 1000);
-            }
+            // Limit string lengths
+            name = TruncateHelper.TruncateString(name, 255);
+            description = TruncateHelper.TruncateStringNullable(description, 1000);
 
             // Generate new PUID
             var puid = await PuidHelper.GenerateUniquePuidAsync(_repo.PuidExists);
@@ -82,11 +80,9 @@ namespace ProductionCalculator.Business.Services
             var existingModifiers = await _repo.GetModifiersByProjectId(project.Project_Id);
             if (existingModifiers.Any(p => p.Name == name && p.Puid != puid)) return ServiceResult<Modifier>.Fail(ServiceStatus.Conflict409, "Modifier name already exists for this project.");
 
-            // Limit description length
-            if (description != null && description.Length > 1000)
-            {
-                description = description.Substring(0, 1000);
-            }
+            // Limit string lengths
+            name = TruncateHelper.TruncateString(name, 255);
+            description = TruncateHelper.TruncateStringNullable(description, 1000);
 
             modifier.Name = name;
             modifier.Description = description ?? string.Empty;

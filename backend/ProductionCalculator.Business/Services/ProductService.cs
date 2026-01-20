@@ -39,11 +39,9 @@ namespace ProductionCalculator.Business.Services
             var existingProducts = await _repo.GetProductsByProjectId(project.Project_Id);
             if (existingProducts.Any(p => p.Name == name)) return ServiceResult<Product>.Fail(ServiceStatus.Conflict409, "Product name already exists for this project.");
 
-            // Limit description length
-            if (description != null && description.Length > 1000)
-            {
-                description = description.Substring(0, 1000);
-            }
+            // Limit string lengths
+            name = TruncateHelper.TruncateString(name, 255);
+            description = TruncateHelper.TruncateStringNullable(description, 1000);
 
             // Generate new PUID
             var puid = await PuidHelper.GenerateUniquePuidAsync(_repo.PuidExists);
@@ -112,6 +110,10 @@ namespace ProductionCalculator.Business.Services
             // Check if name already exists for this project
             var existingProducts = await _repo.GetProductsByProjectId(project.Project_Id);
             if (existingProducts.Any(p => p.Name == name && p.Product_Id != product.Product_Id)) return ServiceResult<Product>.Fail(ServiceStatus.Conflict409, "Product name already exists for this project.");
+
+            // Limit string lengths
+            name = TruncateHelper.TruncateString(name, 255);
+            description = TruncateHelper.TruncateStringNullable(description, 1000);
             
             // Update fields if provided
             product.Name = name;
