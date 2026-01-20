@@ -73,7 +73,7 @@ export async function deleteProject(
         method: "DELETE",
     });
     if (!res.ok) {
-        let message = "Failed to delete project.";
+        const message = "Failed to delete project.";
         throw new Error(message);
     }
 }

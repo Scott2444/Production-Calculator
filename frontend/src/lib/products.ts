@@ -80,7 +80,7 @@ export async function deleteProduct(
         },
     );
     if (!res.ok) {
-        let message = "Failed to delete product.";
+        const message = "Failed to delete product.";
         throw new Error(message);
     }
 }

@@ -14,22 +14,27 @@ import {
 } from "@tabler/icons-react";
 import { useLogout } from "@/lib/logout";
 
-type NavBarProps = {
-    currentPage?: "Home" | "Projects" | "Explore" | "Docs";
-};
-
-function getCurrentNavSection(
-    pathname: string,
-): NonNullable<NavBarProps["currentPage"]> {
+function getCurrentNavSection(pathname: string) {
     if (pathname === "/") return "Home";
 
     const firstSlug = pathname.split("/").filter(Boolean)[0]?.toLowerCase();
     if (firstSlug === "explore") return "Explore";
     if (firstSlug === "docs") return "Docs";
 
+    if (
+        firstSlug === "settings" ||
+        firstSlug === "verify" ||
+        firstSlug === "login"
+    )
+        return "";
+
     // Anything else at the top-level is treated as a username route.
     return "Projects";
 }
+
+type NavBarProps = {
+    currentPage?: string;
+};
 
 export default function NavBar({
     currentPage,
