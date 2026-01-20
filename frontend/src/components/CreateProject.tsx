@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Popup from "@/components/Popup";
 import { useAuth } from "@/context/AuthContext";
 import { useProtectedApi } from "@/lib/api";
-import { postNewProject, NewProjectPayload } from "@/lib/projects";
+import { postNewProject, UpsertProjectPayload } from "@/lib/projects";
 
 export interface CreateProjectResponse {
     puid: string;
@@ -43,7 +43,7 @@ export default function CreateProject({
     const nameRef = useRef<HTMLInputElement>(null);
 
     const createProjectMutation = useMutation({
-        mutationFn: async (payload: NewProjectPayload) => {
+        mutationFn: async (payload: UpsertProjectPayload) => {
             const response = await postNewProject(protectedApi, payload);
             return response as CreateProjectResponse;
         },
