@@ -15,6 +15,7 @@ import Popup from "@/components/Popup";
 import { useAuth } from "@/context/AuthContext";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchProjects } from "@/lib/projects";
+import { useSearch } from "@/hooks/Search";
 import {
     IconCheck,
     IconEdit,
@@ -23,7 +24,6 @@ import {
     IconTrash,
     IconX,
 } from "@tabler/icons-react";
-import uFuzzy from "@leeoniya/ufuzzy";
 import ReactMarkdown from "react-markdown";
 
 interface Project {
@@ -106,20 +106,13 @@ export default function Products() {
         );
     }, [products]);
 
-    const uf = useMemo(() => new uFuzzy(), []);
-    const [searchText, setSearchText] = useState("");
-
-    const filteredProducts = useMemo(() => {
-        const needle = searchText.trim();
-        if (!needle) return sortedProducts;
-
-        const haystack = sortedProducts.map(
-            (p) => `${p.name} ${p.description ?? ""}`,
-        );
-        const idxs = uf.filter(haystack, needle);
-        if (!idxs || idxs.length === 0) return [];
-        return idxs.map((idx) => sortedProducts[idx]);
-    }, [searchText, sortedProducts, uf]);
+    const {
+        searchText,
+        setSearchText,
+        filteredItems: filteredProducts,
+    } = useSearch(sortedProducts, {
+        toText: (p) => `${p.name} ${p.description ?? ""}`,
+    });
 
     const canEdit = loggedIn && Boolean(currentProject);
 

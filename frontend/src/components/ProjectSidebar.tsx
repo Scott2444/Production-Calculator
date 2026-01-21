@@ -166,42 +166,50 @@ export default function ProjectSidebar() {
 
                                     {!isLoading &&
                                         !error &&
-                                        projects?.map((project: Project) => {
-                                            const selected =
-                                                project.puid ===
-                                                currentProject?.puid;
-                                            return (
-                                                <button
-                                                    type="button"
-                                                    key={project.puid}
-                                                    className={`group flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer hover:bg-slate-800/70 ${
-                                                        selected
-                                                            ? "bg-purple-600/15 text-slate-100"
-                                                            : "text-slate-200"
-                                                    }`}
-                                                    onClick={() =>
-                                                        handleSelectProject(
-                                                            project,
-                                                            close,
-                                                        )
-                                                    }
-                                                >
-                                                    <span className="truncate">
-                                                        {project.name}
-                                                    </span>
-                                                    <span
-                                                        className={`shrink-0 ${
+                                        projects
+                                            ?.sort((a: Project, b: Project) =>
+                                                b.updatedAt.localeCompare(
+                                                    a.updatedAt,
+                                                ),
+                                            )
+                                            .map((project: Project) => {
+                                                const selected =
+                                                    project.puid ===
+                                                    currentProject?.puid;
+                                                return (
+                                                    <button
+                                                        type="button"
+                                                        key={project.puid}
+                                                        className={`group flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer hover:bg-slate-800/70 ${
                                                             selected
-                                                                ? "text-purple-300"
-                                                                : "text-slate-500 opacity-0 group-hover:opacity-100"
+                                                                ? "bg-purple-600/15 text-slate-100"
+                                                                : "text-slate-200"
                                                         }`}
-                                                        aria-hidden="true"
+                                                        onClick={() =>
+                                                            handleSelectProject(
+                                                                project,
+                                                                close,
+                                                            )
+                                                        }
                                                     >
-                                                        <IconCheck size={16} />
-                                                    </span>
-                                                </button>
-                                            );
-                                        })}
+                                                        <span className="truncate">
+                                                            {project.name}
+                                                        </span>
+                                                        <span
+                                                            className={`shrink-0 ${
+                                                                selected
+                                                                    ? "text-purple-300"
+                                                                    : "text-slate-500 opacity-0 group-hover:opacity-100"
+                                                            }`}
+                                                            aria-hidden="true"
+                                                        >
+                                                            <IconCheck
+                                                                size={16}
+                                                            />
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
                                 </div>
                             </div>
 

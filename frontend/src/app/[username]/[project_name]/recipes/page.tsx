@@ -1,9 +1,7 @@
 "use client";
 
 import ProjectPageLayout from "@/components/ProjectPageLayout";
-import NavBar from "@/components/NavBar";
 import DropDown from "@/components/DropDown";
-import ProjectSidebar from "@/components/ProjectSidebar";
 import Popup from "@/components/Popup";
 import { useAuth } from "@/context/AuthContext";
 import { useProtectedApi } from "@/lib/api";
@@ -25,7 +23,7 @@ import {
     IconX,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import uFuzzy from "@leeoniya/ufuzzy";
+import { useSearch } from "@/hooks/Search";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -200,14 +198,8 @@ export default function Recipes() {
         );
     }, [recipes]);
 
-    const uf = useMemo(() => new uFuzzy(), []);
-    const [searchText, setSearchText] = useState("");
-
-    const filteredRecipes = useMemo(() => {
-        const needle = searchText.trim();
-        if (!needle) return sortedRecipes;
-
-        const haystack = sortedRecipes.map((r) => {
+    const recipeToText = useMemo(() => {
+        return (r: Recipe) => {
             const inputNames = normalizeExchanges(r.inputs)
                 .map((i) => productNameByPuid.get(i.puid) ?? i.puid)
                 .join(" ");
@@ -215,12 +207,16 @@ export default function Recipes() {
                 .map((o) => productNameByPuid.get(o.puid) ?? o.puid)
                 .join(" ");
             return `${r.name} ${r.description ?? ""} ${inputNames} ${outputNames}`;
-        });
+        };
+    }, [productNameByPuid]);
 
-        const idxs = uf.filter(haystack, needle);
-        if (!idxs || idxs.length === 0) return [];
-        return idxs.map((idx) => sortedRecipes[idx]);
-    }, [productNameByPuid, searchText, sortedRecipes, uf]);
+    const {
+        searchText,
+        setSearchText,
+        filteredItems: filteredRecipes,
+    } = useSearch(sortedRecipes, {
+        toText: recipeToText,
+    });
 
     const canEdit = loggedIn && Boolean(currentProject);
 
