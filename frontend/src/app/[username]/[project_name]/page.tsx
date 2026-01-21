@@ -1,9 +1,8 @@
 "use client";
 
-import NavBar from "@/components/NavBar";
+import ProjectPageLayout from "@/components/ProjectPageLayout";
 import Popup from "@/components/Popup";
 import { IconEdit, IconTrash } from "@tabler/icons-react";
-import ProjectSidebar from "@/components/ProjectSidebar";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -252,126 +251,119 @@ export default function ProjectPage() {
         modifiersQuery.error;
 
     return (
-        <div className="min-h-screen flex flex-col">
-            <NavBar />
-            <div className="flex flex-1 min-h-0">
-                <ProjectSidebar />
-                <div className="flex-1 p-6 min-w-0">
-                    <div className="flex flex-col gap-4">
-                        <div className="flex items-start justify-between gap-4">
-                            <div className="min-w-0">
-                                <h1 className="truncate text-2xl font-semibold text-slate-100">
-                                    {currentProject?.name ||
-                                        routeProjectName ||
-                                        "Project"}
-                                </h1>
-                                <div className="mt-1 text-sm text-slate-400">
-                                    Owner: {username || "(unknown)"}
-                                    {currentProject && (
-                                        <span className="ml-2 rounded-md border border-slate-700 bg-slate-900/50 px-2 py-0.5 text-xs text-slate-300">
-                                            {currentProject.isPublic
-                                                ? "Public"
-                                                : "Private"}
-                                        </span>
-                                    )}
-                                </div>
-                                {currentProject?.description && (
-                                    <div className="mt-2 text-sm text-slate-300 prose prose-invert max-w-none">
-                                        <ReactMarkdown>
-                                            {currentProject.description}
-                                        </ReactMarkdown>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="flex gap-2 mt-2">
-                                <button
-                                    type="button"
-                                    className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:opacity-60"
-                                    title="Edit project"
-                                    aria-label="Edit project"
-                                    onClick={() => setEditOpen(true)}
-                                    disabled={!loggedIn || !currentProject}
-                                >
-                                    <IconEdit size={20} />
-                                </button>
-                                <button
-                                    type="button"
-                                    className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-red-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-red-950/60 hover:text-red-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:opacity-60"
-                                    title="Delete project"
-                                    aria-label="Delete project"
-                                    onClick={() => setDeleteOpen(true)}
-                                    disabled={!loggedIn || !currentProject}
-                                >
-                                    <IconTrash size={20} />
-                                </button>
-                            </div>
-                        </div>
-
-                        {isLoading && (
-                            <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
-                                Loading project…
-                            </div>
-                        )}
-                        {!isLoading && error && (
-                            <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-                                Failed to load projects.
-                            </div>
-                        )}
-                        {!isLoading &&
-                            !error &&
-                            routeProjectName &&
-                            !currentProject && (
-                                <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-300">
-                                    Project not found: {routeProjectName}
-                                </div>
+        <ProjectPageLayout>
+            <div className="flex flex-col gap-4">
+                <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                        <h1 className="truncate text-2xl font-semibold text-slate-100">
+                            {currentProject?.name ||
+                                routeProjectName ||
+                                "Project"}
+                        </h1>
+                        <div className="mt-1 text-sm text-slate-400">
+                            Owner: {username || "(unknown)"}
+                            {currentProject && (
+                                <span className="ml-2 rounded-md border border-slate-700 bg-slate-900/50 px-2 py-0.5 text-xs text-slate-300">
+                                    {currentProject.isPublic
+                                        ? "Public"
+                                        : "Private"}
+                                </span>
                             )}
-
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                            {summaryItems.map((item) => {
-                                const showPlaceholder = item.value === null;
-                                const isUnknown =
-                                    !showPlaceholder &&
-                                    typeof item.value === "number" &&
-                                    item.value < 0;
-
-                                const displayValue = showPlaceholder
-                                    ? "—"
-                                    : isUnknown
-                                      ? "?"
-                                      : String(item.value ?? 0);
-
-                                return (
-                                    <div
-                                        key={item.label}
-                                        className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4"
-                                    >
-                                        <div className="text-xs font-medium uppercase tracking-wider text-slate-400">
-                                            {item.label}
-                                        </div>
-                                        <div className="mt-2 text-3xl font-semibold text-slate-100">
-                                            {countsLoading &&
-                                            item.label !== "Workflows"
-                                                ? "…"
-                                                : displayValue}
-                                        </div>
-                                        {item.helper && (
-                                            <div className="mt-1 text-xs text-slate-500">
-                                                {item.helper}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
                         </div>
-
-                        {countsError && (
-                            <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-                                Failed to load one or more project components.
+                        {currentProject?.description && (
+                            <div className="mt-2 text-sm text-slate-300 prose prose-invert max-w-none">
+                                <ReactMarkdown>
+                                    {currentProject.description}
+                                </ReactMarkdown>
                             </div>
                         )}
                     </div>
+
+                    <div className="flex gap-2 mt-2">
+                        <button
+                            type="button"
+                            className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:opacity-60"
+                            title="Edit project"
+                            aria-label="Edit project"
+                            onClick={() => setEditOpen(true)}
+                            disabled={!loggedIn || !currentProject}
+                        >
+                            <IconEdit size={20} />
+                        </button>
+                        <button
+                            type="button"
+                            className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-red-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-red-950/60 hover:text-red-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:opacity-60"
+                            title="Delete project"
+                            aria-label="Delete project"
+                            onClick={() => setDeleteOpen(true)}
+                            disabled={!loggedIn || !currentProject}
+                        >
+                            <IconTrash size={20} />
+                        </button>
+                    </div>
                 </div>
+
+                {isLoading && (
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
+                        Loading project…
+                    </div>
+                )}
+                {!isLoading && error && (
+                    <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+                        Failed to load projects.
+                    </div>
+                )}
+                {!isLoading &&
+                    !error &&
+                    routeProjectName &&
+                    !currentProject && (
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-300">
+                            Project not found: {routeProjectName}
+                        </div>
+                    )}
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {summaryItems.map((item) => {
+                        const showPlaceholder = item.value === null;
+                        const isUnknown =
+                            !showPlaceholder &&
+                            typeof item.value === "number" &&
+                            item.value < 0;
+
+                        const displayValue = showPlaceholder
+                            ? "—"
+                            : isUnknown
+                              ? "?"
+                              : String(item.value ?? 0);
+
+                        return (
+                            <div
+                                key={item.label}
+                                className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4"
+                            >
+                                <div className="text-xs font-medium uppercase tracking-wider text-slate-400">
+                                    {item.label}
+                                </div>
+                                <div className="mt-2 text-3xl font-semibold text-slate-100">
+                                    {countsLoading && item.label !== "Workflows"
+                                        ? "…"
+                                        : displayValue}
+                                </div>
+                                {item.helper && (
+                                    <div className="mt-1 text-xs text-slate-500">
+                                        {item.helper}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {countsError && (
+                    <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+                        Failed to load one or more project components.
+                    </div>
+                )}
             </div>
 
             <Popup
@@ -557,6 +549,6 @@ export default function ProjectPage() {
                     </div>
                 </div>
             </Popup>
-        </div>
+        </ProjectPageLayout>
     );
 }

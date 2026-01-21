@@ -1,7 +1,6 @@
 "use client";
 
-import NavBar from "@/components/NavBar";
-import ProjectSidebar from "@/components/ProjectSidebar";
+import ProjectPageLayout from "@/components/ProjectPageLayout";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -254,228 +253,218 @@ export default function Products() {
     });
 
     return (
-        <div className="min-h-screen flex flex-col">
-            <NavBar />
-            <div className="flex flex-1 min-h-0">
-                <ProjectSidebar />
-                <div className="flex-1 p-6 min-w-0">
-                    <div className="flex flex-col gap-4">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="min-w-0">
-                                <h1 className="truncate text-2xl font-semibold text-slate-100">
-                                    Products
-                                </h1>
-                                <div className="mt-1 text-sm text-slate-400">
-                                    {routeProjectName ? (
-                                        <span>Project: {routeProjectName}</span>
-                                    ) : (
-                                        <span>Select a project</span>
-                                    )}
-                                    {username ? (
-                                        <span> • Owner: {username}</span>
-                                    ) : null}
-                                </div>
-                            </div>
-
-                            <button
-                                type="button"
-                                className="inline-flex items-center gap-2 self-start rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                onClick={() => {
-                                    setCreateError(null);
-                                    setCreateOpen(true);
-                                }}
-                                disabled={!canEdit}
-                                title={
-                                    canEdit
-                                        ? "Add product"
-                                        : "Sign in to manage products"
-                                }
-                            >
-                                <IconPlus size={18} />
-                                Add product
-                            </button>
-                        </div>
-
-                        {projectsQuery.isLoading && (
-                            <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
-                                Loading project…
-                            </div>
-                        )}
-                        {!projectsQuery.isLoading && projectsQuery.error && (
-                            <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-                                Failed to load projects.
-                            </div>
-                        )}
-                        {!projectsQuery.isLoading &&
-                            !projectsQuery.error &&
-                            routeProjectName &&
-                            !currentProject && (
-                                <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-300">
-                                    Project not found: {routeProjectName}
-                                </div>
+        <ProjectPageLayout>
+            <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                        <h1 className="truncate text-2xl font-semibold text-slate-100">
+                            Products
+                        </h1>
+                        <div className="mt-1 text-sm text-slate-400">
+                            {routeProjectName ? (
+                                <span>Project: {routeProjectName}</span>
+                            ) : (
+                                <span>Select a project</span>
                             )}
-
-                        <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-                            <div className="flex items-center gap-3">
-                                <div className="text-slate-400">
-                                    <IconSearch size={18} />
-                                </div>
-                                <input
-                                    value={searchText}
-                                    onChange={(e) =>
-                                        setSearchText(e.target.value)
-                                    }
-                                    placeholder="Search products…"
-                                    className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                    disabled={!projectId}
-                                />
-                            </div>
+                            {username ? (
+                                <span> • Owner: {username}</span>
+                            ) : null}
                         </div>
+                    </div>
 
-                        {deleteError && (
-                            <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0 align-middle">
-                                        {deleteError}
-                                    </div>
-                                    <button
-                                        type="button"
-                                        className="rounded-md p-1 text-red-200/90 transition-colors hover:bg-red-900/20 hover:text-red-100 focus:outline-none focus:ring-2 focus:ring-red-500/40"
-                                        onClick={() => setDeleteError(null)}
-                                        aria-label="Dismiss error"
-                                        title="Dismiss"
-                                    >
-                                        <IconX size={18} />
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                    <button
+                        type="button"
+                        className="inline-flex items-center gap-2 self-start rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={() => {
+                            setCreateError(null);
+                            setCreateOpen(true);
+                        }}
+                        disabled={!canEdit}
+                        title={
+                            canEdit
+                                ? "Add product"
+                                : "Sign in to manage products"
+                        }
+                    >
+                        <IconPlus size={18} />
+                        Add product
+                    </button>
+                </div>
 
-                        {productsQuery.isLoading && projectId && (
-                            <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
-                                Loading products…
-                            </div>
-                        )}
+                {projectsQuery.isLoading && (
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
+                        Loading project…
+                    </div>
+                )}
+                {!projectsQuery.isLoading && projectsQuery.error && (
+                    <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+                        Failed to load projects.
+                    </div>
+                )}
+                {!projectsQuery.isLoading &&
+                    !projectsQuery.error &&
+                    routeProjectName &&
+                    !currentProject && (
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-300">
+                            Project not found: {routeProjectName}
+                        </div>
+                    )}
 
-                        {!productsQuery.isLoading && productsQuery.error && (
-                            <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-                                Failed to load products.
-                            </div>
-                        )}
-
-                        {!productsQuery.isLoading &&
-                            !productsQuery.error &&
-                            projectId &&
-                            filteredProducts.length === 0 && (
-                                <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-6 text-sm text-slate-300">
-                                    {searchText.trim()
-                                        ? "No products match your search."
-                                        : "No products yet."}
-                                </div>
-                            )}
-
-                        {filteredProducts.length > 0 && (
-                            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                                {filteredProducts.map((product) => (
-                                    <div
-                                        key={product.puid}
-                                        className="rounded-xl border border-slate-800 bg-slate-900/40 p-4"
-                                    >
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <div className="truncate text-base font-semibold text-slate-100">
-                                                    {product.name}
-                                                </div>
-                                                {product.description ? (
-                                                    <div className="mt-1 text-sm text-slate-300">
-                                                        <ReactMarkdown>
-                                                            {
-                                                                product.description
-                                                            }
-                                                        </ReactMarkdown>
-                                                    </div>
-                                                ) : (
-                                                    <div className="mt-1 text-sm text-slate-500">
-                                                        No description
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="flex gap-2">
-                                                <button
-                                                    type="button"
-                                                    className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                    title="Edit product"
-                                                    aria-label="Edit product"
-                                                    onClick={() => {
-                                                        setEditTarget(product);
-                                                        setEditError(null);
-                                                        setEditOpen(true);
-                                                    }}
-                                                    disabled={!canEdit}
-                                                >
-                                                    <IconEdit size={20} />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    data-delete-confirm="true"
-                                                    className={
-                                                        confirmDeletePuid ===
-                                                        product.puid
-                                                            ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                            : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                    }
-                                                    title={
-                                                        confirmDeletePuid ===
-                                                        product.puid
-                                                            ? "Click again to confirm"
-                                                            : "Delete product"
-                                                    }
-                                                    aria-label={
-                                                        confirmDeletePuid ===
-                                                        product.puid
-                                                            ? "Confirm delete product"
-                                                            : "Delete product"
-                                                    }
-                                                    onClick={() => {
-                                                        if (!canEdit) return;
-
-                                                        setDeleteError(null);
-
-                                                        if (
-                                                            confirmDeletePuid ===
-                                                            product.puid
-                                                        ) {
-                                                            deleteProductMutation.mutate(
-                                                                product.puid,
-                                                            );
-                                                            return;
-                                                        }
-
-                                                        setConfirmDeletePuid(
-                                                            product.puid,
-                                                        );
-                                                    }}
-                                                    disabled={
-                                                        !canEdit ||
-                                                        deleteProductMutation.isPending
-                                                    }
-                                                >
-                                                    {confirmDeletePuid ===
-                                                    product.puid ? (
-                                                        <IconCheck size={20} />
-                                                    ) : (
-                                                        <IconTrash size={20} />
-                                                    )}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+                    <div className="flex items-center gap-3">
+                        <div className="text-slate-400">
+                            <IconSearch size={18} />
+                        </div>
+                        <input
+                            value={searchText}
+                            onChange={(e) => setSearchText(e.target.value)}
+                            placeholder="Search products…"
+                            className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                            disabled={!projectId}
+                        />
                     </div>
                 </div>
+
+                {deleteError && (
+                    <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 align-middle">
+                                {deleteError}
+                            </div>
+                            <button
+                                type="button"
+                                className="rounded-md p-1 text-red-200/90 transition-colors hover:bg-red-900/20 hover:text-red-100 focus:outline-none focus:ring-2 focus:ring-red-500/40"
+                                onClick={() => setDeleteError(null)}
+                                aria-label="Dismiss error"
+                                title="Dismiss"
+                            >
+                                <IconX size={18} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {productsQuery.isLoading && projectId && (
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
+                        Loading products…
+                    </div>
+                )}
+
+                {!productsQuery.isLoading && productsQuery.error && (
+                    <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+                        Failed to load products.
+                    </div>
+                )}
+
+                {!productsQuery.isLoading &&
+                    !productsQuery.error &&
+                    projectId &&
+                    filteredProducts.length === 0 && (
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-6 text-sm text-slate-300">
+                            {searchText.trim()
+                                ? "No products match your search."
+                                : "No products yet."}
+                        </div>
+                    )}
+
+                {filteredProducts.length > 0 && (
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        {filteredProducts.map((product) => (
+                            <div
+                                key={product.puid}
+                                className="rounded-xl border border-slate-800 bg-slate-900/40 p-4"
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <div className="truncate text-base font-semibold text-slate-100">
+                                            {product.name}
+                                        </div>
+                                        {product.description ? (
+                                            <div className="mt-1 text-sm text-slate-300">
+                                                <ReactMarkdown>
+                                                    {product.description}
+                                                </ReactMarkdown>
+                                            </div>
+                                        ) : (
+                                            <div className="mt-1 text-sm text-slate-500">
+                                                No description
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                            title="Edit product"
+                                            aria-label="Edit product"
+                                            onClick={() => {
+                                                setEditTarget(product);
+                                                setEditError(null);
+                                                setEditOpen(true);
+                                            }}
+                                            disabled={!canEdit}
+                                        >
+                                            <IconEdit size={20} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            data-delete-confirm="true"
+                                            className={
+                                                confirmDeletePuid ===
+                                                product.puid
+                                                    ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                    : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                            }
+                                            title={
+                                                confirmDeletePuid ===
+                                                product.puid
+                                                    ? "Click again to confirm"
+                                                    : "Delete product"
+                                            }
+                                            aria-label={
+                                                confirmDeletePuid ===
+                                                product.puid
+                                                    ? "Confirm delete product"
+                                                    : "Delete product"
+                                            }
+                                            onClick={() => {
+                                                if (!canEdit) return;
+
+                                                setDeleteError(null);
+
+                                                if (
+                                                    confirmDeletePuid ===
+                                                    product.puid
+                                                ) {
+                                                    deleteProductMutation.mutate(
+                                                        product.puid,
+                                                    );
+                                                    return;
+                                                }
+
+                                                setConfirmDeletePuid(
+                                                    product.puid,
+                                                );
+                                            }}
+                                            disabled={
+                                                !canEdit ||
+                                                deleteProductMutation.isPending
+                                            }
+                                        >
+                                            {confirmDeletePuid ===
+                                            product.puid ? (
+                                                <IconCheck size={20} />
+                                            ) : (
+                                                <IconTrash size={20} />
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <Popup
@@ -653,6 +642,6 @@ export default function Products() {
                     </div>
                 </div>
             </Popup>
-        </div>
+        </ProjectPageLayout>
     );
 }
