@@ -149,7 +149,7 @@ namespace ProductionCalculator.Business.Services
             // Refresh Token
             var refreshToken = await GenerateRefreshToken(user.User_Id);
 
-            return (ServiceResult<AuthResponse>.SuccessResult(new AuthResponse { Puid = puid }), accessToken, refreshToken);
+            return (ServiceResult<AuthResponse>.SuccessResult(new AuthResponse { Puid = puid, Username = user.Username }), accessToken, refreshToken);
         }
         public async Task<(ServiceResult<AuthResponse> result, string? accessToken)> RefreshToken(string? refreshToken)
         {
@@ -172,7 +172,7 @@ namespace ProductionCalculator.Business.Services
                 return (ServiceResult<AuthResponse>.Fail(ServiceStatus.InternalServerError500, "Invalid role."), null);
 
             var newAccessToken = _jwtHelper.GenerateToken(user.Puid, role.Role_Name);
-            return (ServiceResult<AuthResponse>.SuccessResult(new AuthResponse { Puid = user.Puid }), newAccessToken);
+            return (ServiceResult<AuthResponse>.SuccessResult(new AuthResponse { Puid = user.Puid, Username = user.Username }), newAccessToken);
         }
 
         public async Task<ServiceResult> RequestVerificationCode()

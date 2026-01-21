@@ -1,6 +1,7 @@
 "use client";
 
 import ProjectPageLayout from "@/components/ProjectPageLayout";
+import { useProject } from "@/context/ProjectContext";
 import Popup from "@/components/Popup";
 import { IconEdit, IconTrash } from "@tabler/icons-react";
 import { useParams, useRouter } from "next/navigation";
@@ -36,14 +37,6 @@ interface SummaryItem {
     helper?: string;
 }
 
-function safeDecodeURIComponent(value: string): string {
-    try {
-        return decodeURIComponent(value);
-    } catch {
-        return value;
-    }
-}
-
 function getCount(value: unknown): number | null {
     if (!value) return 0;
     if (Array.isArray(value)) return value.length;
@@ -55,37 +48,13 @@ function getCount(value: unknown): number | null {
 }
 
 export default function ProjectPage() {
+    const { routeUsername, routeProjectName, currentProject, projectsQuery } =
+        useProject();
     const router = useRouter();
     const queryClient = useQueryClient();
-    const params = useParams<{ username: string; project_name: string }>();
-
-    const username = params?.username ?? "";
-    const routeProjectName = params?.project_name
-        ? safeDecodeURIComponent(params.project_name)
-        : "";
 
     const { userId, loggedIn } = useAuth();
     const protectedApi = useProtectedApi();
-    const {
-        data: projects,
-        isLoading,
-        error,
-    } = useQuery({
-        queryKey: ["projects", userId],
-        queryFn: () => fetchProjects(userId!, protectedApi),
-        staleTime: 5 * 60 * 1000,
-        enabled: Boolean(userId),
-    });
-
-    const [currentProject, setCurrentProject] = useState<Project | null>(null);
-
-    useEffect(() => {
-        if (!projects || !routeProjectName) return;
-        const match = (projects as Project[]).find(
-            (p) => p.name === routeProjectName,
-        );
-        setCurrentProject(match ?? null);
-    }, [projects, routeProjectName]);
 
     const projectId = currentProject?.puid ?? "";
 
@@ -159,12 +128,12 @@ export default function ProjectPage() {
             });
 
             if (
-                username &&
+                routeUsername &&
                 updated?.name &&
                 updated.name !== routeProjectName
             ) {
                 router.replace(
-                    `/${encodeURIComponent(username)}/${encodeURIComponent(updated.name)}/`,
+                    `/${encodeURIComponent(routeUsername)}/${encodeURIComponent(updated.name)}/`,
                 );
             }
         },
@@ -202,8 +171,8 @@ export default function ProjectPage() {
             await queryClient.invalidateQueries({
                 queryKey: ["projects", userId],
             });
-            if (username) {
-                router.push(`/${encodeURIComponent(username)}/`);
+            if (routeUsername) {
+                router.push(`/${encodeURIComponent(routeUsername)}/`);
             } else {
                 router.push("/");
             }
@@ -261,7 +230,7 @@ export default function ProjectPage() {
                                 "Project"}
                         </h1>
                         <div className="mt-1 text-sm text-slate-400">
-                            Owner: {username || "(unknown)"}
+                            Owner: {routeUsername || "(unknown)"}
                             {currentProject && (
                                 <span className="ml-2 rounded-md border border-slate-700 bg-slate-900/50 px-2 py-0.5 text-xs text-slate-300">
                                     {currentProject.isPublic
@@ -303,18 +272,18 @@ export default function ProjectPage() {
                     </div>
                 </div>
 
-                {isLoading && (
+                {projectsQuery.isLoading && (
                     <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
                         Loading project…
                     </div>
                 )}
-                {!isLoading && error && (
+                {!projectsQuery.isLoading && projectsQuery.error !== null && (
                     <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
                         Failed to load projects.
                     </div>
                 )}
-                {!isLoading &&
-                    !error &&
+                {!projectsQuery.isLoading &&
+                    !projectsQuery.error &&
                     routeProjectName &&
                     !currentProject && (
                         <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-300">

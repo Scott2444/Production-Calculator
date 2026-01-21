@@ -11,8 +11,10 @@ import React, {
 interface AuthContextType {
     loggedIn: boolean;
     userId?: string;
+    username?: string;
     setLoggedIn: (value: boolean) => void;
     setUserId: (id: string | undefined) => void;
+    setUsername: (name: string | undefined) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,6 +22,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [loggedIn, setLoggedIn] = useState(false);
     const [userId, setUserId] = useState<string | undefined>(undefined);
+    const [username, setUsername] = useState<string | undefined>(undefined);
     useEffect(() => {
         const checkAuth = async () => {
             // Check if the user is logged in
@@ -35,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (response.ok) {
                     const data = await response.json();
                     setUserId(data.puid);
+                    setUsername(data.username);
                 }
             }
         };
@@ -43,7 +47,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return (
         <AuthContext.Provider
-            value={{ loggedIn, setLoggedIn, userId, setUserId }}
+            value={{
+                loggedIn,
+                setLoggedIn,
+                userId,
+                setUserId,
+                username,
+                setUsername,
+            }}
         >
             {children}
         </AuthContext.Provider>

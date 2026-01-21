@@ -1,21 +1,33 @@
 ### Shared Components
 
+(DONE)
+
 1. Use ProjectPageLayout.tx for a project context hook.
 
 - use it for url parameter extraction, username, project_name
 - project queries
 - current project resolution
 
-2. Create useSearch() hook that takes items array and returns { searchText, setSearchText, filteredItems }
-3. Crud State Management
+(Created, not implemented)
+
+2. Project Context Hook
+
+- URL parameter extraction (username, project_name)
+- Projects query
+- Current project resolution
+- projectId derivation
+- canEdit logic
+
+3. Create useSearch() hook that takes items array and returns { searchText, setSearchText, filteredItems }
+4. Crud State Management
 
 - Create useCrudState() hook for managing opertions
 
-4. Delete confirmation logic
+5. Delete confirmation logic
 
 - useDeleteConfirmation() hook
 
-5. Loading/Error States
+6. Loading/Error States
 
 - Project loading/error messages
 - Item loading/error messages
