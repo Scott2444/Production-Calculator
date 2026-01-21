@@ -16,6 +16,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchProjects } from "@/lib/projects";
 import { useSearch } from "@/hooks/Search";
+import { useDeleteConfirmation } from "@/hooks/DeleteConfirmation";
 import {
     IconCheck,
     IconEdit,
@@ -190,38 +191,14 @@ export default function Products() {
         },
     });
 
-    const [confirmDeletePuid, setConfirmDeletePuid] = useState<string | null>(
-        null,
-    );
+    const deleteConfirm = useDeleteConfirmation<string>({
+        resetDeps: [projectId],
+    });
     const [deleteError, setDeleteError] = useState<string | null>(null);
 
     useEffect(() => {
-        setConfirmDeletePuid(null);
         setDeleteError(null);
     }, [projectId]);
-
-    useEffect(() => {
-        if (!confirmDeletePuid) return;
-
-        const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-            const target = event.target as HTMLElement | null;
-            if (!target) return;
-
-            const withinDeleteButton = target.closest(
-                '[data-delete-confirm="true"]',
-            );
-            if (withinDeleteButton) return;
-
-            setConfirmDeletePuid(null);
-        };
-
-        document.addEventListener("mousedown", handlePointerDown);
-        document.addEventListener("touchstart", handlePointerDown);
-        return () => {
-            document.removeEventListener("mousedown", handlePointerDown);
-            document.removeEventListener("touchstart", handlePointerDown);
-        };
-    }, [confirmDeletePuid]);
 
     const deleteProductMutation = useMutation({
         mutationFn: async (puid: string) => {
@@ -229,14 +206,14 @@ export default function Products() {
             await deleteProduct(projectId, puid, protectedApi);
         },
         onSuccess: async () => {
-            setConfirmDeletePuid(null);
+            deleteConfirm.reset();
             setDeleteError(null);
             await queryClient.invalidateQueries({
                 queryKey: ["products", projectId],
             });
         },
         onError: (err) => {
-            setConfirmDeletePuid(null);
+            deleteConfirm.reset();
             setDeleteError(
                 err instanceof Error
                     ? err.message
@@ -404,20 +381,23 @@ export default function Products() {
                                             type="button"
                                             data-delete-confirm="true"
                                             className={
-                                                confirmDeletePuid ===
-                                                product.puid
+                                                deleteConfirm.isConfirming(
+                                                    product.puid,
+                                                )
                                                     ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
                                                     : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
                                             }
                                             title={
-                                                confirmDeletePuid ===
-                                                product.puid
+                                                deleteConfirm.isConfirming(
+                                                    product.puid,
+                                                )
                                                     ? "Click again to confirm"
                                                     : "Delete product"
                                             }
                                             aria-label={
-                                                confirmDeletePuid ===
-                                                product.puid
+                                                deleteConfirm.isConfirming(
+                                                    product.puid,
+                                                )
                                                     ? "Confirm delete product"
                                                     : "Delete product"
                                             }
@@ -426,18 +406,13 @@ export default function Products() {
 
                                                 setDeleteError(null);
 
-                                                if (
-                                                    confirmDeletePuid ===
-                                                    product.puid
-                                                ) {
-                                                    deleteProductMutation.mutate(
-                                                        product.puid,
-                                                    );
-                                                    return;
-                                                }
-
-                                                setConfirmDeletePuid(
+                                                deleteConfirm.confirmOrRequest(
                                                     product.puid,
+                                                    () => {
+                                                        deleteProductMutation.mutate(
+                                                            product.puid,
+                                                        );
+                                                    },
                                                 );
                                             }}
                                             disabled={
@@ -445,8 +420,9 @@ export default function Products() {
                                                 deleteProductMutation.isPending
                                             }
                                         >
-                                            {confirmDeletePuid ===
-                                            product.puid ? (
+                                            {deleteConfirm.isConfirming(
+                                                product.puid,
+                                            ) ? (
                                                 <IconCheck size={20} />
                                             ) : (
                                                 <IconTrash size={20} />

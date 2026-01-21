@@ -24,6 +24,7 @@ import {
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@/hooks/Search";
+import { useDeleteConfirmation } from "@/hooks/DeleteConfirmation";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -318,38 +319,14 @@ export default function Recipes() {
         },
     });
 
-    const [confirmDeletePuid, setConfirmDeletePuid] = useState<string | null>(
-        null,
-    );
+    const deleteConfirm = useDeleteConfirmation<string>({
+        resetDeps: [projectId],
+    });
     const [deleteError, setDeleteError] = useState<string | null>(null);
 
     useEffect(() => {
-        setConfirmDeletePuid(null);
         setDeleteError(null);
     }, [projectId]);
-
-    useEffect(() => {
-        if (!confirmDeletePuid) return;
-
-        const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-            const target = event.target as HTMLElement | null;
-            if (!target) return;
-
-            const withinDeleteButton = target.closest(
-                '[data-delete-confirm="true"]',
-            );
-            if (withinDeleteButton) return;
-
-            setConfirmDeletePuid(null);
-        };
-
-        document.addEventListener("mousedown", handlePointerDown);
-        document.addEventListener("touchstart", handlePointerDown);
-        return () => {
-            document.removeEventListener("mousedown", handlePointerDown);
-            document.removeEventListener("touchstart", handlePointerDown);
-        };
-    }, [confirmDeletePuid]);
 
     const deleteRecipeMutation = useMutation({
         mutationFn: async (puid: string) => {
@@ -357,14 +334,14 @@ export default function Recipes() {
             await deleteRecipe(projectId, puid, protectedApi);
         },
         onSuccess: async () => {
-            setConfirmDeletePuid(null);
+            deleteConfirm.reset();
             setDeleteError(null);
             await queryClient.invalidateQueries({
                 queryKey: ["recipes", projectId],
             });
         },
         onError: (err) => {
-            setConfirmDeletePuid(null);
+            deleteConfirm.reset();
             setDeleteError(
                 err instanceof Error ? err.message : "Failed to delete recipe.",
             );
@@ -638,20 +615,23 @@ export default function Recipes() {
                                             type="button"
                                             data-delete-confirm="true"
                                             className={
-                                                confirmDeletePuid ===
-                                                recipe.puid
+                                                deleteConfirm.isConfirming(
+                                                    recipe.puid,
+                                                )
                                                     ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
                                                     : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
                                             }
                                             title={
-                                                confirmDeletePuid ===
-                                                recipe.puid
+                                                deleteConfirm.isConfirming(
+                                                    recipe.puid,
+                                                )
                                                     ? "Click again to confirm"
                                                     : "Delete recipe"
                                             }
                                             aria-label={
-                                                confirmDeletePuid ===
-                                                recipe.puid
+                                                deleteConfirm.isConfirming(
+                                                    recipe.puid,
+                                                )
                                                     ? "Confirm delete recipe"
                                                     : "Delete recipe"
                                             }
@@ -660,18 +640,13 @@ export default function Recipes() {
 
                                                 setDeleteError(null);
 
-                                                if (
-                                                    confirmDeletePuid ===
-                                                    recipe.puid
-                                                ) {
-                                                    deleteRecipeMutation.mutate(
-                                                        recipe.puid,
-                                                    );
-                                                    return;
-                                                }
-
-                                                setConfirmDeletePuid(
+                                                deleteConfirm.confirmOrRequest(
                                                     recipe.puid,
+                                                    () => {
+                                                        deleteRecipeMutation.mutate(
+                                                            recipe.puid,
+                                                        );
+                                                    },
                                                 );
                                             }}
                                             disabled={
@@ -679,8 +654,9 @@ export default function Recipes() {
                                                 deleteRecipeMutation.isPending
                                             }
                                         >
-                                            {confirmDeletePuid ===
-                                            recipe.puid ? (
+                                            {deleteConfirm.isConfirming(
+                                                recipe.puid,
+                                            ) ? (
                                                 <IconCheck size={20} />
                                             ) : (
                                                 <IconTrash size={20} />

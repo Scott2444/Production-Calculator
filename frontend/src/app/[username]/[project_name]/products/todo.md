@@ -18,10 +18,14 @@
 - projectId derivation
 - canEdit logic
 
+(DONE)
+
 3. Create useSearch() hook that takes items array and returns { searchText, setSearchText, filteredItems }
 4. Crud State Management
 
 - Create useCrudState() hook for managing opertions
+
+(DONE)
 
 5. Delete confirmation logic
 
