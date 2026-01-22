@@ -130,6 +130,38 @@ namespace ProductionCalculator.Business.Services
 
             return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
         }
+        public async Task<ServiceResult<Project>> ResolveProject(string username, string projectName)
+        {
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(projectName))
+                return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400);
+
+            var user = await _userRepo.GetByUsername(username);
+            if (user == null)
+                return ServiceResult<Project>.Fail(ServiceStatus.NotFound404, $"Project or user not found.");
+
+            var userProjects = await _repo.GetProjectsByUserId(user.User_Id);
+            var project = userProjects.FirstOrDefault(p => p.Name == projectName);
+
+            if (project == null)
+                return ServiceResult<Project>.Fail(ServiceStatus.NotFound404, "Project or user not found.");
+
+            // Custom authorization logic
+            if (project.Is_Public)
+                return ServiceResult<Project>.SuccessResult(project, ServiceStatus.Ok200);
+
+            if (_currentUser.IsAdmin)
+                return ServiceResult<Project>.SuccessResult(project, ServiceStatus.Ok200);
+
+            if (!string.IsNullOrWhiteSpace(_currentUser.UserPuid) &&
+                _currentUser.UserPuid.Equals(user.Puid, StringComparison.Ordinal))
+            {
+                return ServiceResult<Project>.SuccessResult(project, ServiceStatus.Ok200);
+            }
+
+            return ServiceResult<Project>.Fail(ServiceStatus.NotFound404, "Project or user not found.");
+
+            
+        }
 
         /// <summary>
         /// Checks if the project can use the alias provided

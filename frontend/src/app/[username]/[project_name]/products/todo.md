@@ -31,6 +31,8 @@
 
 - useDeleteConfirmation() hook
 
+(DONE)
+
 6. Loading/Error States
 
 - Project loading/error messages

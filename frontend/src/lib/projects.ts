@@ -9,6 +9,32 @@ export async function fetchProjects(
     return res.json();
 }
 
+export async function fetchProject(
+    projectPuid: string,
+    protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
+) {
+    const res = await protectedApi(`/api/projects/${projectPuid}`, {
+        method: "GET",
+    });
+    if (!res.ok) throw new Error("Failed to load project");
+    return res.json();
+}
+
+export async function resolveProject(
+    username: string,
+    projectName: string,
+    protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
+) {
+    const res = await protectedApi(
+        `/api/resolve/projects?username=${encodeURIComponent(username)}&project=${encodeURIComponent(projectName)}`,
+        {
+            method: "GET",
+        },
+    );
+    if (!res.ok) throw new Error("Failed to load project");
+    return res.json();
+}
+
 export interface UpsertProjectPayload {
     name: string;
     description: string | null;

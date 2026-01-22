@@ -1,12 +1,13 @@
 "use client";
 
 import ProjectPageLayout from "@/components/ProjectPageLayout";
+import ProjectStatusGate from "@/components/ProjectStatusGate";
 import DropDown from "@/components/DropDown";
 import Popup from "@/components/Popup";
 import { useAuth } from "@/context/AuthContext";
+import { useProject } from "@/context/ProjectContext";
 import { useProtectedApi } from "@/lib/api";
 import { fetchProducts } from "@/lib/products";
-import { fetchProjects } from "@/lib/projects";
 import {
     deleteRecipe,
     fetchRecipes,
@@ -25,19 +26,8 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@/hooks/Search";
 import { useDeleteConfirmation } from "@/hooks/DeleteConfirmation";
-import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-
-interface Project {
-    puid: string;
-    name: string;
-    description: string | null;
-    isPublic: boolean;
-    aliasProjectPuid: string | null;
-    createdAt: string;
-    updatedAt: string;
-}
 
 interface Product {
     puid: string;
@@ -132,30 +122,11 @@ function pickDefaultProductPuid(
 }
 
 export default function Recipes() {
-    const params = useParams<{ username: string; project_name: string }>();
-    const username = params?.username ?? "";
-    const routeProjectName = params?.project_name
-        ? safeDecodeURIComponent(params.project_name)
-        : "";
-
-    const { userId, loggedIn } = useAuth();
+    const { loggedIn } = useAuth();
+    const { routeUsername, routeProjectName, projectId, canEdit } =
+        useProject();
     const protectedApi = useProtectedApi();
     const queryClient = useQueryClient();
-
-    const projectsQuery = useQuery({
-        queryKey: ["projects", userId],
-        queryFn: () => fetchProjects(userId!, protectedApi),
-        staleTime: 5 * 60 * 1000,
-        enabled: Boolean(userId),
-    });
-
-    const currentProject = useMemo(() => {
-        const projects = projectsQuery.data as Project[] | undefined;
-        if (!projects || !routeProjectName) return null;
-        return projects.find((p) => p.name === routeProjectName) ?? null;
-    }, [projectsQuery.data, routeProjectName]);
-
-    const projectId = currentProject?.puid ?? "";
 
     const productsQuery = useQuery({
         queryKey: ["products", projectId],
@@ -218,8 +189,6 @@ export default function Recipes() {
     } = useSearch(sortedRecipes, {
         toText: recipeToText,
     });
-
-    const canEdit = loggedIn && Boolean(currentProject);
 
     const [createOpen, setCreateOpen] = useState(false);
     const [createName, setCreateName] = useState("");
@@ -468,8 +437,8 @@ export default function Recipes() {
                             ) : (
                                 <span>Select a project</span>
                             )}
-                            {username ? (
-                                <span> • Owner: {username}</span>
+                            {routeUsername ? (
+                                <span> • Owner: {routeUsername}</span>
                             ) : null}
                         </div>
                     </div>
@@ -483,7 +452,9 @@ export default function Recipes() {
                         }}
                         disabled={!canEdit}
                         title={
-                            canEdit ? "Add recipe" : "Sign in to manage recipes"
+                            canEdit
+                                ? "Add recipe"
+                                : "Only the project owner can manage recipes"
                         }
                     >
                         <IconPlus size={18} />
@@ -491,202 +462,187 @@ export default function Recipes() {
                     </button>
                 </div>
 
-                {projectsQuery.isLoading && (
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
-                        Loading project…
-                    </div>
-                )}
-                {!projectsQuery.isLoading && projectsQuery.error && (
-                    <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-                        Failed to load projects.
-                    </div>
-                )}
-                {!projectsQuery.isLoading &&
-                    !projectsQuery.error &&
-                    routeProjectName &&
-                    !currentProject && (
-                        <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-300">
-                            Project not found: {routeProjectName}
-                        </div>
-                    )}
-
-                <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-                    <div className="flex items-center gap-3">
-                        <div className="text-slate-400">
-                            <IconSearch size={18} />
-                        </div>
-                        <input
-                            value={searchText}
-                            onChange={(e) => setSearchText(e.target.value)}
-                            placeholder="Search recipes…"
-                            className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={!projectId}
-                        />
-                    </div>
-                </div>
-
-                {deleteError && (
-                    <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-                        <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 align-middle">
-                                {deleteError}
+                <ProjectStatusGate>
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+                        <div className="flex items-center gap-3">
+                            <div className="text-slate-400">
+                                <IconSearch size={18} />
                             </div>
-                            <button
-                                type="button"
-                                className="rounded-md p-1 text-red-200/90 transition-colors hover:bg-red-900/20 hover:text-red-100 focus:outline-none focus:ring-2 focus:ring-red-500/40"
-                                onClick={() => setDeleteError(null)}
-                                aria-label="Dismiss error"
-                                title="Dismiss"
-                            >
-                                <IconX size={18} />
-                            </button>
+                            <input
+                                value={searchText}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                placeholder="Search recipes…"
+                                className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                disabled={!projectId}
+                            />
                         </div>
                     </div>
-                )}
 
-                {recipesQuery.isLoading && projectId && (
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
-                        Loading recipes…
-                    </div>
-                )}
-
-                {!recipesQuery.isLoading && recipesQuery.error && (
-                    <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-                        Failed to load recipes.
-                    </div>
-                )}
-
-                {!recipesQuery.isLoading &&
-                    !recipesQuery.error &&
-                    projectId &&
-                    filteredRecipes.length === 0 && (
-                        <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-6 text-sm text-slate-300">
-                            {searchText.trim()
-                                ? "No recipes match your search."
-                                : "No recipes yet."}
+                    {deleteError && (
+                        <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 align-middle">
+                                    {deleteError}
+                                </div>
+                                <button
+                                    type="button"
+                                    className="rounded-md p-1 text-red-200/90 transition-colors hover:bg-red-900/20 hover:text-red-100 focus:outline-none focus:ring-2 focus:ring-red-500/40"
+                                    onClick={() => setDeleteError(null)}
+                                    aria-label="Dismiss error"
+                                    title="Dismiss"
+                                >
+                                    <IconX size={18} />
+                                </button>
+                            </div>
                         </div>
                     )}
 
-                {filteredRecipes.length > 0 && (
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                        {filteredRecipes.map((recipe) => (
-                            <div
-                                key={recipe.puid}
-                                className="rounded-xl border border-slate-800 bg-slate-900/40 p-4"
-                            >
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                        <div className="truncate text-base font-semibold text-slate-100">
-                                            {recipe.name}
-                                        </div>
-                                        <div className="mt-1 text-sm text-slate-400">
-                                            Base crafting time:{" "}
-                                            {recipe.baseCraftingTime}s
-                                        </div>
-                                        {recipe.description ? (
-                                            <div className="mt-2 text-sm text-slate-300">
-                                                <ReactMarkdown>
-                                                    {recipe.description}
-                                                </ReactMarkdown>
+                    {recipesQuery.isLoading && projectId && (
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
+                            Loading recipes…
+                        </div>
+                    )}
+
+                    {!recipesQuery.isLoading && recipesQuery.error && (
+                        <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+                            Failed to load recipes.
+                        </div>
+                    )}
+
+                    {!recipesQuery.isLoading &&
+                        !recipesQuery.error &&
+                        projectId &&
+                        filteredRecipes.length === 0 && (
+                            <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-6 text-sm text-slate-300">
+                                {searchText.trim()
+                                    ? "No recipes match your search."
+                                    : "No recipes yet."}
+                            </div>
+                        )}
+
+                    {filteredRecipes.length > 0 && (
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                            {filteredRecipes.map((recipe) => (
+                                <div
+                                    key={recipe.puid}
+                                    className="rounded-xl border border-slate-800 bg-slate-900/40 p-4"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <div className="truncate text-base font-semibold text-slate-100">
+                                                {recipe.name}
                                             </div>
-                                        ) : (
-                                            <div className="mt-2 text-sm text-slate-500">
-                                                No description
+                                            <div className="mt-1 text-sm text-slate-400">
+                                                Base crafting time:{" "}
+                                                {recipe.baseCraftingTime}s
                                             </div>
-                                        )}
-                                    </div>
-
-                                    <div className="flex gap-2">
-                                        <button
-                                            type="button"
-                                            className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                            title="Edit recipe"
-                                            aria-label="Edit recipe"
-                                            onClick={() => {
-                                                setEditTarget(recipe);
-                                                setEditError(null);
-                                                setEditOpen(true);
-                                            }}
-                                            disabled={!canEdit}
-                                        >
-                                            <IconEdit size={20} />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            data-delete-confirm="true"
-                                            className={
-                                                deleteConfirm.isConfirming(
-                                                    recipe.puid,
-                                                )
-                                                    ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                    : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                            }
-                                            title={
-                                                deleteConfirm.isConfirming(
-                                                    recipe.puid,
-                                                )
-                                                    ? "Click again to confirm"
-                                                    : "Delete recipe"
-                                            }
-                                            aria-label={
-                                                deleteConfirm.isConfirming(
-                                                    recipe.puid,
-                                                )
-                                                    ? "Confirm delete recipe"
-                                                    : "Delete recipe"
-                                            }
-                                            onClick={() => {
-                                                if (!canEdit) return;
-
-                                                setDeleteError(null);
-
-                                                deleteConfirm.confirmOrRequest(
-                                                    recipe.puid,
-                                                    () => {
-                                                        deleteRecipeMutation.mutate(
-                                                            recipe.puid,
-                                                        );
-                                                    },
-                                                );
-                                            }}
-                                            disabled={
-                                                !canEdit ||
-                                                deleteRecipeMutation.isPending
-                                            }
-                                        >
-                                            {deleteConfirm.isConfirming(
-                                                recipe.puid,
-                                            ) ? (
-                                                <IconCheck size={20} />
+                                            {recipe.description ? (
+                                                <div className="mt-2 text-sm text-slate-300">
+                                                    <ReactMarkdown>
+                                                        {recipe.description}
+                                                    </ReactMarkdown>
+                                                </div>
                                             ) : (
-                                                <IconTrash size={20} />
+                                                <div className="mt-2 text-sm text-slate-500">
+                                                    No description
+                                                </div>
                                             )}
-                                        </button>
-                                    </div>
-                                </div>
+                                        </div>
 
-                                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                    <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
-                                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                            Inputs
-                                        </div>
-                                        <div className="mt-2">
-                                            {renderExchanges(recipe.inputs)}
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                title="Edit recipe"
+                                                aria-label="Edit recipe"
+                                                onClick={() => {
+                                                    setEditTarget(recipe);
+                                                    setEditError(null);
+                                                    setEditOpen(true);
+                                                }}
+                                                disabled={!canEdit}
+                                            >
+                                                <IconEdit size={20} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                data-delete-confirm="true"
+                                                className={
+                                                    deleteConfirm.isConfirming(
+                                                        recipe.puid,
+                                                    )
+                                                        ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                        : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                }
+                                                title={
+                                                    deleteConfirm.isConfirming(
+                                                        recipe.puid,
+                                                    )
+                                                        ? "Click again to confirm"
+                                                        : "Delete recipe"
+                                                }
+                                                aria-label={
+                                                    deleteConfirm.isConfirming(
+                                                        recipe.puid,
+                                                    )
+                                                        ? "Confirm delete recipe"
+                                                        : "Delete recipe"
+                                                }
+                                                onClick={() => {
+                                                    if (!canEdit) return;
+
+                                                    setDeleteError(null);
+
+                                                    deleteConfirm.confirmOrRequest(
+                                                        recipe.puid,
+                                                        () => {
+                                                            deleteRecipeMutation.mutate(
+                                                                recipe.puid,
+                                                            );
+                                                        },
+                                                    );
+                                                }}
+                                                disabled={
+                                                    !canEdit ||
+                                                    deleteRecipeMutation.isPending
+                                                }
+                                            >
+                                                {deleteConfirm.isConfirming(
+                                                    recipe.puid,
+                                                ) ? (
+                                                    <IconCheck size={20} />
+                                                ) : (
+                                                    <IconTrash size={20} />
+                                                )}
+                                            </button>
                                         </div>
                                     </div>
-                                    <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
-                                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                            Outputs
+
+                                    <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                        <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
+                                            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                                Inputs
+                                            </div>
+                                            <div className="mt-2">
+                                                {renderExchanges(recipe.inputs)}
+                                            </div>
                                         </div>
-                                        <div className="mt-2">
-                                            {renderExchanges(recipe.outputs)}
+                                        <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
+                                            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                                Outputs
+                                            </div>
+                                            <div className="mt-2">
+                                                {renderExchanges(
+                                                    recipe.outputs,
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                            ))}
+                        </div>
+                    )}
+                </ProjectStatusGate>
             </div>
 
             <Popup

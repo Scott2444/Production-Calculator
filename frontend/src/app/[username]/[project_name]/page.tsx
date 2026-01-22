@@ -1,16 +1,16 @@
 "use client";
 
 import ProjectPageLayout from "@/components/ProjectPageLayout";
+import ProjectStatusGate from "@/components/ProjectStatusGate";
 import { useProject } from "@/context/ProjectContext";
 import Popup from "@/components/Popup";
 import { IconEdit, IconTrash } from "@tabler/icons-react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useProtectedApi } from "@/lib/api";
 import {
-    fetchProjects,
     UpsertProjectPayload,
     updateProject,
     deleteProject,
@@ -48,8 +48,7 @@ function getCount(value: unknown): number | null {
 }
 
 export default function ProjectPage() {
-    const { routeUsername, routeProjectName, currentProject, projectsQuery } =
-        useProject();
+    const { routeUsername, routeProjectName, currentProject } = useProject();
     const router = useRouter();
     const queryClient = useQueryClient();
 
@@ -272,67 +271,51 @@ export default function ProjectPage() {
                     </div>
                 </div>
 
-                {projectsQuery.isLoading && (
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
-                        Loading project…
+                <ProjectStatusGate>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        {summaryItems.map((item) => {
+                            const showPlaceholder = item.value === null;
+                            const isUnknown =
+                                !showPlaceholder &&
+                                typeof item.value === "number" &&
+                                item.value < 0;
+
+                            const displayValue = showPlaceholder
+                                ? "—"
+                                : isUnknown
+                                  ? "?"
+                                  : String(item.value ?? 0);
+
+                            return (
+                                <div
+                                    key={item.label}
+                                    className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4"
+                                >
+                                    <div className="text-xs font-medium uppercase tracking-wider text-slate-400">
+                                        {item.label}
+                                    </div>
+                                    <div className="mt-2 text-3xl font-semibold text-slate-100">
+                                        {countsLoading &&
+                                        item.label !== "Workflows"
+                                            ? "…"
+                                            : displayValue}
+                                    </div>
+                                    {item.helper && (
+                                        <div className="mt-1 text-xs text-slate-500">
+                                            {item.helper}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
-                )}
-                {!projectsQuery.isLoading && projectsQuery.error !== null && (
-                    <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-                        Failed to load projects.
-                    </div>
-                )}
-                {!projectsQuery.isLoading &&
-                    !projectsQuery.error &&
-                    routeProjectName &&
-                    !currentProject && (
-                        <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-300">
-                            Project not found: {routeProjectName}
+
+                    {countsError && (
+                        <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+                            Failed to load one or more project components.
                         </div>
                     )}
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {summaryItems.map((item) => {
-                        const showPlaceholder = item.value === null;
-                        const isUnknown =
-                            !showPlaceholder &&
-                            typeof item.value === "number" &&
-                            item.value < 0;
-
-                        const displayValue = showPlaceholder
-                            ? "—"
-                            : isUnknown
-                              ? "?"
-                              : String(item.value ?? 0);
-
-                        return (
-                            <div
-                                key={item.label}
-                                className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4"
-                            >
-                                <div className="text-xs font-medium uppercase tracking-wider text-slate-400">
-                                    {item.label}
-                                </div>
-                                <div className="mt-2 text-3xl font-semibold text-slate-100">
-                                    {countsLoading && item.label !== "Workflows"
-                                        ? "…"
-                                        : displayValue}
-                                </div>
-                                {item.helper && (
-                                    <div className="mt-1 text-xs text-slate-500">
-                                        {item.helper}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-
-                {countsError && (
-                    <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-                        Failed to load one or more project components.
-                    </div>
-                )}
+                </ProjectStatusGate>
             </div>
 
             <Popup
