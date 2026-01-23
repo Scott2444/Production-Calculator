@@ -20,13 +20,7 @@ import { useProject } from "@/context/ProjectContext";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@/hooks/Search";
 import { useDeleteConfirmation } from "@/hooks/DeleteConfirmation";
-import {
-    IconCheck,
-    IconEdit,
-    IconPlus,
-    IconSearch,
-    IconTrash,
-} from "@tabler/icons-react";
+import { IconCheck, IconEdit, IconPlus, IconTrash } from "@tabler/icons-react";
 import ReactMarkdown from "react-markdown";
 
 interface Product {

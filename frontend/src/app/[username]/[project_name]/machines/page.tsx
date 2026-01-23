@@ -19,7 +19,13 @@ import {
 import { fetchRecipes } from "@/lib/recipes";
 import { useDeleteConfirmation } from "@/hooks/DeleteConfirmation";
 import { useSearch } from "@/hooks/Search";
-import { IconCheck, IconEdit, IconPlus, IconTrash } from "@tabler/icons-react";
+import {
+    IconCheck,
+    IconEdit,
+    IconPlus,
+    IconSearch,
+    IconTrash,
+} from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -298,6 +304,14 @@ export default function Machines() {
         const selected = uniqueTrimmedPuids(value);
         const selectedSet = new Set(selected);
 
+        const {
+            searchText: menuSearchText,
+            setSearchText: setMenuSearchText,
+            filteredItems: filteredRecipes,
+        } = useSearch(sortedRecipes, {
+            toText: (r) => `${r.name} ${r.description ?? ""}`,
+        });
+
         return (
             <DropDown
                 label={
@@ -320,7 +334,25 @@ export default function Machines() {
                 {({ close }) => (
                     <div className="p-2">
                         <div className="flex flex-col gap-1">
-                            {sortedRecipes.map((r) => {
+                            <div className="sticky top-0 z-10 rounded-lg border border-slate-800 bg-slate-950 p-2">
+                                <div className="flex items-center gap-2">
+                                    <div className="text-slate-400">
+                                        <IconSearch size={16} />
+                                    </div>
+                                    <input
+                                        value={menuSearchText}
+                                        onChange={(e) =>
+                                            setMenuSearchText(e.target.value)
+                                        }
+                                        placeholder="Search recipes"
+                                        className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                        disabled={effectiveDisabled}
+                                        aria-label="Search recipes"
+                                    />
+                                </div>
+                            </div>
+
+                            {filteredRecipes.map((r) => {
                                 const isSelected = selectedSet.has(r.puid);
                                 return (
                                     <button
@@ -355,6 +387,12 @@ export default function Machines() {
                                     </button>
                                 );
                             })}
+                            {sortedRecipes.length > 0 &&
+                                filteredRecipes.length === 0 && (
+                                    <div className="px-3 py-2 text-sm text-slate-400">
+                                        No recipes match your search.
+                                    </div>
+                                )}
 
                             {sortedRecipes.length === 0 && (
                                 <div className="px-3 py-2 text-sm text-slate-400">
@@ -366,7 +404,10 @@ export default function Machines() {
                                 <button
                                     type="button"
                                     className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                    onClick={close}
+                                    onClick={() => {
+                                        setMenuSearchText("");
+                                        close();
+                                    }}
                                 >
                                     Done
                                 </button>

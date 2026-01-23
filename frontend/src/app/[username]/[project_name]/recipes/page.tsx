@@ -52,14 +52,6 @@ interface Recipe {
     updatedAt: string;
 }
 
-function safeDecodeURIComponent(value: string): string {
-    try {
-        return decodeURIComponent(value);
-    } catch {
-        return value;
-    }
-}
-
 function coerceRecipes(value: unknown): Recipe[] {
     if (!value) return [];
     if (Array.isArray(value)) return value as Recipe[];
@@ -332,6 +324,14 @@ export default function Recipes() {
         const effectiveDisabled =
             Boolean(disabled) || sortedProducts.length === 0;
 
+        const {
+            searchText: menuSearchText,
+            setSearchText: setMenuSearchText,
+            filteredItems: filteredProducts,
+        } = useSearch(sortedProducts, {
+            toText: (p) => `${p.name} ${p.description ?? ""}`,
+        });
+
         return (
             <DropDown
                 label={
@@ -353,7 +353,25 @@ export default function Recipes() {
                 {({ close }) => (
                     <div className="p-2">
                         <div className="flex flex-col gap-1">
-                            {sortedProducts.map((p) => {
+                            <div className="sticky top-0 z-10 rounded-lg border border-slate-800 bg-slate-950 p-2">
+                                <div className="flex items-center gap-2">
+                                    <div className="text-slate-400">
+                                        <IconSearch size={16} />
+                                    </div>
+                                    <input
+                                        value={menuSearchText}
+                                        onChange={(e) =>
+                                            setMenuSearchText(e.target.value)
+                                        }
+                                        placeholder="Search products"
+                                        className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                        disabled={effectiveDisabled}
+                                        aria-label="Search products"
+                                    />
+                                </div>
+                            </div>
+
+                            {filteredProducts.map((p) => {
                                 const selected = p.puid === value;
                                 return (
                                     <button
@@ -366,6 +384,7 @@ export default function Recipes() {
                                         }`}
                                         onClick={() => {
                                             onSelect(p.puid);
+                                            setMenuSearchText("");
                                             close();
                                         }}
                                     >
@@ -386,11 +405,31 @@ export default function Recipes() {
                                 );
                             })}
 
+                            {sortedProducts.length > 0 &&
+                                filteredProducts.length === 0 && (
+                                    <div className="px-3 py-2 text-sm text-slate-400">
+                                        No products match your search.
+                                    </div>
+                                )}
+
                             {sortedProducts.length === 0 && (
                                 <div className="px-3 py-2 text-sm text-slate-400">
                                     No products yet.
                                 </div>
                             )}
+
+                            <div className="mt-1 flex items-center justify-end">
+                                <button
+                                    type="button"
+                                    className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                    onClick={() => {
+                                        setMenuSearchText("");
+                                        close();
+                                    }}
+                                >
+                                    Done
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -760,7 +799,7 @@ export default function Recipes() {
                             </div>
                             <button
                                 type="button"
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
                                 onClick={() => {
                                     const used = new Set(
                                         createInputs.map((i) => i.puid),
@@ -848,7 +887,7 @@ export default function Recipes() {
                                     />
                                     <button
                                         type="button"
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
                                         onClick={() =>
                                             setCreateInputs((prev) =>
                                                 prev.filter(
@@ -876,7 +915,7 @@ export default function Recipes() {
                             </div>
                             <button
                                 type="button"
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
                                 onClick={() => {
                                     const used = new Set(
                                         createOutputs.map((o) => o.puid),
@@ -964,7 +1003,7 @@ export default function Recipes() {
                                     />
                                     <button
                                         type="button"
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
                                         onClick={() =>
                                             setCreateOutputs((prev) =>
                                                 prev.filter(
@@ -1136,7 +1175,7 @@ export default function Recipes() {
                             </div>
                             <button
                                 type="button"
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
                                 onClick={() => {
                                     const used = new Set(
                                         editInputs.map((i) => i.puid),
@@ -1217,7 +1256,7 @@ export default function Recipes() {
                                     />
                                     <button
                                         type="button"
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
                                         onClick={() =>
                                             setEditInputs((prev) =>
                                                 prev.filter(
@@ -1245,7 +1284,7 @@ export default function Recipes() {
                             </div>
                             <button
                                 type="button"
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
                                 onClick={() => {
                                     const used = new Set(
                                         editOutputs.map((o) => o.puid),
@@ -1326,7 +1365,7 @@ export default function Recipes() {
                                     />
                                     <button
                                         type="button"
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
                                         onClick={() =>
                                             setEditOutputs((prev) =>
                                                 prev.filter(
