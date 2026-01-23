@@ -14,7 +14,7 @@ export interface NewModifierPayload {
     description: string | null;
     flatSpeedBonus: number;
     additivePercentBonus: number;
-    aultiplicativeModifier: number;
+    multiplicativeModifier: number;
 }
 
 export async function postNewModifier(

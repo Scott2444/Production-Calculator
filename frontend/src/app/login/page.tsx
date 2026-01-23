@@ -8,12 +8,12 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Login() {
-    const [username, setUsername] = useState("");
-    const [password, setPassword] = useState("");
+    const [usernameEntry, setUsernameEntry] = useState("");
+    const [passwordEntry, setPasswordEntry] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
-    const { setLoggedIn, setUserId } = useAuth();
+    const { setLoggedIn, setUserId, setUsername } = useAuth();
     const router = useRouter();
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -25,7 +25,10 @@ export default function Login() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify({ username, password }),
+                body: JSON.stringify({
+                    username: usernameEntry,
+                    password: passwordEntry,
+                }),
             });
             const data = await res.json();
             if (!res.ok) {
@@ -35,6 +38,7 @@ export default function Login() {
             }
             setLoggedIn(true);
             setUserId(data.puid);
+            setUsername(data.username);
             router.push("/");
         } catch (err) {
             setError("An unexpected error occurred");
@@ -59,16 +63,16 @@ export default function Login() {
                             placeholder="Username"
                             className="px-4 py-3 rounded-md bg-slate-800 text-slate-200 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-700"
                             required
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
+                            value={usernameEntry}
+                            onChange={(e) => setUsernameEntry(e.target.value)}
                         />
                         <input
                             type="password"
                             placeholder="Password"
                             className="px-4 py-3 rounded-md bg-slate-800 text-slate-200 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-700"
                             required
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            value={passwordEntry}
+                            onChange={(e) => setPasswordEntry(e.target.value)}
                         />
                         <button
                             type="submit"

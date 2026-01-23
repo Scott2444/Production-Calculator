@@ -77,7 +77,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         queryKey: ["project", projectId],
         queryFn: () => fetchProject(projectId, protectedApi),
         staleTime: 5 * 60 * 1000,
-        enabled: Boolean(userId),
+        enabled: Boolean(projectId),
     });
 
     const currentProject = useMemo(() => {

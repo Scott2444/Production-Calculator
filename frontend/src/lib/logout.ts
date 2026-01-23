@@ -8,12 +8,12 @@ import Cookies from "js-cookie";
  */
 
 export function useLogout() {
-    const { setLoggedIn } = useAuth();
-    const { setUserId } = useAuth();
+    const { setLoggedIn, setUserId, setUsername } = useAuth();
     const clearQueryCache = useClearQueryCache();
     return async function Logout() {
         setLoggedIn(false);
         setUserId(undefined);
+        setUsername(undefined);
         Cookies.remove("user_id");
         clearQueryCache();
     };

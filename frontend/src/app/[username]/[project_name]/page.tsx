@@ -49,7 +49,8 @@ function getCount(value: unknown): number | null {
 }
 
 export default function ProjectPage() {
-    const { routeUsername, routeProjectName, currentProject } = useProject();
+    const { routeUsername, routeProjectName, currentProject, canEdit } =
+        useProject();
     const router = useRouter();
     const queryClient = useQueryClient();
 
@@ -123,6 +124,9 @@ export default function ProjectPage() {
             setEditError(null);
             setEditOpen(false);
 
+            await queryClient.invalidateQueries({
+                queryKey: ["project", projectId],
+            });
             await queryClient.invalidateQueries({
                 queryKey: ["projects", userId],
             });
@@ -255,7 +259,7 @@ export default function ProjectPage() {
                             title="Edit project"
                             aria-label="Edit project"
                             onClick={() => setEditOpen(true)}
-                            disabled={!loggedIn || !currentProject}
+                            disabled={!canEdit}
                         >
                             <IconEdit size={20} />
                         </button>
@@ -265,7 +269,7 @@ export default function ProjectPage() {
                             title="Delete project"
                             aria-label="Delete project"
                             onClick={() => setDeleteOpen(true)}
-                            disabled={!loggedIn || !currentProject}
+                            disabled={!canEdit}
                         >
                             <IconTrash size={20} />
                         </button>
