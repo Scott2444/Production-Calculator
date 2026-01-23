@@ -2,6 +2,7 @@
 
 import ProjectPageLayout from "@/components/ProjectPageLayout";
 import ProjectStatusGate from "@/components/ProjectStatusGate";
+import ErrorDisplay from "@/components/ErrorDisplay";
 import { useProject } from "@/context/ProjectContext";
 import Popup from "@/components/Popup";
 import { IconEdit, IconTrash } from "@tabler/icons-react";
@@ -311,9 +312,15 @@ export default function ProjectPage() {
                     </div>
 
                     {countsError && (
-                        <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-                            Failed to load one or more project components.
-                        </div>
+                        <ErrorDisplay
+                            errors={[
+                                {
+                                    id: "counts-error",
+                                    message:
+                                        "Failed to load one or more project components.",
+                                },
+                            ]}
+                        />
                     )}
                 </ProjectStatusGate>
             </div>
@@ -372,11 +379,19 @@ export default function ProjectPage() {
                 }
             >
                 <div className="flex flex-col gap-4">
-                    {editError && (
-                        <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-                            {editError}
-                        </div>
-                    )}
+                    <ErrorDisplay
+                        errors={
+                            editError
+                                ? [
+                                      {
+                                          id: "edit-error",
+                                          message: editError,
+                                          onDismiss: () => setEditError(null),
+                                      },
+                                  ]
+                                : []
+                        }
+                    />
 
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-medium text-slate-200">
@@ -467,11 +482,19 @@ export default function ProjectPage() {
                 }
             >
                 <div className="flex flex-col gap-4">
-                    {deleteError && (
-                        <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-                            {deleteError}
-                        </div>
-                    )}
+                    <ErrorDisplay
+                        errors={
+                            deleteError
+                                ? [
+                                      {
+                                          id: "delete-error",
+                                          message: deleteError,
+                                          onDismiss: () => setDeleteError(null),
+                                      },
+                                  ]
+                                : []
+                        }
+                    />
 
                     <div className="text-sm text-slate-300">
                         Deleting{" "}

@@ -3,6 +3,7 @@
 import ProjectPageLayout from "@/components/ProjectPageLayout";
 import ProjectStatusGate from "@/components/ProjectStatusGate";
 import SearchBar from "@/components/SearchBar";
+import ErrorDisplay from "@/components/ErrorDisplay";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
     fetchProducts,
@@ -25,7 +26,6 @@ import {
     IconPlus,
     IconSearch,
     IconTrash,
-    IconX,
 } from "@tabler/icons-react";
 import ReactMarkdown from "react-markdown";
 
@@ -232,24 +232,19 @@ export default function Products() {
                         disabled={!projectId}
                     />
 
-                    {deleteError && (
-                        <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0 align-middle">
-                                    {deleteError}
-                                </div>
-                                <button
-                                    type="button"
-                                    className="rounded-md p-1 text-red-200/90 transition-colors hover:bg-red-900/20 hover:text-red-100 focus:outline-none focus:ring-2 focus:ring-red-500/40"
-                                    onClick={() => setDeleteError(null)}
-                                    aria-label="Dismiss error"
-                                    title="Dismiss"
-                                >
-                                    <IconX size={18} />
-                                </button>
-                            </div>
-                        </div>
-                    )}
+                    <ErrorDisplay
+                        errors={
+                            deleteError
+                                ? [
+                                      {
+                                          id: "delete-error",
+                                          message: deleteError,
+                                          onDismiss: () => setDeleteError(null),
+                                      },
+                                  ]
+                                : []
+                        }
+                    />
 
                     {productsQuery.isLoading && projectId && (
                         <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
@@ -405,11 +400,19 @@ export default function Products() {
                 }}
             >
                 <div className="flex flex-col gap-4">
-                    {createError && (
-                        <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-                            {createError}
-                        </div>
-                    )}
+                    <ErrorDisplay
+                        errors={
+                            createError
+                                ? [
+                                      {
+                                          id: "create-error",
+                                          message: createError,
+                                          onDismiss: () => setCreateError(null),
+                                      },
+                                  ]
+                                : []
+                        }
+                    />
 
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-medium text-slate-200">
@@ -497,11 +500,19 @@ export default function Products() {
                 }
             >
                 <div className="flex flex-col gap-4">
-                    {editError && (
-                        <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-                            {editError}
-                        </div>
-                    )}
+                    <ErrorDisplay
+                        errors={
+                            editError
+                                ? [
+                                      {
+                                          id: "edit-error",
+                                          message: editError,
+                                          onDismiss: () => setEditError(null),
+                                      },
+                                  ]
+                                : []
+                        }
+                    />
 
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-medium text-slate-200">

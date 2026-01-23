@@ -1,6 +1,7 @@
 "use client";
 
 import Navbar from "@/components/NavBar";
+import ErrorDisplay from "@/components/ErrorDisplay";
 import Link from "next/link";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -76,11 +77,19 @@ export default function Login() {
                         >
                             {loading ? "Logging in..." : "Log In"}
                         </button>
-                        {error && (
-                            <div className="text-red-500 text-center mt-2">
-                                {error}
-                            </div>
-                        )}
+                        <ErrorDisplay
+                            errors={
+                                error
+                                    ? [
+                                          {
+                                              id: "login-error",
+                                              message: error,
+                                              onDismiss: () => setError(""),
+                                          },
+                                      ]
+                                    : []
+                            }
+                        />
                     </form>
                     <div className="my-6 flex items-center">
                         <hr className="grow border-slate-700" />
