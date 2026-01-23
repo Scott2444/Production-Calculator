@@ -128,7 +128,7 @@ export default function Popup({
                 aria-labelledby={title ? titleId : undefined}
                 aria-describedby={description ? descriptionId : undefined}
                 tabIndex={-1}
-                className={`relative w-full ${sizeClass} overflow-hidden rounded-xl border border-slate-700 bg-slate-950 text-slate-200 shadow-lg ${
+                className={`relative flex w-full max-h-[calc(100dvh-2rem)] ${sizeClass} flex-col overflow-hidden rounded-xl border border-slate-700 bg-slate-950 text-slate-200 shadow-lg ${
                     panelClassName ?? ""
                 }`}
                 onMouseDown={(e) => {
@@ -175,7 +175,7 @@ export default function Popup({
                 }}
             >
                 {(title || showCloseButton) && (
-                    <div className="flex items-start justify-between gap-4 border-b border-slate-800 px-4 py-3">
+                    <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-800 px-4 py-3">
                         <div className="min-w-0">
                             {title && (
                                 <div
@@ -208,10 +208,12 @@ export default function Popup({
                     </div>
                 )}
 
-                <div className="px-4 py-4">{children}</div>
+                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+                    {children}
+                </div>
 
                 {footer && (
-                    <div className="border-t border-slate-800 px-4 py-3">
+                    <div className="shrink-0 border-t border-slate-800 px-4 py-3">
                         {footer}
                     </div>
                 )}
