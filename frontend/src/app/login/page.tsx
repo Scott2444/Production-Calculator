@@ -71,7 +71,7 @@ export default function Login() {
                         />
                         <button
                             type="submit"
-                            className="w-full py-3 bg-purple-700 text-white rounded-md font-semibold hover:bg-purple-600 transition-colors"
+                            className="w-full py-3 bg-purple-700 text-white rounded-md font-semibold cursor-pointer hover:bg-purple-600 transition-colors"
                             disabled={loading}
                         >
                             {loading ? "Logging in..." : "Log In"}
@@ -90,7 +90,7 @@ export default function Login() {
                     <div className="flex flex-col gap-3">
                         {/* Google login placeholder */}
                         <button
-                            className="w-full py-3 bg-white text-slate-900 rounded-md font-semibold border border-slate-300 flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors"
+                            className="w-full py-3 bg-white text-slate-900 rounded-md font-semibold border border-slate-300 flex items-center justify-center gap-2 cursor-not-allowed hover:bg-slate-100 transition-colors"
                             disabled
                         >
                             <img

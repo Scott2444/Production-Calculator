@@ -41,7 +41,10 @@
 
 ### Shared UI
 
-1. Search Bar
+(DONE) 1. Search Bar
+
 2. (filtered search) Item Grid/Card with edit/delete buttons
+
 3. Common cancel/create/edit button patterns
+
 4. Error display with dismiss button

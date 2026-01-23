@@ -2,6 +2,7 @@
 
 import ProjectPageLayout from "@/components/ProjectPageLayout";
 import ProjectStatusGate from "@/components/ProjectStatusGate";
+import SearchBar from "@/components/SearchBar";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
     fetchProducts,
@@ -12,6 +13,7 @@ import {
 } from "@/lib/products";
 import { useProtectedApi } from "@/lib/api";
 import Popup from "@/components/Popup";
+import ItemCard from "@/components/ItemCard";
 import { useAuth } from "@/context/AuthContext";
 import { useProject } from "@/context/ProjectContext";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -47,7 +49,8 @@ function coerceProducts(value: unknown): Product[] {
 
 export default function Products() {
     const { loggedIn } = useAuth();
-    const { routeUsername, routeProjectName, projectId, canEdit } = useProject();
+    const { routeUsername, routeProjectName, projectId, canEdit } =
+        useProject();
     const protectedApi = useProtectedApi();
     const queryClient = useQueryClient();
 
@@ -223,20 +226,11 @@ export default function Products() {
                     </button>
                 </div>
                 <ProjectStatusGate>
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="text-slate-400">
-                                <IconSearch size={18} />
-                            </div>
-                            <input
-                                value={searchText}
-                                onChange={(e) => setSearchText(e.target.value)}
-                                placeholder="Search products…"
-                                className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                disabled={!projectId}
-                            />
-                        </div>
-                    </div>
+                    <SearchBar
+                        value={searchText}
+                        onChange={setSearchText}
+                        disabled={!projectId}
+                    />
 
                     {deleteError && (
                         <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
@@ -321,66 +315,66 @@ export default function Products() {
                                                 <IconEdit size={20} />
                                             </button>
                                             <button
-                                            type="button"
-                                            data-delete-confirm="true"
-                                            className={
-                                                deleteConfirm.isConfirming(
-                                                    product.puid,
-                                                )
-                                                    ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                    : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                            }
-                                            title={
-                                                deleteConfirm.isConfirming(
-                                                    product.puid,
-                                                )
-                                                    ? "Click again to confirm"
-                                                    : "Delete product"
-                                            }
-                                            aria-label={
-                                                deleteConfirm.isConfirming(
-                                                    product.puid,
-                                                )
-                                                    ? "Confirm delete product"
-                                                    : "Delete product"
-                                            }
-                                            onClick={() => {
-                                                if (!canEdit) return;
+                                                type="button"
+                                                data-delete-confirm="true"
+                                                className={
+                                                    deleteConfirm.isConfirming(
+                                                        product.puid,
+                                                    )
+                                                        ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                        : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                }
+                                                title={
+                                                    deleteConfirm.isConfirming(
+                                                        product.puid,
+                                                    )
+                                                        ? "Click again to confirm"
+                                                        : "Delete product"
+                                                }
+                                                aria-label={
+                                                    deleteConfirm.isConfirming(
+                                                        product.puid,
+                                                    )
+                                                        ? "Confirm delete product"
+                                                        : "Delete product"
+                                                }
+                                                onClick={() => {
+                                                    if (!canEdit) return;
 
-                                                setDeleteError(null);
+                                                    setDeleteError(null);
 
-                                                deleteConfirm.confirmOrRequest(
+                                                    deleteConfirm.confirmOrRequest(
+                                                        product.puid,
+                                                        () => {
+                                                            deleteProductMutation.mutate(
+                                                                product.puid,
+                                                            );
+                                                        },
+                                                    );
+                                                }}
+                                                disabled={
+                                                    !canEdit ||
+                                                    deleteProductMutation.isPending
+                                                }
+                                            >
+                                                {deleteConfirm.isConfirming(
                                                     product.puid,
-                                                    () => {
-                                                        deleteProductMutation.mutate(
-                                                            product.puid,
-                                                        );
-                                                    },
-                                                );
-                                            }}
-                                            disabled={
-                                                !canEdit ||
-                                                deleteProductMutation.isPending
-                                            }
-                                        >
-                                            {deleteConfirm.isConfirming(
-                                                product.puid,
-                                            ) ? (
-                                                <IconCheck size={20} />
-                                            ) : (
-                                                <IconTrash size={20} />
-                                            )}
-                                        </button>
+                                                ) ? (
+                                                    <IconCheck size={20} />
+                                                ) : (
+                                                    <IconTrash size={20} />
+                                                )}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
                             ))}
                         </div>
                     )}
                 </ProjectStatusGate>
             </div>
 
-            <Popup
+            <ItemCard
                 open={createOpen}
                 onOpenChange={(next) => {
                     setCreateOpen(next);
@@ -389,45 +383,26 @@ export default function Products() {
                 title="Add product"
                 description="Create a new product in this project."
                 initialFocusRef={createNameRef}
-                footer={
-                    <div className="flex items-center justify-end gap-2">
-                        <button
-                            type="button"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-4 py-2 text-sm font-medium text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            onClick={() => setCreateOpen(false)}
-                            disabled={createProductMutation.isPending}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            className="rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                            onClick={() => {
-                                setCreateError(null);
-                                const trimmed = createName.trim();
-                                if (!trimmed) {
-                                    setCreateError("Product name is required.");
-                                    return;
-                                }
-                                createProductMutation.mutate({
-                                    name: trimmed,
-                                    description: createDescription.trim()
-                                        ? createDescription.trim()
-                                        : null,
-                                });
-                            }}
-                            disabled={
-                                createProductMutation.isPending ||
-                                !canEdit ||
-                                !projectId
-                            }
-                        >
-                            {createProductMutation.isPending
-                                ? "Creating…"
-                                : "Create"}
-                        </button>
-                    </div>
-                }
+                submitLabel="Create"
+                submittingLabel="Creating…"
+                submitting={createProductMutation.isPending}
+                submitDisabled={!canEdit || !projectId}
+                cancelDisabled={createProductMutation.isPending}
+                onCancel={() => setCreateOpen(false)}
+                onSubmit={() => {
+                    setCreateError(null);
+                    const trimmed = createName.trim();
+                    if (!trimmed) {
+                        setCreateError("Product name is required.");
+                        return;
+                    }
+                    createProductMutation.mutate({
+                        name: trimmed,
+                        description: createDescription.trim()
+                            ? createDescription.trim()
+                            : null,
+                    });
+                }}
             >
                 <div className="flex flex-col gap-4">
                     {createError && (
@@ -466,7 +441,7 @@ export default function Products() {
                         />
                     </div>
                 </div>
-            </Popup>
+            </ItemCard>
 
             <Popup
                 open={editOpen}

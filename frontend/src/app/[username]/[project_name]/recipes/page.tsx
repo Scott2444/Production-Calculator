@@ -4,6 +4,8 @@ import ProjectPageLayout from "@/components/ProjectPageLayout";
 import ProjectStatusGate from "@/components/ProjectStatusGate";
 import DropDown from "@/components/DropDown";
 import Popup from "@/components/Popup";
+import ItemCard from "@/components/ItemCard";
+import SearchBar from "@/components/SearchBar";
 import { useAuth } from "@/context/AuthContext";
 import { useProject } from "@/context/ProjectContext";
 import { useProtectedApi } from "@/lib/api";
@@ -463,20 +465,11 @@ export default function Recipes() {
                 </div>
 
                 <ProjectStatusGate>
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="text-slate-400">
-                                <IconSearch size={18} />
-                            </div>
-                            <input
-                                value={searchText}
-                                onChange={(e) => setSearchText(e.target.value)}
-                                placeholder="Search recipes…"
-                                className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                disabled={!projectId}
-                            />
-                        </div>
-                    </div>
+                    <SearchBar
+                        value={searchText}
+                        onChange={setSearchText}
+                        disabled={!projectId}
+                    />
 
                     {deleteError && (
                         <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
@@ -645,7 +638,7 @@ export default function Recipes() {
                 </ProjectStatusGate>
             </div>
 
-            <Popup
+            <ItemCard
                 open={createOpen}
                 onOpenChange={(next) => {
                     setCreateOpen(next);
@@ -654,80 +647,58 @@ export default function Recipes() {
                 title="Add recipe"
                 description="Create a new recipe in this project."
                 initialFocusRef={createNameRef}
-                footer={
-                    <div className="flex items-center justify-end gap-2">
-                        <button
-                            type="button"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-4 py-2 text-sm font-medium text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            onClick={() => setCreateOpen(false)}
-                            disabled={createRecipeMutation.isPending}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            className="rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                            onClick={() => {
-                                setCreateError(null);
-                                const trimmedName = createName.trim();
-                                if (!trimmedName) {
-                                    setCreateError("Recipe name is required.");
-                                    return;
-                                }
+                submitLabel="Create"
+                submittingLabel="Creating…"
+                submitting={createRecipeMutation.isPending}
+                submitDisabled={!canEdit || !projectId}
+                cancelDisabled={createRecipeMutation.isPending}
+                onCancel={() => setCreateOpen(false)}
+                onSubmit={() => {
+                    setCreateError(null);
+                    const trimmedName = createName.trim();
+                    if (!trimmedName) {
+                        setCreateError("Recipe name is required.");
+                        return;
+                    }
 
-                                const base = Number(createBaseTime);
-                                if (!Number.isFinite(base) || base <= 0) {
-                                    setCreateError(
-                                        "Base crafting time must be a positive number.",
-                                    );
-                                    return;
-                                }
+                    const base = Number(createBaseTime);
+                    if (!Number.isFinite(base) || base <= 0) {
+                        setCreateError(
+                            "Base crafting time must be a positive number.",
+                        );
+                        return;
+                    }
 
-                                const inputsErr = validateExchanges(
-                                    createInputs,
-                                    "Inputs",
-                                );
-                                if (inputsErr) {
-                                    setCreateError(inputsErr);
-                                    return;
-                                }
-                                const outputsErr = validateExchanges(
-                                    createOutputs,
-                                    "Outputs",
-                                );
-                                if (outputsErr) {
-                                    setCreateError(outputsErr);
-                                    return;
-                                }
+                    const inputsErr = validateExchanges(createInputs, "Inputs");
+                    if (inputsErr) {
+                        setCreateError(inputsErr);
+                        return;
+                    }
+                    const outputsErr = validateExchanges(
+                        createOutputs,
+                        "Outputs",
+                    );
+                    if (outputsErr) {
+                        setCreateError(outputsErr);
+                        return;
+                    }
 
-                                createRecipeMutation.mutate({
-                                    name: trimmedName,
-                                    description: createDescription.trim()
-                                        ? createDescription.trim()
-                                        : null,
-                                    baseCraftingTime: base,
-                                    inputs: createInputs.map((i) => ({
-                                        puid: i.puid,
-                                        quantity: Number(i.quantity),
-                                    })),
-                                    outputs: createOutputs.map((o) => ({
-                                        puid: o.puid,
-                                        quantity: Number(o.quantity),
-                                    })),
-                                });
-                            }}
-                            disabled={
-                                createRecipeMutation.isPending ||
-                                !canEdit ||
-                                !projectId
-                            }
-                        >
-                            {createRecipeMutation.isPending
-                                ? "Creating…"
-                                : "Create"}
-                        </button>
-                    </div>
-                }
+                    createRecipeMutation.mutate({
+                        name: trimmedName,
+                        description: createDescription.trim()
+                            ? createDescription.trim()
+                            : null,
+                        baseCraftingTime: base,
+                        inputs: createInputs.map((i) => ({
+                            puid: i.puid,
+                            quantity: Number(i.quantity),
+                        })),
+                        outputs: createOutputs.map((o) => ({
+                            puid: o.puid,
+                            quantity: Number(o.quantity),
+                        })),
+                    });
+                }}
             >
                 <div className="flex flex-col gap-4">
                     {createError && (
@@ -1011,7 +982,7 @@ export default function Recipes() {
                         </div>
                     </div>
                 </div>
-            </Popup>
+            </ItemCard>
 
             <Popup
                 open={editOpen}
