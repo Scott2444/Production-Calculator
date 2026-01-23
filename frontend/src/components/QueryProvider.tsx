@@ -1,19 +1,52 @@
 "use client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactNode } from "react";
-
-const queryClient = new QueryClient();
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { QueryClient, useQueryClient } from "@tanstack/react-query";
+import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
+import { ReactNode, useMemo, useState } from "react";
 
 export function QueryProvider({ children }: { children: ReactNode }) {
+    const [queryClient] = useState(
+        () =>
+            new QueryClient({
+                defaultOptions: {
+                    queries: {
+                        staleTime: 1000 * 60 * 5,
+                        gcTime: 1000 * 60 * 60 * 24,
+                        refetchOnWindowFocus: false,
+                        retry: 1,
+                    },
+                },
+            }),
+    );
+
+    const persister = useMemo(
+        () =>
+            createAsyncStoragePersister({
+                storage: window.localStorage,
+                key: "production-calculator-react-query",
+            }),
+        [],
+    );
+
     return (
-        <QueryClientProvider client={queryClient}>
+        <PersistQueryClientProvider
+            client={queryClient}
+            persistOptions={{
+                persister,
+                maxAge: 1000 * 60 * 60 * 24,
+                buster: process.env.NEXT_PUBLIC_QUERY_CACHE_BUSTER ?? "v1",
+                dehydrateOptions: {
+                    shouldDehydrateQuery: (query) =>
+                        query.state.status === "success",
+                },
+            }}
+        >
             {children}
-        </QueryClientProvider>
+        </PersistQueryClientProvider>
     );
 }
 
 export function useClearQueryCache() {
-    return () => {
-        queryClient.clear();
-    };
+    const queryClient = useQueryClient();
+    return () => queryClient.clear();
 }
