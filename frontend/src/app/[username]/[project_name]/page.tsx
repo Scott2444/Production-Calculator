@@ -291,11 +291,19 @@ export default function ProjectPage() {
                                   ? "?"
                                   : String(item.value ?? 0);
 
-                            return (
-                                <div
-                                    key={item.label}
-                                    className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4"
-                                >
+                            let href: string | null = null;
+                            if (item.label === "Products") {
+                                href = `/${encodeURIComponent(routeUsername ?? "")}/${encodeURIComponent(routeProjectName ?? "")}/products`;
+                            } else if (item.label === "Recipes") {
+                                href = `/${encodeURIComponent(routeUsername ?? "")}/${encodeURIComponent(routeProjectName ?? "")}/recipes`;
+                            } else if (item.label === "Machines") {
+                                href = `/${encodeURIComponent(routeUsername ?? "")}/${encodeURIComponent(routeProjectName ?? "")}/machines`;
+                            } else if (item.label === "Modifiers") {
+                                href = `/${encodeURIComponent(routeUsername ?? "")}/${encodeURIComponent(routeProjectName ?? "")}/modifiers`;
+                            }
+
+                            const cardContent = (
+                                <>
                                     <div className="text-xs font-medium uppercase tracking-wider text-slate-400">
                                         {item.label}
                                     </div>
@@ -310,6 +318,23 @@ export default function ProjectPage() {
                                             {item.helper}
                                         </div>
                                     )}
+                                </>
+                            );
+
+                            return href ? (
+                                <a
+                                    key={item.label}
+                                    href={href}
+                                    className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 transition-colors hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 block"
+                                >
+                                    {cardContent}
+                                </a>
+                            ) : (
+                                <div
+                                    key={item.label}
+                                    className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4"
+                                >
+                                    {cardContent}
                                 </div>
                             );
                         })}
