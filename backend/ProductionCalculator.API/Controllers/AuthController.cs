@@ -3,6 +3,7 @@ using ProductionCalculator.API.Helpers;
 using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 
 
 namespace ProductionCalculator.API.Controllers
@@ -18,6 +19,7 @@ namespace ProductionCalculator.API.Controllers
             _cookieOptionsHelper = cookieOptionsHelper;
         }
 
+        [EnableRateLimiting("login")]
         [Authorize(Policy = "None")]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest req)

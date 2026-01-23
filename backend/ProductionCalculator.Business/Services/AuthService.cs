@@ -132,9 +132,20 @@ namespace ProductionCalculator.Business.Services
             if (user == null)
                 return (ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "Invalid username or password."), null, null);
 
+            // Lockout check
+            if (user.Lockout_Until != null && user.Lockout_Until > DateTime.UtcNow)
+            {
+                return (ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "Invalid username or password."), null, null);
+            }
+
             var storedHash = await _userRepo.GetPasswordHash(user.User_Id);
             if (!PasswordHelper.VerifyPassword(password, storedHash))
+            {
+                // Increment failed login attempts and possibly lockout
+                LockoutHelper.UpdateUserLockout(_configuration, ref user);
+                await _userRepo.UpdateUser(user);
                 return (ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "Invalid username or password."), null, null);
+            }
             
             // JWT Access Token
             // Get claims for JWT
@@ -148,6 +159,11 @@ namespace ProductionCalculator.Business.Services
 
             // Refresh Token
             var refreshToken = await GenerateRefreshToken(user.User_Id);
+
+            // Clear failed login attempts and lockout
+            user.Failed_Login_Attempts = 0;
+            user.Lockout_Until = null;
+            await _userRepo.UpdateUser(user);
 
             return (ServiceResult<AuthResponse>.SuccessResult(new AuthResponse { Puid = puid, Username = user.Username }), accessToken, refreshToken);
         }

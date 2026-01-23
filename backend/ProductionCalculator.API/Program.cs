@@ -23,6 +23,7 @@ builder.Services.AddSwaggerGen(c =>
 ConfigurationHelper.SetupConnectionString(builder);
 ConfigurationHelper.SetupResend(builder);
 CorsPolicyHelper.SetupCorsPolicy(builder);
+RateLimitConfig.AddRateLimiting(builder.Services, builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -55,6 +56,8 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = "api/swagger";
     });
 }
+
+app.UseRateLimiter();
 
 app.UseCors("_myAllowSpecificOrigins");
 

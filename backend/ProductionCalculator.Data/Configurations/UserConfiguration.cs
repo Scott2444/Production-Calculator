@@ -61,6 +61,16 @@ namespace ProductionCalculator.Data.Configurations
             builder.HasIndex(u => u.Puid)
                 .IsUnique()
                 .HasDatabaseName("projects_puid_key");
+            
+            builder.Property(u => u.Failed_Login_Attempts)
+                .HasColumnName("failed_login_attempts")
+                .HasDefaultValue(0)
+                .IsRequired();
+            
+            builder.Property(u => u.Lockout_Until)
+                .HasColumnName("lockout_until")
+                .HasColumnType("timestamp with time zone")
+                .HasDefaultValueSql("now()");
         }
     }
 }
