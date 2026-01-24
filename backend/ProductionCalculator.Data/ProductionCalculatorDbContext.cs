@@ -25,6 +25,7 @@ namespace ProductionCalculator.Data
             modelBuilder.ApplyConfiguration(new MachineConfiguration());
             modelBuilder.ApplyConfiguration(new MachineRecipeConfiguration());
             modelBuilder.ApplyConfiguration(new ModifierConfiguration());
+            modelBuilder.ApplyConfiguration(new WorkflowConfiguration());
             modelBuilder.ApplyConfiguration(new RefreshTokenConfiguration());
             modelBuilder.ApplyConfiguration(new VerificationCodeConfiguration());
         }

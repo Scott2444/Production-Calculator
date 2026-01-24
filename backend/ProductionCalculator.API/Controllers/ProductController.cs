@@ -31,7 +31,7 @@ namespace ProductionCalculator.API.Controllers
 
         [Authorize(Policy = "IsOwnerOrAdmin")]
         [HttpPost]
-        public async Task<IActionResult> AddProduct(string projectPuid, [FromBody] AddProductRequest req)
+        public async Task<IActionResult> AddProduct(string projectPuid, [FromBody] ProductRequest req)
         {
             var result = await _service.AddProduct(projectPuid, req.Name, req.Description);
             return FromServiceResult(result, (p) => new ProductResponse { Puid = p.Puid, Name = p.Name, Description = p.Description, CreatedAt = p.Created_At, UpdatedAt = p.Last_Updated});
@@ -39,7 +39,7 @@ namespace ProductionCalculator.API.Controllers
 
         [Authorize(Policy = "IsOwnerOrAdmin")]
         [HttpPut("{productPuid}")]
-        public async Task<IActionResult> UpdateProduct(string projectPuid, string productPuid, [FromBody] AddProductRequest req)
+        public async Task<IActionResult> UpdateProduct(string projectPuid, string productPuid, [FromBody] ProductRequest req)
         {
             var result = await _service.UpdateProduct(projectPuid, productPuid, req.Name, req.Description);
             return FromServiceResult(result, p => new ProductResponse { Puid = p.Puid, Name = p.Name, Description = p.Description, CreatedAt = p.Created_At, UpdatedAt = p.Last_Updated});

@@ -21,6 +21,7 @@ namespace ProductionCalculator.Data.Extensions
             services.AddScoped<IMachineRepository, MachineRepository>();
             services.AddScoped<IMachineRecipeRepository, MachineRecipeRepository>();
             services.AddScoped<IModifierRepository, ModifierRepository>();
+            services.AddScoped<IWorkflowRepository, WorkflowRepository>();
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             services.AddScoped<IVerificationCodeRepository, VerificationCodeRepository>();
             return services;

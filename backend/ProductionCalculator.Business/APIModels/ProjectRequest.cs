@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ProductionCalculator.Business.APIModels
 {
-    public class AddProjectRequest
+    public class ProjectRequest
     {
         [Required]
         public string Name { get; set; } = string.Empty;

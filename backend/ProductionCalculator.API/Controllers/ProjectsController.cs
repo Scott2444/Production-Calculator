@@ -17,7 +17,7 @@ namespace ProductionCalculator.API.Controllers
 
         [Authorize(Policy = "IsUser")]
         [HttpPost]
-        public async Task<IActionResult> AddProject([FromBody] AddProjectRequest req)
+        public async Task<IActionResult> AddProject([FromBody] ProjectRequest req)
         {
             var result = await _service.AddProject(req.Name, req.Description, req.IsPublic, req.AliasProjectPuid);
 
@@ -26,7 +26,7 @@ namespace ProductionCalculator.API.Controllers
 
         [Authorize(Policy = "IsOwnerOrAdmin")]
         [HttpPut("{projectPuid}")]
-        public async Task<IActionResult> UpdateProject(string projectPuid, [FromBody] AddProjectRequest req)
+        public async Task<IActionResult> UpdateProject(string projectPuid, [FromBody] ProjectRequest req)
         {
             var result = await _service.UpdateProject(projectPuid, req.Name, req.Description, req.IsPublic, req.AliasProjectPuid);
 
