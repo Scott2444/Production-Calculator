@@ -78,6 +78,7 @@ namespace ProductionCalculator.Business.Services
                 Name = name,
                 Description = description ?? string.Empty,
                 Base_Crafting_Time = baseCraftingTime,
+                Version = 1,
                 Created_At = DateTime.UtcNow,
                 Last_Updated = DateTime.UtcNow
             };
@@ -128,13 +129,6 @@ namespace ProductionCalculator.Business.Services
             name = TruncateHelper.TruncateString(name, 255);
             description = TruncateHelper.TruncateStringNullable(description, 1000);
 
-            // Update recipe in DB
-            recipe.Name = name;
-            recipe.Description = description ?? string.Empty;
-            recipe.Base_Crafting_Time = baseCraftingTime;
-            recipe.Last_Updated = DateTime.UtcNow;
-            await _repo.UpdateRecipe(recipe);
-
             // Handle recipe products upsert
             var existingRecipeProducts = await _recipeProductRepo.GetByRecipeId(recipe.Recipe_Id);
             var (toAdd, toUpdate, toDelete) = HandleRecipeProductUpdate(inputs, outputs, existingRecipeProducts, recipe.Recipe_Id, cachedProducts);
@@ -142,6 +136,14 @@ namespace ProductionCalculator.Business.Services
             await _recipeProductRepo.UpsertRecipeProducts(toAdd);
             await _recipeProductRepo.UpsertRecipeProducts(toUpdate);
             await _recipeProductRepo.DeleteRecipeProducts(toDelete.Select(rp => rp.Recipe_Product_Id));
+
+            // Update recipe in DB
+            recipe.Name = name;
+            recipe.Description = description ?? string.Empty;
+            if (recipe.Base_Crafting_Time != baseCraftingTime || toAdd.Any() || toUpdate.Any() || toDelete.Any()) recipe.Version += 1; // Only increment version if tangible change
+            recipe.Base_Crafting_Time = baseCraftingTime;
+            recipe.Last_Updated = DateTime.UtcNow;
+            await _repo.UpdateRecipe(recipe);
 
             // Convert to API model
             var recipeResponse = ConvertToApiModel(recipe, toAdd.Concat(toUpdate), cachedProducts);

@@ -40,6 +40,8 @@ external_supply_rate // If is_external, expect no inputs
 Problem: Changes to the project may invalidate a workflow. If a user changes a recipe's products, a workflow using that recipe may not exist anymore.
 Solution: Soft invalidation through warnings
 
+We don't want to force any updates on the user without them knowing nor invalidate their existing workflow.
+
 We can implement this warning on individual nodes. Nodes that have the different effective speed will need recalculation but the tree structure will remain the same. Nodes that are missing definitions will require restructuring through the demand calculation.
 
 ## Cycle Detection and Prevention

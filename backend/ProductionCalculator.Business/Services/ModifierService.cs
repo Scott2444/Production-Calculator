@@ -57,6 +57,7 @@ namespace ProductionCalculator.Business.Services
                 Flat_Speed_Bonus = flat_speed_bonus,
                 Additive_Percent_Bonus = additive_percent_bonus,
                 Multiplicative_Modifiers = multiplicative_modifiers,
+                Version = 1,
                 Created_At = DateTime.UtcNow,
                 Last_Updated = DateTime.UtcNow
             };
@@ -86,6 +87,10 @@ namespace ProductionCalculator.Business.Services
 
             modifier.Name = name;
             modifier.Description = description ?? string.Empty;
+            if (modifier.Flat_Speed_Bonus != flat_speed_bonus || 
+                modifier.Additive_Percent_Bonus != additive_percent_bonus || 
+                modifier.Multiplicative_Modifiers != multiplicative_modifiers) 
+                { modifier.Version += 1; } // Only increment version if tangible change
             modifier.Flat_Speed_Bonus = flat_speed_bonus;
             modifier.Additive_Percent_Bonus = additive_percent_bonus;
             modifier.Multiplicative_Modifiers = multiplicative_modifiers;

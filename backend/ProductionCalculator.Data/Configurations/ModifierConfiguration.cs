@@ -57,6 +57,11 @@ namespace ProductionCalculator.Data.Configurations
                 .HasColumnName("puid")
                 .HasColumnType("char(10)")
                 .IsRequired();
+                
+            builder.Property(u => u.Version)
+                .HasColumnName("version")
+                .IsRequired()
+                .HasDefaultValue(1);
         }
     }
 }

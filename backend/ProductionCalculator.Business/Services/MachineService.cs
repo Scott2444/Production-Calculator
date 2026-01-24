@@ -79,6 +79,7 @@ namespace ProductionCalculator.Business.Services
                 Name = name,
                 Description = description ?? string.Empty,
                 Base_Speed = baseSpeed,
+                Version = 1,
                 Created_At = DateTime.UtcNow,
                 Last_Updated = DateTime.UtcNow
             };
@@ -146,6 +147,7 @@ namespace ProductionCalculator.Business.Services
             // Update machine and save to database
             machine.Name = name;
             machine.Description = description ?? string.Empty;
+            if (machine.Base_Speed != baseSpeed) machine.Version += 1; // Only increment version if tangible change
             machine.Base_Speed = baseSpeed;
             machine.Last_Updated = DateTime.UtcNow;
             await _repo.UpdateMachine(machine);

@@ -50,6 +50,11 @@ namespace ProductionCalculator.Data.Configurations
             builder.HasIndex(u => u.Puid)
                 .IsUnique()
                 .HasDatabaseName("machines_puid_key");
+            
+            builder.Property(u => u.Version)
+                .HasColumnName("version")
+                .IsRequired()
+                .HasDefaultValue(1);
         }
     }
 }
