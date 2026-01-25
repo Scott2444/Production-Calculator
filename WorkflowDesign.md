@@ -48,6 +48,25 @@ We can implement this warning on individual nodes. Nodes that have the different
 
 While calculating the demand for the tree and an input to a recipe already exists as output, mark it with a warning and don't explore this subtree.
 
+## API
+
+**Root Demand**
+GET: Get a workflow graph
+POST: Create a root demand
+UPDATE: Update a root demand
+DELETE: Delete a root demand
+
+**Node Config**
+PATCH: Override a recipe on a node
+PATCH: Override a machine on a node
+PATCH: Set node as external
+POST: Apply a modifier
+DELETE: Delete a modifer
+
+**Node State**
+PATCH: Set actual machine count
+PATCH: Set external rate
+
 ## Future Features
 
 1. Allow multiple recipes per product and distribute workload tools
