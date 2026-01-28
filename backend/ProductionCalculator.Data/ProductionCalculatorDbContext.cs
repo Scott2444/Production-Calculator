@@ -26,10 +26,10 @@ namespace ProductionCalculator.Data
             modelBuilder.ApplyConfiguration(new MachineRecipeConfiguration());
             modelBuilder.ApplyConfiguration(new ModifierConfiguration());
             modelBuilder.ApplyConfiguration(new WorkflowConfiguration());
-            modelBuilder.ApplyConfiguration(new ProductionNodeConfiguration());
-            modelBuilder.ApplyConfiguration(new ProductionNodeInputConfiguration());
-            modelBuilder.ApplyConfiguration(new ProductionNodeModifierConfiguration());
-            modelBuilder.ApplyConfiguration(new ProductionNodeStateConfiguration());
+            modelBuilder.ApplyConfiguration(new WorkflowNodeConfiguration());
+            modelBuilder.ApplyConfiguration(new WorkflowTargetConfiguration());
+            modelBuilder.ApplyConfiguration(new WorkflowNodeModifierConfiguration());
+            modelBuilder.ApplyConfiguration(new WorkflowEdgeConfiguration());
             modelBuilder.ApplyConfiguration(new RefreshTokenConfiguration());
             modelBuilder.ApplyConfiguration(new VerificationCodeConfiguration());
         }
