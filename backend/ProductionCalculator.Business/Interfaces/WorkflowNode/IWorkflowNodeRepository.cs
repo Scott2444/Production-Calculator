@@ -8,5 +8,6 @@ namespace ProductionCalculator.Business.Interfaces
         Task AddWorkflowNodes(List<WorkflowNode> workflowNodes);
         Task UpdateWorkflowNodes(List<WorkflowNode> workflowNodes);
         Task<bool> DeleteWorkflowNodes(List<int> ids);
+        Task<bool> PuidExists(string puid);
     }
 }

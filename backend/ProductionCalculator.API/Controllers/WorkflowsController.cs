@@ -52,5 +52,13 @@ namespace ProductionCalculator.API.Controllers
             var result = await _service.DeleteWorkflow(projectPuid, workflowPuid);
             return FromServiceResult(result);
         }
+
+        [Authorize(Policy = "IsOwnerOrAdmin")]
+        [HttpPut("{workflowPuid}/target-demand")]
+        public async Task<IActionResult> UpdateTargetDemand(string projectPuid, string workflowPuid, [FromBody] WorkflowTargetRequest request)
+        {
+            var result = await _service.UpdateTargetDemand(projectPuid, workflowPuid, request.Targets.Select(t => (t.ProductPuid, t.TargetRate)).ToList());
+            return FromServiceResult(result, r => r);
+        }
     }
 }

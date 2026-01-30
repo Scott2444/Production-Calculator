@@ -1,3 +1,4 @@
+using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Models;
 
 namespace ProductionCalculator.Business.Interfaces
@@ -9,5 +10,6 @@ namespace ProductionCalculator.Business.Interfaces
         Task<ServiceResult<Workflow>> GetWorkflowByPuid(string projectPuid, string puid);
         Task<ServiceResult<List<Workflow>>> GetWorkflowsByProjectPuid(string projectPuid);
         Task<ServiceResult> DeleteWorkflow(string projectPuid, string puid);
+        Task<ServiceResult<WorkflowChartResponse>> UpdateTargetDemand(string projectPuid, string workflowPuid, List<(string productPuid, double rate)> rootDemands);
     }
 }

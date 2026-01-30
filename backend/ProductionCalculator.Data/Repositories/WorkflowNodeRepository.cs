@@ -39,5 +39,9 @@ namespace ProductionCalculator.Data.Repositories
             await _db.SaveChangesAsync();
             return true;
         }
+        public async Task<bool> PuidExists(string puid)
+        {
+            return await _db.Set<WorkflowNode>().AnyAsync(n => n.Puid == puid);
+        }
     }
 }

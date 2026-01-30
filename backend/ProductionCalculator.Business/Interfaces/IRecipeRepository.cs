@@ -6,7 +6,7 @@ namespace ProductionCalculator.Business.Interfaces
     {
         Task<Recipe?> GetById(int id);
         Task<Recipe?> GetByPuid(string puid);
-        Task<IEnumerable<Recipe>> GetByProjectId(int projectId);
+        Task<List<Recipe>> GetByProjectId(int projectId);
         Task AddRecipe(Recipe recipe);
         Task<Recipe> UpdateRecipe(Recipe recipe);
         Task<bool> DeleteRecipe(int id);

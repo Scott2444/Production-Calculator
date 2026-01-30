@@ -48,9 +48,7 @@ We can implement this warning on individual nodes. Nodes that have the different
 
 **Root Demand**
 GET: Get a workflow graph
-POST: Create a root demand
-UPDATE: Update a root demand
-DELETE: Delete a root demand
+PUT: Update root demands
 
 **Node Config**
 PATCH: Override a recipe on a node
@@ -120,8 +118,6 @@ Each row will be A\*r = d where r is the production rate and d is the external d
 Assemble a matrix of all recipes with rows being net products. Create a demand vector based on the root demands the user has given. There needs to be a cost vector, but for now we can have all values set to 1 to minimize recipe rates.
 Feed this info into a LP solver to come up with an optimal solution if possible.
 
-Products may not always have a raw-resource recipe where a product is generated from nothing. The solver will not be able to create a solution if this is the case. Instead, we will have a hidden "import resource" recipe for every product. To keep the solver from using it unless no recipes exist, we will set the cost of these recipes extremely high (1,000,000).
-
 Users will want to select alternative recipes even though they may not be optimal. We will set the cost of selected recipes to near zero (0.0001) to show it is a prefered recipe but still not free. Alternatively, we can set the other recipes to create the product with a (0,0) bounds.
 
 **Supply Algorithm**
@@ -132,6 +128,14 @@ Since this design support cycles, the calculation for supply is not trivial. We 
    We can set the second constraint by setting the bounds as (0, max_rate)
 
 We want to produce everything but creating our root demand is our ultimate goal. We will set the objective as 1 for everything except the root demand products will be weighted higher (10+).
+
+## V3.5 - LP + Implicit Imports
+
+Products may not always have a raw-resource recipe where a product is generated from nothing. The solver will not be able to create a solution if this is the case. Instead, we will have a hidden "import resource" recipe for every product. To keep the solver from using it unless no recipes exist, we will set the cost of these recipes extremely high (1,000,000). We can also mark imports of products that will be externally provided as nearly-free (0.0001).
+
+However if the solver has to import any product, it will import the final product most likely. To solve this, we will penalize shallow products and encourage importing deeping products in the production tree.<br>
+Cost_Import = BasePenalty × (FanOutMultiplier)^Depth<br>
+We'll calculate this depth with a DFS search algorithm and memoziation to cache the product depth. We can also store the product depth in the DB in order to further improve performance.
 
 ## Future Features
 

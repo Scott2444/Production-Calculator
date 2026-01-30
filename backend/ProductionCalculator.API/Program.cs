@@ -34,6 +34,8 @@ builder.Services.AddScoped<IRecipeService, RecipeService>();
 builder.Services.AddScoped<IMachineService, MachineService>();
 builder.Services.AddScoped<IModifierService, ModifierService>();
 builder.Services.AddScoped<IWorkflowService, WorkflowService>();
+builder.Services.AddScoped<IWorkflowNodeService, WorkflowNodeService>();
+builder.Services.AddScoped<IWorkflowNodeDbService, WorkflowNodeDbService>();
 builder.Services.AddSingleton<JwtHelper>();
 builder.Services.AddSingleton<CookieOptionsHelper>();
 builder.Services.AddSingleton<RefreshTokenHelper>();

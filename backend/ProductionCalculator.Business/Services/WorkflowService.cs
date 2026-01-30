@@ -1,6 +1,7 @@
 
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
+using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Helpers;
 
 /**
@@ -18,12 +19,14 @@ namespace ProductionCalculator.Business.Services
 		private readonly ICurrentUserService _currentUser;
 		private readonly IWorkflowRepository _repo;
 		private readonly IProjectRepository _projectRepo;
+		private readonly IWorkflowNodeService _workflowNodeService;
 
-		public WorkflowService(ICurrentUserService currentUser, IWorkflowRepository repo, IProjectRepository projectRepo)
+		public WorkflowService(ICurrentUserService currentUser, IWorkflowRepository repo, IProjectRepository projectRepo, IWorkflowNodeService workflowNodeService)
 		{
 			_currentUser = currentUser;
 			_repo = repo;
 			_projectRepo = projectRepo;
+			_workflowNodeService = workflowNodeService;
 		}
 
 		public async Task<ServiceResult<Workflow>> AddWorkflow(string projectPuid, string name, string? description)
@@ -119,6 +122,25 @@ namespace ProductionCalculator.Business.Services
 			if (!isDeleted) return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete workflow.");
 
 			return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
+		}
+
+		public async Task<ServiceResult<WorkflowChartResponse>> UpdateTargetDemand(string projectPuid, string workflowPuid, List<(string productPuid, double rate)> rootDemands)
+		{
+			var project = await _projectRepo.GetProjectByPuid(projectPuid);
+			if (project == null) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Project not found.");
+
+			var workflow = await _repo.GetWorkflowByPuid(workflowPuid);
+			if (workflow == null || workflow.Project_Id != project.Project_Id) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Workflow not found.");
+
+			try 
+			{ 
+				var chart = await _workflowNodeService.UpsertRootDemands(workflow, rootDemands);
+				return ServiceResult<WorkflowChartResponse>.SuccessResult(chart);
+			}
+			catch (Exception ex)
+			{
+				return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.BadRequest400, $"No possible workflow configuration for the given target demands. {ex.Message}");
+			}
 		}
 	}
 }

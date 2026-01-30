@@ -27,7 +27,7 @@ namespace ProductionCalculator.Data.Repositories
         {
             return await _db.Set<Recipe>().FindAsync(id);
         }
-        public async Task<IEnumerable<Recipe>> GetByProjectId(int projectId)
+        public async Task<List<Recipe>> GetByProjectId(int projectId)
         {
             return await _db.Set<Recipe>()
                 .Where(r => r.Project_Id == projectId)
