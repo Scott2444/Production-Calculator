@@ -12,6 +12,6 @@ namespace ProductionCalculator.Business.Interfaces
         Task<ServiceResult> VerifyCode(string code);
         Task<bool> IsPublic();
         Task<bool> IsOwner(ClaimsPrincipal user);
-        Task<bool> IsAdmin(ClaimsPrincipal user);
+        bool IsAdmin(ClaimsPrincipal user);
     }
 }

@@ -22,7 +22,7 @@ namespace ProductionCalculator.API.Authorization
             if (authService == null) { context.Fail(); return; }
 
             var isOwner = await authService.IsOwner(context.User);
-            var isAdmin = await authService.IsAdmin(context.User);
+            var isAdmin = authService.IsAdmin(context.User);
 
             if (isOwner || isAdmin)
                 context.Succeed(requirement);

@@ -23,7 +23,7 @@ namespace ProductionCalculator.API.Authorization
 
             var IsPublic = await authService.IsPublic();
             var isOwner = await authService.IsOwner(context.User);
-            var isAdmin = await authService.IsAdmin(context.User);
+            var isAdmin = authService.IsAdmin(context.User);
 
             if (IsPublic || isOwner || isAdmin)
                 context.Succeed(requirement);

@@ -49,6 +49,30 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
+    app.Use(async (context, next) =>
+    {
+        var loggerFactory = context.RequestServices.GetRequiredService<ILoggerFactory>();
+        var logger = loggerFactory.CreateLogger("RequestTrace");
+
+        logger.LogInformation(
+            "HTTP {Method} {Path}{Query} UA:{UserAgent} Trace:{TraceId}",
+            context.Request.Method,
+            context.Request.Path,
+            context.Request.QueryString,
+            context.Request.Headers.UserAgent.ToString(),
+            context.TraceIdentifier);
+
+        await next();
+
+        logger.LogInformation(
+            "=> {StatusCode} {Method} {Path}{Query} Trace:{TraceId}",
+            context.Response.StatusCode,
+            context.Request.Method,
+            context.Request.Path,
+            context.Request.QueryString,
+            context.TraceIdentifier);
+    });
+
     app.UseSwagger(c =>
     {
         c.RouteTemplate = "api/swagger/{documentName}/swagger.json";

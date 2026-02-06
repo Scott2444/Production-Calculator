@@ -114,7 +114,7 @@ namespace ProductionCalculator.Business.Services
          /// <summary>
         /// Checks if the user is the owner of the resource identified by puid in the route.
         /// </summary>
-        public async Task<bool> IsAdmin(ClaimsPrincipal userClaim)
+        public bool IsAdmin(ClaimsPrincipal userClaim)
         {
             // Must be authenticated
             if (!userClaim.Identity?.IsAuthenticated ?? true)
