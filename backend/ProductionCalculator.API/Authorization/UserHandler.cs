@@ -17,7 +17,7 @@ namespace ProductionCalculator.API.Authorization
         {
             var user = context.User;
             // Must be authenticated
-            if (!user.Identity?.IsAuthenticated ?? true) { context.Fail(); return; }
+            if (!user.Identity?.IsAuthenticated ?? true) { context.Fail(); await Task.CompletedTask; return; }
 
             var roleName = user.FindFirst(ClaimTypes.Role)?.Value;
             // Check if user is role User or higher
@@ -27,9 +27,11 @@ namespace ProductionCalculator.API.Authorization
             if (!isUser)
             {
                 context.Fail();
+                await Task.CompletedTask;
                 return;
             }
             context.Succeed(requirement);
+            await Task.CompletedTask;
         }
     }
 }

@@ -9,6 +9,8 @@ backend/secrets/
 # Docker secrets
 /secrets/
 
+/backend/UnitTestsToImplement.md
+
 # ------------------------
 # Node.js
 # ------------------------
