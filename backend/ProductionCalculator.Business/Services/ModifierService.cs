@@ -2,15 +2,6 @@ using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Helpers;
 
-/**
- * Project last modified date should be updated when products are written to
- * !
- * !
- * ! 
- * !
-*/
-
-
 namespace ProductionCalculator.Business.Services
 {
     public class ModifierService : IModifierService
@@ -63,6 +54,7 @@ namespace ProductionCalculator.Business.Services
             };
 
             await _repo.AddModifier(modifier);
+            await UpdateProjectLastUpdated(project);
             return ServiceResult<Modifier>.SuccessResult(modifier, ServiceStatus.Created201);
         }
         public async Task<ServiceResult<Modifier>> UpdateModifier(string projectPuid, string puid, string? name, string? description, double flat_speed_bonus, double additive_percent_bonus, double multiplicative_modifiers)
@@ -97,6 +89,7 @@ namespace ProductionCalculator.Business.Services
             modifier.Last_Updated = DateTime.UtcNow;
 
             await _repo.UpdateModifier(modifier);
+            await UpdateProjectLastUpdated(project);
             return ServiceResult<Modifier>.SuccessResult(modifier, ServiceStatus.Ok200);
         }
         public async Task<ServiceResult<Modifier>> GetModifierByPuid(string projectPuid, string puid)
@@ -147,7 +140,14 @@ namespace ProductionCalculator.Business.Services
             var isDeleted = await _repo.DeleteModifier(modifier.Modifier_Id);
             if (!isDeleted) return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete modifier.");
 
+            await UpdateProjectLastUpdated(project);
             return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
+        }
+
+        private async Task UpdateProjectLastUpdated(Project project)
+        {
+            project.Last_Updated = DateTime.UtcNow;
+            await _projectRepo.UpdateProject(project);
         }
     }
 }

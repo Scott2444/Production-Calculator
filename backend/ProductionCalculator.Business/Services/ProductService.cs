@@ -2,14 +2,6 @@ using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Helpers;
 
-/**
- * Project last modified date should be updated when products are written to
- * !
- * !
- * ! 
- * !
-*/
-
 
 namespace ProductionCalculator.Business.Services
 {
@@ -58,6 +50,7 @@ namespace ProductionCalculator.Business.Services
             };
 
             await _repo.AddProduct(product);
+            await UpdateProjectLastUpdated(project);
             return ServiceResult<Product>.SuccessResult(product, ServiceStatus.Created201);
         }
         public async Task<ServiceResult<Product>> GetProductByPuid(string projectPuid, string puid)
@@ -121,7 +114,7 @@ namespace ProductionCalculator.Business.Services
             product.Last_Updated = DateTime.UtcNow;
 
             await _repo.UpdateProduct(product);
-
+            await UpdateProjectLastUpdated(project);
             return ServiceResult<Product>.SuccessResult(product);
         }
         public async Task<ServiceResult> DeleteProduct(string projectPuid, string puid)
@@ -137,7 +130,14 @@ namespace ProductionCalculator.Business.Services
             var isDeleted = await _repo.DeleteProduct(product.Product_Id);
             if (!isDeleted) return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete product.");
 
+            await UpdateProjectLastUpdated(project);
             return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
+        }
+
+        private async Task UpdateProjectLastUpdated(Project project)
+        {
+            project.Last_Updated = DateTime.UtcNow;
+            await _projectRepo.UpdateProject(project);
         }
     }
 }

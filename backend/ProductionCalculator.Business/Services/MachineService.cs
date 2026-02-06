@@ -3,15 +3,6 @@ using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Helpers;
 
-/**
- * Project last modified date should be updated when products are written to
- * !
- * !
- * ! 
- * !
-*/
-
-
 namespace ProductionCalculator.Business.Services
 {
     public class MachineService : IMachineService
@@ -94,6 +85,8 @@ namespace ProductionCalculator.Business.Services
             }).ToList();
             await _machineRecipeRepo.AddMachineRecipes(machineRecipe);
 
+            await UpdateProjectLastUpdated(project);
+
             // Convert to MachineResponse
             var machineResponse = new MachineResponse
             {
@@ -170,6 +163,8 @@ namespace ProductionCalculator.Business.Services
             
             await _machineRecipeRepo.AddMachineRecipes(machineRecipesToAdd);
             await _machineRecipeRepo.DeleteMachineRecipes(machineRecipesToRemove.Select(mr => mr.Machine_Recipe_Id));
+
+            await UpdateProjectLastUpdated(project);
 
             // Convert to MachineResponse
             var machineResponse = new MachineResponse
@@ -278,9 +273,16 @@ namespace ProductionCalculator.Business.Services
             var machine = await _repo.GetMachineByPuid(puid);
             if (machine == null || machine.Project_Id != project.Project_Id) return ServiceResult.Fail(ServiceStatus.NotFound404, "Machine not found.");
             
-            return await _repo.DeleteMachine(machine.Machine_Id) 
-                ? ServiceResult.SuccessResult(ServiceStatus.NoContent204) 
-                : ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete machine.");
+            var isDeleted = await _repo.DeleteMachine(machine.Machine_Id);
+            if (!isDeleted) return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete machine.");
+            await UpdateProjectLastUpdated(project);
+            return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
+        }
+
+        private async Task UpdateProjectLastUpdated(Project project)
+        {
+            project.Last_Updated = DateTime.UtcNow;
+            await _projectRepo.UpdateProject(project);
         }
     }
 }

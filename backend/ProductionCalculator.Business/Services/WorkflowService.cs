@@ -4,14 +4,6 @@ using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Helpers;
 
-/**
- * Project last modified date should be updated when products are written to
- * !
- * !
- * ! 
- * !
-*/
-
 namespace ProductionCalculator.Business.Services
 {
 	public class WorkflowService : IWorkflowService
@@ -59,6 +51,7 @@ namespace ProductionCalculator.Business.Services
 			};
 
 			await _repo.AddWorkflow(workflow);
+			await UpdateProjectLastUpdated(project);
 			return ServiceResult<Workflow>.SuccessResult(workflow, ServiceStatus.Created201);
 		}
         public async Task<ServiceResult<Workflow>> UpdateWorkflow(string projectPuid, string puid, string? name, string? description)
@@ -86,7 +79,7 @@ namespace ProductionCalculator.Business.Services
 			workflow.Last_Updated = DateTime.UtcNow;
 
 			await _repo.UpdateWorkflow(workflow);
-
+			await UpdateProjectLastUpdated(project);
 			return ServiceResult<Workflow>.SuccessResult(workflow);
 		}
 
@@ -121,6 +114,7 @@ namespace ProductionCalculator.Business.Services
 			var isDeleted = await _repo.DeleteWorkflow(workflow.Workflow_Id);
 			if (!isDeleted) return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete workflow.");
 
+			await UpdateProjectLastUpdated(project);
 			return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
 		}
 
@@ -143,5 +137,10 @@ namespace ProductionCalculator.Business.Services
 				return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.BadRequest400, $"No possible workflow configuration for the given target demands. {ex.Message}");
 			}
 		}
+		private async Task UpdateProjectLastUpdated(Project project)
+        {
+            project.Last_Updated = DateTime.UtcNow;
+            await _projectRepo.UpdateProject(project);
+        }
 	}
 }

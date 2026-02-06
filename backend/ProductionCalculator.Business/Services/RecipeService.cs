@@ -3,15 +3,6 @@ using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Helpers;
 
-/**
- * Project last modified date should be updated when products are written to
- * !
- * !
- * ! 
- * !
-*/
-
-
 namespace ProductionCalculator.Business.Services
 {
     public class RecipeService : IRecipeService
@@ -91,6 +82,7 @@ namespace ProductionCalculator.Business.Services
 
             // Add recipe_products to DB
             await _recipeProductRepo.UpsertRecipeProducts(recipeProducts);
+            await UpdateProjectLastUpdated(project);
 
             // Convert to API model
            var recipeResponse = ConvertToApiModel(recipe, recipeProducts, cachedProducts);
@@ -144,6 +136,8 @@ namespace ProductionCalculator.Business.Services
             recipe.Base_Crafting_Time = baseCraftingTime;
             recipe.Last_Updated = DateTime.UtcNow;
             await _repo.UpdateRecipe(recipe);
+
+            await UpdateProjectLastUpdated(project);
 
             // Convert to API model
             var recipeResponse = ConvertToApiModel(recipe, toAdd.Concat(toUpdate), cachedProducts);
@@ -217,9 +211,11 @@ namespace ProductionCalculator.Business.Services
             var recipe = await _repo.GetByPuid(puid);
             if (recipe == null || recipe.Project_Id != project.Project_Id) return ServiceResult.Fail(ServiceStatus.NotFound404, "Recipe not found.");
             
-            return await _repo.DeleteRecipe(recipe.Recipe_Id) 
-                ? ServiceResult.SuccessResult(ServiceStatus.NoContent204) 
-                : ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete recipe.");
+            var isDeleted = await _repo.DeleteRecipe(recipe.Recipe_Id);
+            if (!isDeleted) return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete recipe.");
+
+            await UpdateProjectLastUpdated(project);
+            return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
         }
 
         /// <summary>
@@ -410,6 +406,11 @@ namespace ProductionCalculator.Business.Services
                 UpdatedAt = recipe.Last_Updated
             };
             return recipeResponse;
+        }
+        private async Task UpdateProjectLastUpdated(Project project)
+        {
+            project.Last_Updated = DateTime.UtcNow;
+            await _projectRepo.UpdateProject(project);
         }
     }
 }
