@@ -90,12 +90,7 @@ namespace ProductionCalculator.Business.Services
 
             // Recalculate chart
             var updatedChart = await CalculateNodeChart(workflow, nodeChart);
-            return new WorkflowChartResponse
-            {
-                Nodes = new List<WorkflowNodeResponse>(),
-                Edges = new List<WorkflowEdgeResponse>(),
-                Targets = new List<WorkflowTargetExchange>()
-            };
+            return ConvertToResponse(projectObjects, updatedChart);
 		}
 
 		public async Task<WorkflowChartResponse> SetMachine(Workflow workflow, string nodePuid, string machinePuid)
@@ -152,12 +147,19 @@ namespace ProductionCalculator.Business.Services
             return updatedChart;
         }
 
+        /// <summary>
+        /// Updates the node chart based on calculated recipe rates.
+        /// Will reuse existing data where possible to minimize database changes and persist user specified values.
+        /// First calls DB to update nodes, product nodes, and targets to get the primary keys assigned by DB.
+        /// Then calls DB to update edges which depend on those primary keys.
+        /// </summary>
         private async Task<NodeChart> UpdateChartDemand(ProjectObjects projectObjects, NodeChart nodeChart, Dictionary<int, double> recipeRates, Workflow workflow)
         {
             NodeChart updatedChart = new NodeChart
             {
                 Nodes = new List<FullNode>(),
                 Edges = new List<WorkflowEdge>(),
+                ProductNodes = new List<WorkflowProductNode>(),
                 Targets = nodeChart.Targets
             };
 
@@ -209,12 +211,52 @@ namespace ProductionCalculator.Business.Services
                     updatedChart.Nodes.Add(newNode);
                 }
             }
+            // Update product nodes
+            updatedChart.ProductNodes = AssembleProductNodes(updatedChart, recipeRates, projectObjects);
+            // Keep existing product nodes where possible
+            // Always keep nodes flagged as external to avoid user defined data loss
+            foreach (var productNode in updatedChart.ProductNodes.ToList()) 
+            {
+                var matchingNode = nodeChart.ProductNodes.FirstOrDefault(pn => pn.Product_Id == productNode.Product_Id);
+                if (matchingNode != null)
+                {
+                    if (matchingNode.Is_External)
+                    {
+                        productNode.Is_External = true;
+                    }
+                    productNode.Workflow_Product_Node_Id = matchingNode.Workflow_Product_Node_Id;
+                }
+            }
+
+            // Nodes, Product_Nodes, and Targets are ready, now save to DB to get primary keys assigned
+            updatedChart = await _nodeService.WorkflowNodeAndTargetUpdate(workflow.Workflow_Id, updatedChart);
 
             // Update edges
+            updatedChart.Edges = AssembleEdges(updatedChart, recipeRates, projectObjects);
+            // Keep edges where producer or consumer node is still the same
+            // Reduces the amount of IO when updating the chart
+            // Set the edge_id to match to keep edge
+            foreach (var edge in updatedChart.Edges.ToList())
+            {
+                // Consumer edge match
+                var matchingConsumerEdge = nodeChart.Edges.FirstOrDefault(e => e.Consumer_Node_Id == edge.Consumer_Node_Id
+                    && e.Product_Node_Id == edge.Product_Node_Id);
+                if (matchingConsumerEdge != null)
+                {
+                    edge.Workflow_Edge_Id = matchingConsumerEdge.Workflow_Edge_Id;
+                }
+                // Producer edge match
+                var matchingProducerEdge = nodeChart.Edges.FirstOrDefault(e => e.Producer_Node_Id == edge.Producer_Node_Id
+                    && e.Product_Node_Id == edge.Product_Node_Id);
+                if (matchingProducerEdge != null)
+                {
+                    edge.Workflow_Edge_Id = matchingProducerEdge.Workflow_Edge_Id;
+                }
+            }
+            // Now update edges in DB
+            updatedChart = await _nodeService.WorkflowEdgeUpdate(workflow.Workflow_Id, updatedChart);
 
             return updatedChart;
-            
-            
         }
 
         /// <summary>
@@ -270,7 +312,7 @@ namespace ProductionCalculator.Business.Services
                 {
                     flatSpeedBonus += modifier.Flat_Speed_Bonus;
                     additivePercentBonus += modifier.Additive_Percent_Bonus;
-                    multiplicativeModifier *= multiplicativeModifier;
+                    multiplicativeModifier *= modifier.Multiplicative_Modifiers;
                 }
             }
 
@@ -280,6 +322,89 @@ namespace ProductionCalculator.Business.Services
             var machine_count = fullNode.Node.Calculated_Target_Rate / recipes_per_second_per_machine;
             fullNode.Node.Calculated_Machine_Count = machine_count;
             return fullNode;
+        }
+
+        /// <summary>
+        /// Assembles workflow edges based on the node chart and calculated recipe rates.
+        /// The nodes and product nodes must already be created in the node chart.
+        /// </summary>
+        private List<WorkflowEdge> AssembleEdges(NodeChart nodeChart, Dictionary<int, double> recipeRates, ProjectObjects projectObjects)
+        {
+            // Get rate inflow and outflow for each product at each node
+            var edgeList = new List<WorkflowEdge>();
+            foreach (var fullNode in nodeChart.Nodes)
+            {
+                var recipeId = fullNode.Node.Recipe_Id;
+                var rate = recipeRates[recipeId];
+
+                var relatedRecipeProducts = projectObjects.RecipeProducts.Where(rp => rp.Recipe_Id == recipeId);
+                foreach (var rp in relatedRecipeProducts)
+                {
+                    if (rate == 0.0)
+                        continue;
+                    double flow = rp.Quantity * rate;
+
+                    var productNode = nodeChart.ProductNodes.First(pn => pn.Product_Id == rp.Product_Id);
+
+                    var edge = new WorkflowEdge
+                    {
+                        Workflow_Edge_Id = 0,
+                        Workflow_Id = fullNode.Node.Workflow_Id,
+                        Producer_Node_Id = rp.Is_Input ? null : fullNode.Node.Node_Id,
+                        Consumer_Node_Id = rp.Is_Input ? fullNode.Node.Node_Id : null,
+                        Product_Node_Id = productNode.Workflow_Product_Node_Id,
+                        Calculated_Flow_Rate = flow,
+                        Actual_Flow_Rate = 0.0
+                    };
+                    Console.WriteLine($"Assembled edge: Recipe {recipeId}, Product {rp.Product_Id}, Flow {flow}, Producer Node {edge.Producer_Node_Id}, Consumer Node {edge.Consumer_Node_Id}");
+                    edgeList.Add(edge);
+                }
+            }
+            return edgeList;
+        }
+
+        /// <summary>
+        /// Assembles workflow product nodes on the node chart and calculated recipe rates.
+        /// The nodes must already be created in the node chart.
+        /// </summary>
+        private List<WorkflowProductNode> AssembleProductNodes(NodeChart nodeChart, Dictionary<int, double> recipeRates, ProjectObjects projectObjects)
+        {
+            // Get rates of each product from recipes rates
+            var productFlowRates = new Dictionary<int, double>();
+            foreach (var (recipeId, rate) in recipeRates)
+            {
+                var relatedRecipeProducts = projectObjects.RecipeProducts.Where(rp => rp.Recipe_Id == recipeId);
+                foreach (var rp in relatedRecipeProducts)
+                {
+                    if (rp.Is_Input && rate == 0.0)
+                        continue;
+                    double flow = rp.Quantity * rate;
+                    if (!productFlowRates.ContainsKey(rp.Product_Id))
+                    {
+                        productFlowRates[rp.Product_Id] = 0.0;
+                    }
+                    productFlowRates[rp.Product_Id] += flow;
+                }
+            }
+
+            var workflowId = nodeChart.Nodes.First().Node.Workflow_Id;
+
+            // Assemble product nodes
+            var productNodes = new List<WorkflowProductNode>();
+            foreach (var kvp in productFlowRates)
+            {
+                var productNode = new WorkflowProductNode
+                {
+                    Workflow_Product_Node_Id = 0, // New node
+                    Workflow_Id = workflowId,
+                    Product_Id = kvp.Key,
+                    Calculated_Flow_Rate = kvp.Value,
+                    Actual_Flow_Rate = 0.0,
+                    Is_External = false // Update later when compared to original chart
+                };
+                productNodes.Add(productNode);
+            }
+            return productNodes;
         }
 
         /// <summary>
@@ -395,13 +520,9 @@ namespace ProductionCalculator.Business.Services
         /// </summary>
         private void AddImportRecipes(ProjectObjects projectObjects, NodeChart nodeChart)
         {
-            var externallyProvidedProductIds = nodeChart.Edges
-                .Where(e => e.Is_External)
-                .Select(e => e.Product_Id)
-                .Distinct()
-                .ToHashSet();
-            var externalProducts = projectObjects.Products
-                .Where(p => externallyProvidedProductIds.Contains(p.Product_Id))
+            var externalProducts = nodeChart.ProductNodes
+                .Where(pn => pn.Is_External)
+                .Select(pn => projectObjects.Products.First(p => p.Product_Id == pn.Product_Id))
                 .ToList();
 
             foreach (var product in externalProducts)
@@ -467,6 +588,74 @@ namespace ProductionCalculator.Business.Services
         private bool CheckVersion(NodeChart nodeChart, ProjectObjects projectObjects)
         {
             throw new NotImplementedException();
+        }
+
+        private WorkflowChartResponse ConvertToResponse(ProjectObjects projectObjects,NodeChart nodeChart)
+        {
+            var response = new WorkflowChartResponse
+            {
+                Nodes = new List<WorkflowNodeResponse>(),
+                Edges = new List<WorkflowEdgeResponse>(),
+                Targets = new List<WorkflowTargetExchange>(),
+                ProductNodes = new List<WorkflowProductNodeResponse>()
+            };
+            foreach (var fullNode in nodeChart.Nodes)
+            {
+                var nodeResponse = new WorkflowNodeResponse
+                {
+                    Puid = fullNode.Node.Puid,
+                    RecipePuid = projectObjects.Recipes.First(r => r.Recipe_Id == fullNode.Node.Recipe_Id).Puid,
+                    IsPreferred = fullNode.Node.Is_Preferred,
+                    MachinePuid = fullNode.Node.Machine_Id.HasValue ? projectObjects.Machines.First(m => m.Machine_Id == fullNode.Node.Machine_Id.Value).Puid : null,
+                    CalculatedMachineCount = fullNode.Node.Calculated_Machine_Count,
+                    CalculatedTargetRate = fullNode.Node.Calculated_Target_Rate,
+                    CalculatedActualRate = fullNode.Node.Calculated_Actual_Rate,
+                    ModifierPuids = projectObjects.Modifiers
+                        .Where(m => fullNode.Modifiers.Any(wm => wm.Modifier_Id == m.Modifier_Id))
+                        .Select(m => m.Puid)
+                        .ToList()
+                };
+                response.Nodes.Add(nodeResponse);
+            }
+
+            foreach (var edge in nodeChart.Edges)
+            {
+                var edgeResponse = new WorkflowEdgeResponse
+                {
+                    ProducerNodePuid = edge.Producer_Node_Id.HasValue ? nodeChart.Nodes.First(n => n.Node.Node_Id == edge.Producer_Node_Id.Value).Node.Puid : null,
+                    ConsumerNodePuid = edge.Consumer_Node_Id.HasValue ? nodeChart.Nodes.First(n => n.Node.Node_Id == edge.Consumer_Node_Id.Value).Node.Puid : null,
+                    ProductPuid = projectObjects.Products.First(
+                        p => p.Product_Id == nodeChart.ProductNodes.First(
+                            pn => pn.Workflow_Product_Node_Id == edge.Product_Node_Id).Product_Id).Puid,
+                    CalculatedFlowRate = edge.Calculated_Flow_Rate,
+                    ActualFlowRate = edge.Actual_Flow_Rate
+                };
+                response.Edges.Add(edgeResponse);
+            }
+
+            foreach (var target in nodeChart.Targets)
+            {
+                var targetResponse = new WorkflowTargetExchange
+                {
+                    ProductPuid = projectObjects.Products.First(p => p.Product_Id == target.Product_Id).Puid,
+                    TargetRate = target.Target_Rate
+                };
+                response.Targets.Add(targetResponse);
+            }
+
+            foreach (var productNode in nodeChart.ProductNodes)
+            {
+                var productNodeResponse = new WorkflowProductNodeResponse
+                {
+                    ProductPuid = projectObjects.Products.First(p => p.Product_Id == productNode.Product_Id).Puid,
+                    CalculatedFlowRate = productNode.Calculated_Flow_Rate,
+                    ActualFlowRate = productNode.Actual_Flow_Rate,
+                    IsExternal = productNode.Is_External
+                };
+                response.ProductNodes.Add(productNodeResponse);
+            }
+
+            return response;
         }
 	}
 }

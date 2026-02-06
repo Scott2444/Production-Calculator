@@ -20,8 +20,8 @@ namespace ProductionCalculator.Data.Configurations
                 .HasColumnName("producer_node_id");
             builder.Property(e => e.Consumer_Node_Id)
                 .HasColumnName("consumer_node_id");
-            builder.Property(e => e.Product_Id)
-                .HasColumnName("product_id")
+            builder.Property(e => e.Product_Node_Id)
+                .HasColumnName("product_node_id")
                 .IsRequired();
             builder.Property(e => e.Calculated_Flow_Rate)
                 .HasColumnName("calculated_flow_rate")
@@ -30,10 +30,6 @@ namespace ProductionCalculator.Data.Configurations
             builder.Property(e => e.Actual_Flow_Rate)
                 .HasColumnName("actual_flow_rate")
                 .HasColumnType("numeric(14, 6)")
-                .IsRequired();
-            builder.Property(e => e.Is_External)
-                .HasColumnName("is_external")
-                .HasDefaultValue(false)
                 .IsRequired();
         }
     }

@@ -2,8 +2,9 @@ namespace ProductionCalculator.Business.APIModels
 {
 	public class WorkflowChartResponse
 	{
-		public List<WorkflowNodeResponse> Nodes { get; set; } = [];
-        public List<WorkflowEdgeResponse> Edges { get; set; } = [];
-        public List<WorkflowTargetExchange> Targets { get; set; } = [];
+		public required List<WorkflowNodeResponse> Nodes { get; set; } = [];
+        public required List<WorkflowEdgeResponse> Edges { get; set; } = [];
+        public required List<WorkflowTargetExchange> Targets { get; set; } = [];
+		public required List<WorkflowProductNodeResponse> ProductNodes { get; set; } = [];
 	}
 }

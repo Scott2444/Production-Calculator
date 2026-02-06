@@ -9,13 +9,21 @@ namespace ProductionCalculator.Business.Services
 		private readonly IWorkflowTargetRepository _targetRepo;
         private readonly IWorkflowNodeModifierRepository _modifierRepo;
         private readonly IWorkflowEdgeRepository _edgeRepo;
+        private readonly IWorkflowProductNodeRepository _productNodeRepo;
 
-		public WorkflowNodeDbService(IWorkflowNodeRepository nodeRepo, IWorkflowTargetRepository targetRepo, IWorkflowNodeModifierRepository modifierRepo, IWorkflowEdgeRepository edgeRepo)
+		public WorkflowNodeDbService(
+            IWorkflowNodeRepository nodeRepo, 
+            IWorkflowTargetRepository targetRepo, 
+            IWorkflowNodeModifierRepository modifierRepo, 
+            IWorkflowEdgeRepository edgeRepo,
+            IWorkflowProductNodeRepository productNodeRepo
+            )
 		{
 			_nodeRepo = nodeRepo;
 			_targetRepo = targetRepo;
 			_modifierRepo = modifierRepo;
             _edgeRepo = edgeRepo;
+            _productNodeRepo = productNodeRepo;
 		}
         public async Task<NodeChart> GetByWorkflowId(int workflowId, bool isTracked = false)
         {
@@ -31,26 +39,46 @@ namespace ProductionCalculator.Business.Services
             }
             var edges = await _edgeRepo.GetByWorkflow(workflowId, isTracked);
             var targets = await _targetRepo.GetByWorkflowId(workflowId, isTracked);
+            var productNodes = await _productNodeRepo.GetByWorkflowId(workflowId, isTracked);
             return new NodeChart
             {
                 Nodes = nodes,
                 Edges = edges,
-                Targets = targets
+                Targets = targets,
+                ProductNodes = productNodes
             };
         }
         
         /// <summary>
         /// Handles the logic of determining which nodes need to be created, updated, or deleted, and performs those operations.
         /// Translates NodeChart to subcomponent and calls respective repos.
+        /// Modifies NodeChart to reflect primary keys assigned as it is in the DB.
+        /// Returns updated NodeChart.
         /// </summary>
-        public async Task CompleteWorkflowUpdate(int workflowId, NodeChart nodeChart)
+        public async Task<NodeChart> WorkflowNodeAndTargetUpdate(int workflowId, NodeChart nodeChart)
         {
-            var originalChart = await GetByWorkflowId(workflowId, isTracked: true);
+            var originalChart = await GetByWorkflowId(workflowId, isTracked: false);
             
             await UpdateNodes(nodeChart.Nodes.Select(n => n.Node).ToList(), originalChart.Nodes.Select(n => n.Node).ToList());
             await UpdateTargets(nodeChart.Targets, originalChart.Targets);
             await UpdateModifiers(nodeChart.Nodes.SelectMany(n => n.Modifiers).ToList(), originalChart.Nodes.SelectMany(n => n.Modifiers).ToList());
+            await UpdateProductNodes(nodeChart.ProductNodes, originalChart.ProductNodes);
+            return nodeChart;
+        }
+
+        /// <summary>
+        /// Handles the logic of determining which nodes need to be created, updated, or deleted, and performs those operations.
+        /// Translates NodeChart to subcomponent and calls respective repos.
+        /// Modifies NodeChart to reflect primary keys assigned as it is in the DB.
+        /// Returns updated NodeChart.
+        /// </summary>
+        public async Task<NodeChart> WorkflowEdgeUpdate(int workflowId, NodeChart nodeChart)
+        {
+            var originalChart = await GetByWorkflowId(workflowId, isTracked: false);
+            
             await UpdateEdges(nodeChart.Edges, originalChart.Edges);
+
+            return nodeChart;
         }
 
         /// <summary>
@@ -62,11 +90,13 @@ namespace ProductionCalculator.Business.Services
         {
             // Use dictionaries for O(1) lookups
             var originalDict = originalNodes.ToDictionary(n => n.Node_Id);
-            var newDict = newNodes.ToDictionary(n => n.Node_Id);
+            // Limit newDict to only nodes that have an assigned Node_Id to avoid issues with new nodes having default 0 value
+            var newDict = newNodes.Where(n => n.Node_Id != 0).ToDictionary(n => n.Node_Id);
+
             // Add: in new, not in original
-            var inputsToAdd = newDict.Values.Where(nn => !originalDict.ContainsKey(nn.Node_Id)).ToList();
+            var inputsToAdd = newNodes.Where(nn => !originalDict.ContainsKey(nn.Node_Id)).ToList();
             // Update: in both, but values differ
-            var inputsToUpdate = newDict.Values.Where(nn => originalDict.TryGetValue(nn.Node_Id, out var on) && !on.ValueEquals(nn)).ToList();
+            var inputsToUpdate = newNodes.Where(nn => originalDict.TryGetValue(nn.Node_Id, out var on) && !on.ValueEquals(nn)).ToList();
             // Delete: in original, not in new
             var inputsToDelete = originalDict.Values.Where(en => !newDict.ContainsKey(en.Node_Id)).ToList();
 
@@ -88,11 +118,13 @@ namespace ProductionCalculator.Business.Services
         {
             // Use dictionaries for O(1) lookups
             var originalDict = originalTargets.ToDictionary(t => t.Workflow_Target_Id);
-            var newDict = newTargets.ToDictionary(t => t.Workflow_Target_Id);
+            // Limit newDict to only targets that have an assigned Workflow_Target_Id to avoid issues with new targets having default 0 value
+            var newDict = newTargets.Where(t => t.Workflow_Target_Id != 0).ToDictionary(t => t.Workflow_Target_Id);
+
             // Add: in new, not in original
-            var inputsToAdd = newDict.Values.Where(nt => !originalDict.ContainsKey(nt.Workflow_Target_Id)).ToList();
+            var inputsToAdd = newTargets.Where(nt => !originalDict.ContainsKey(nt.Workflow_Target_Id)).ToList();
             // Update: in both, but values differ
-            var inputsToUpdate = newDict.Values.Where(nt => originalDict.TryGetValue(nt.Workflow_Target_Id, out var ot) && !ot.ValueEquals(nt)).ToList();
+            var inputsToUpdate = newTargets.Where(nt => originalDict.TryGetValue(nt.Workflow_Target_Id, out var ot) && !ot.ValueEquals(nt)).ToList();
             // Delete: in original, not in new
             var inputsToDelete = originalDict.Values.Where(et => !newDict.ContainsKey(et.Workflow_Target_Id)).ToList();
 
@@ -114,11 +146,13 @@ namespace ProductionCalculator.Business.Services
         {
             // Use dictionaries for O(1) lookups
             var originalDict = originalModifiers.ToDictionary(t => t.Workflow_Node_Modifier_Id);
-            var newDict = newModifiers.ToDictionary(t => t.Workflow_Node_Modifier_Id);
+            // Limit newDict to only modifiers that have an assigned Workflow_Node_Modifier_Id to avoid issues with new modifiers having default 0 value
+            var newDict = newModifiers.Where(t => t.Workflow_Node_Modifier_Id != 0).ToDictionary(t => t.Workflow_Node_Modifier_Id);
+            
             // Add: in new, not in original
-            var inputsToAdd = newDict.Values.Where(nt => !originalDict.ContainsKey(nt.Workflow_Node_Modifier_Id)).ToList();
+            var inputsToAdd = newModifiers.Where(nt => !originalDict.ContainsKey(nt.Workflow_Node_Modifier_Id)).ToList();
             // Update: in both, but values differ
-            var inputsToUpdate = newDict.Values.Where(nt => originalDict.TryGetValue(nt.Workflow_Node_Modifier_Id, out var ot) && !ot.ValueEquals(nt)).ToList();
+            var inputsToUpdate = newModifiers.Where(nt => originalDict.TryGetValue(nt.Workflow_Node_Modifier_Id, out var ot) && !ot.ValueEquals(nt)).ToList();
             // Delete: in original, not in new
             var inputsToDelete = originalDict.Values.Where(et => !newDict.ContainsKey(et.Workflow_Node_Modifier_Id)).ToList();
 
@@ -140,11 +174,12 @@ namespace ProductionCalculator.Business.Services
         {
             // Use dictionaries for O(1) lookups
             var originalDict = originalEdges.ToDictionary(t => t.Workflow_Edge_Id);
-            var newDict = newEdges.ToDictionary(t => t.Workflow_Edge_Id);
+            // Limit newDict to only edges that have an assigned Workflow_Edge_Id to avoid issues with new edges having default 0 value
+            var newDict = newEdges.Where(t => t.Workflow_Edge_Id != 0).ToDictionary(t => t.Workflow_Edge_Id);
             // Add: in new, not in original
-            var inputsToAdd = newDict.Values.Where(nt => !originalDict.ContainsKey(nt.Workflow_Edge_Id)).ToList();
+            var inputsToAdd = newEdges.Where(nt => !originalDict.ContainsKey(nt.Workflow_Edge_Id)).ToList();
             // Update: in both, but values differ
-            var inputsToUpdate = newDict.Values.Where(nt => originalDict.TryGetValue(nt.Workflow_Edge_Id, out var ot) && !ot.ValueEquals(nt)).ToList();
+            var inputsToUpdate = newEdges.Where(nt => originalDict.TryGetValue(nt.Workflow_Edge_Id, out var ot) && !ot.ValueEquals(nt)).ToList();
             // Delete: in original, not in new
             var inputsToDelete = originalDict.Values.Where(et => !newDict.ContainsKey(et.Workflow_Edge_Id)).ToList();
 
@@ -158,6 +193,31 @@ namespace ProductionCalculator.Business.Services
             await _edgeRepo.DeleteWorkflowEdges(inputsToDelete.Select(i => i.Workflow_Edge_Id).ToList());
         }
 
-        
+        /// <summary>
+        /// Handles the logic of determining which modifiers need to be created, updated, or deleted, and performs those operations.
+        /// Calls repos to perform DB operations.
+        /// </summary>
+        private async Task UpdateProductNodes(List<WorkflowProductNode> newProductNodes, List<WorkflowProductNode> originalProductNodes)
+        {
+            // Use dictionaries for O(1) lookups
+            var originalDict = originalProductNodes.ToDictionary(t => t.Workflow_Product_Node_Id);
+            // Limit newDict to only product nodes that have an assigned Workflow_Product_Node_Id to avoid issues with new product nodes having default 0 value
+            var newDict = newProductNodes.Where(t => t.Workflow_Product_Node_Id != 0).ToDictionary(t => t.Workflow_Product_Node_Id);
+            // Add: in new, not in original
+            var inputsToAdd = newProductNodes.Where(nt => !originalDict.ContainsKey(nt.Workflow_Product_Node_Id)).ToList();
+            // Update: in both, but values differ
+            var inputsToUpdate = newProductNodes.Where(nt => originalDict.TryGetValue(nt.Workflow_Product_Node_Id, out var ot) && !ot.ValueEquals(nt)).ToList();
+            // Delete: in original, not in new
+            var inputsToDelete = originalDict.Values.Where(et => !newDict.ContainsKey(et.Workflow_Product_Node_Id)).ToList();
+
+            // Add new
+            await _productNodeRepo.AddWorkflowProductNodes(inputsToAdd);
+
+            // Update existing
+            await _productNodeRepo.UpdateWorkflowProductNodes(inputsToUpdate);
+
+            // Delete removed
+            await _productNodeRepo.DeleteWorkflowProductNodes(inputsToDelete.Select(i => i.Workflow_Product_Node_Id).ToList());
+        }
 	}
 }

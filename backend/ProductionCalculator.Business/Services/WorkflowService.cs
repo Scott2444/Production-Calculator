@@ -132,13 +132,14 @@ namespace ProductionCalculator.Business.Services
 			var workflow = await _repo.GetWorkflowByPuid(workflowPuid);
 			if (workflow == null || workflow.Project_Id != project.Project_Id) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Workflow not found.");
 
-			try 
-			{ 
+			try
+			{
 				var chart = await _workflowNodeService.UpsertRootDemands(workflow, rootDemands);
 				return ServiceResult<WorkflowChartResponse>.SuccessResult(chart);
 			}
-			catch (Exception ex)
+			catch (InvalidOperationException ex)
 			{
+				Console.WriteLine(ex);
 				return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.BadRequest400, $"No possible workflow configuration for the given target demands. {ex.Message}");
 			}
 		}
