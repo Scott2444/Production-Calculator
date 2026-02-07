@@ -1,482 +1,276 @@
 ﻿using FakeItEasy;
-using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Services;
 
 namespace ProductionCalculator.Business.Tests;
 
-public class WorkflowServiceTests
+public class UserServiceTests
 {
-    private static Project CreateProject(int id = 1, string puid = "project1234")
+    private readonly IUserRepository _repo;
+    private readonly IRoleRepository _roleRepo;
+    private readonly UserService _service;
+
+    public UserServiceTests()
     {
-        return new Project
+        _repo = A.Fake<IUserRepository>();
+        _roleRepo = A.Fake<IRoleRepository>();
+        _service = new UserService(_repo, _roleRepo);
+    }
+
+    private User CreateTestUser(string username = "test", string email = "test@test.com", string puid = "user123456", int roleId = 1)
+    {
+        return new User
         {
-            Project_Id = id,
             User_Id = 1,
+            Username = username,
+            Email = email,
+            Password_Hash = "hash",
+            Role_Id = roleId,
             Puid = puid,
-            Name = "Project",
-            Description = null,
-            Is_Public = false,
-            Alias_Project_Puid = null,
             Created_At = DateTime.UtcNow,
             Last_Updated = DateTime.UtcNow
         };
     }
 
-    private static Workflow CreateWorkflow(int id = 1, int projectId = 1, string puid = "workflowPuid", string name = "Workflow")
+    private Role CreateTestRole(int id = 1, string name = "User")
     {
-        return new Workflow
+        return new Role
         {
-            Workflow_Id = id,
-            Project_Id = projectId,
-            Puid = puid,
-            Name = name,
-            Description = "desc",
-            Created_At = DateTime.UtcNow,
-            Last_Updated = DateTime.UtcNow
+            Role_Id = id,
+            Role_Name = name
         };
     }
 
-    private static WorkflowService CreateService(
-        IWorkflowRepository repo,
-        IProjectRepository projectRepo,
-        IWorkflowNodeService workflowNodeService)
+    [Theory]
+    [InlineData("", "email@test.com", "password123")]
+    [InlineData("user", "", "password123")]
+    [InlineData("user", "email@test.com", "")]
+    [InlineData("us", "email@test.com", "password123")] // Too short
+    [InlineData("thisusernameiswaytoolongtobevalid", "email@test.com", "password123")] // Too long
+    [InlineData("user!", "email@test.com", "password123")] // Invalid chars
+    [InlineData("user", "email@test.com", "short")] // Password too short
+    [InlineData("user", "email@test.com", "thispasswordiswaytoooolongtobevalid123")] // Password too long
+    public async Task Register_InvalidInput_ReturnsBadRequest(string username, string email, string password)
     {
-        var currentUser = A.Fake<ICurrentUserService>();
-        return new WorkflowService(currentUser, repo, projectRepo, workflowNodeService);
-    }
+        // Act
+        var result = await _service.Register(username, email, password);
 
-    [Fact]
-    public async Task AddWorkflow_EmptyName_ReturnsBadRequest()
-    {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-
-        var result = await service.AddWorkflow("project", "", null);
-
+        // Assert
         Assert.Equal(ServiceStatus.BadRequest400, result.Status);
     }
 
     [Fact]
-    public async Task AddWorkflow_ProjectNotFound_ReturnsNotFound()
+    public async Task Register_ExistingUsername_ReturnsConflict()
     {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
+        // Arrange
+        A.CallTo(() => _repo.GetByUsername("existing")).Returns(CreateTestUser(username: "existing"));
 
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(Task.FromResult<Project?>(null));
+        // Act
+        var result = await _service.Register("existing", "email@test.com", "password123");
 
-        var result = await service.AddWorkflow("project", "wf", null);
-
-        Assert.Equal(ServiceStatus.NotFound404, result.Status);
-    }
-
-    [Fact]
-    public async Task AddWorkflow_DuplicateNameInProject_ReturnsConflict()
-    {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-
-        var project = CreateProject(id: 7, puid: "project");
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(project);
-        A.CallTo(() => repo.GetWorkflowsByProjectId(7)).Returns(new List<Workflow> { CreateWorkflow(id: 1, projectId: 7, name: "wf") });
-
-        var result = await service.AddWorkflow("project", "wf", null);
-
+        // Assert
         Assert.Equal(ServiceStatus.Conflict409, result.Status);
     }
 
     [Fact]
-    public async Task AddWorkflow_ValidRequest_ReturnsCreatedAndSavesToRepo()
+    public async Task Register_ExistingEmail_ReturnsConflict()
     {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
+        // Arrange
+        A.CallTo(() => _repo.GetByUsername(A<string>._)).Returns(Task.FromResult<User?>(null));
+        A.CallTo(() => _repo.GetByEmail("existing@test.com")).Returns(CreateTestUser(email: "existing@test.com"));
 
-        var project = CreateProject(id: 7, puid: "project");
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(project);
-        A.CallTo(() => repo.GetWorkflowsByProjectId(7)).Returns(new List<Workflow>());
-        A.CallTo(() => repo.PuidExists(A<string>._)).Returns(Task.FromResult(false));
+        // Act
+        var result = await _service.Register("newuser", "existing@test.com", "password123");
 
-        var result = await service.AddWorkflow("project", "wf", "d");
+        // Assert
+        Assert.Equal(ServiceStatus.Conflict409, result.Status);
+    }
 
-        Assert.True(result.Success);
+    [Fact]
+    public async Task Register_ValidRequest_ReturnsCreated()
+    {
+        // Arrange
+        A.CallTo(() => _repo.GetByUsername(A<string>._)).Returns(Task.FromResult<User?>(null));
+        A.CallTo(() => _repo.GetByEmail(A<string>._)).Returns(Task.FromResult<User?>(null));
+        A.CallTo(() => _repo.PuidExists(A<string>._)).Returns(false);
+
+        // Act
+        var result = await _service.Register("validuser", "valid@test.com", "password123");
+
+        // Assert
         Assert.Equal(ServiceStatus.Created201, result.Status);
         Assert.NotNull(result.Data);
-        Assert.Equal(7, result.Data!.Project_Id);
-        Assert.Equal("wf", result.Data.Name);
-        Assert.False(string.IsNullOrWhiteSpace(result.Data.Puid));
-        Assert.Equal(10, result.Data.Puid.Length);
-
-        A.CallTo(() => repo.AddWorkflow(A<Workflow>.That.Matches(w => w.Project_Id == 7 && w.Name == "wf" && w.Puid.Length == 10)))
-            .MustHaveHappenedOnceExactly();
+        Assert.Equal("validuser", result.Data.Username);
+        A.CallTo(() => _repo.AddUser(A<User>._)).MustHaveHappenedOnceExactly();
     }
 
-    [Fact]
-    public async Task UpdateWorkflow_EmptyName_ReturnsBadRequest()
+    [Theory]
+    [InlineData("", "email@test.com")]
+    [InlineData("user", "")]
+    public async Task ValidateNewUser_EmptyInput_ReturnsBadRequest(string username, string email)
     {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
+        // Act
+        var result = await _service.ValidateNewUser(username, email);
 
-        var result = await service.UpdateWorkflow("project", "wfPuid", "", null);
-
+        // Assert
         Assert.Equal(ServiceStatus.BadRequest400, result.Status);
     }
 
     [Fact]
-    public async Task UpdateWorkflow_ProjectNotFound_ReturnsNotFound()
+    public async Task ValidateNewUser_ExistingUsername_ReturnsConflict()
     {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
+        // Arrange
+        A.CallTo(() => _repo.GetByUsername("existing")).Returns(CreateTestUser(username: "existing"));
 
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(Task.FromResult<Project?>(null));
+        // Act
+        var result = await _service.ValidateNewUser("existing", "email@test.com");
 
-        var result = await service.UpdateWorkflow("project", "wfPuid", "new", null);
-
-        Assert.Equal(ServiceStatus.NotFound404, result.Status);
-    }
-
-    [Fact]
-    public async Task UpdateWorkflow_WorkflowNotFound_ReturnsNotFound()
-    {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-
-        var project = CreateProject(id: 7, puid: "project");
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(project);
-        A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(Task.FromResult<Workflow?>(null));
-
-        var result = await service.UpdateWorkflow("project", "wfPuid", "new", null);
-
-        Assert.Equal(ServiceStatus.NotFound404, result.Status);
-    }
-
-    [Fact]
-    public async Task UpdateWorkflow_WorkflowBelongsToDifferentProject_ReturnsNotFound()
-    {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-
-        var project = CreateProject(id: 7, puid: "project");
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(project);
-        A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(CreateWorkflow(id: 1, projectId: 999, puid: "wfPuid"));
-
-        var result = await service.UpdateWorkflow("project", "wfPuid", "new", null);
-
-        Assert.Equal(ServiceStatus.NotFound404, result.Status);
-    }
-
-    [Fact]
-    public async Task UpdateWorkflow_DuplicateNameOtherThanSelf_ReturnsConflict()
-    {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-
-        var project = CreateProject(id: 7, puid: "project");
-        var workflow = CreateWorkflow(id: 10, projectId: 7, puid: "wfPuid", name: "old");
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(project);
-        A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
-        A.CallTo(() => repo.GetWorkflowsByProjectId(7)).Returns(new List<Workflow>
-        {
-            workflow,
-            CreateWorkflow(id: 11, projectId: 7, puid: "other", name: "new")
-        });
-
-        var result = await service.UpdateWorkflow("project", "wfPuid", "new", null);
-
+        // Assert
         Assert.Equal(ServiceStatus.Conflict409, result.Status);
     }
 
     [Fact]
-    public async Task UpdateWorkflow_ValidRequest_ReturnsSuccessAndUpdatesRepo()
+    public async Task ValidateNewUser_ExistingEmail_ReturnsConflict()
     {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
+        // Arrange
+        A.CallTo(() => _repo.GetByUsername(A<string>._)).Returns(Task.FromResult<User?>(null));
+        A.CallTo(() => _repo.GetByEmail("existing@test.com")).Returns(CreateTestUser(email: "existing@test.com"));
 
-        var project = CreateProject(id: 7, puid: "project");
-        var workflow = CreateWorkflow(id: 10, projectId: 7, puid: "wfPuid", name: "old");
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(project);
-        A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
-        A.CallTo(() => repo.GetWorkflowsByProjectId(7)).Returns(new List<Workflow> { workflow });
+        // Act
+        var result = await _service.ValidateNewUser("newuser", "existing@test.com");
 
-        var result = await service.UpdateWorkflow("project", "wfPuid", "new", "d");
-
-        Assert.True(result.Success);
-        Assert.NotNull(result.Data);
-        Assert.Equal("new", result.Data!.Name);
-
-        A.CallTo(() => repo.UpdateWorkflow(A<Workflow>.That.Matches(w => w.Workflow_Id == 10 && w.Name == "new")))
-            .MustHaveHappenedOnceExactly();
+        // Assert
+        Assert.Equal(ServiceStatus.Conflict409, result.Status);
     }
 
     [Fact]
-    public async Task GetWorkflowByPuid_ProjectNotFound_ReturnsNotFound()
+    public async Task ValidateNewUser_ValidInput_ReturnsOk()
     {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(Task.FromResult<Project?>(null));
+        // Arrange
+        A.CallTo(() => _repo.GetByUsername(A<string>._)).Returns(Task.FromResult<User?>(null));
+        A.CallTo(() => _repo.GetByEmail(A<string>._)).Returns(Task.FromResult<User?>(null));
 
-        var result = await service.GetWorkflowByPuid("project", "wf");
+        // Act
+        var result = await _service.ValidateNewUser("newuser", "new@test.com");
 
+        // Assert
+        Assert.Equal(ServiceStatus.Ok200, result.Status);
+    }
+
+    [Fact]
+    public async Task GetUserByPuid_EmptyPuid_ReturnsBadRequest()
+    {
+        // Act
+        var result = await _service.GetUserByPuid("");
+
+        // Assert
+        Assert.Equal(ServiceStatus.BadRequest400, result.Status);
+    }
+
+    [Fact]
+    public async Task GetUserByPuid_NotFound_ReturnsNotFound()
+    {
+        // Arrange
+        A.CallTo(() => _repo.GetByPuid("nonexistent")).Returns(Task.FromResult<User?>(null));
+
+        // Act
+        var result = await _service.GetUserByPuid("nonexistent");
+
+        // Assert
         Assert.Equal(ServiceStatus.NotFound404, result.Status);
     }
 
     [Fact]
-    public async Task GetWorkflowByPuid_WorkflowNotFound_ReturnsNotFound()
+    public async Task GetUserByPuid_RoleNotFound_ReturnsInternalServerError()
     {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-        var project = CreateProject(id: 7, puid: "project");
+        // Arrange
+        var user = CreateTestUser(roleId: 99);
+        A.CallTo(() => _repo.GetByPuid("valid")).Returns(user);
+        A.CallTo(() => _roleRepo.GetRole(99)).Returns(Task.FromResult<Role?>(null));
 
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(project);
-        A.CallTo(() => repo.GetWorkflowByPuid("wf")).Returns(Task.FromResult<Workflow?>(null));
+        // Act
+        var result = await _service.GetUserByPuid("valid");
 
-        var result = await service.GetWorkflowByPuid("project", "wf");
-
-        Assert.Equal(ServiceStatus.NotFound404, result.Status);
-    }
-
-    [Fact]
-    public async Task GetWorkflowByPuid_WorkflowBelongsToDifferentProject_ReturnsNotFound()
-    {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-        var project = CreateProject(id: 7, puid: "project");
-
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(project);
-        A.CallTo(() => repo.GetWorkflowByPuid("wf")).Returns(CreateWorkflow(id: 1, projectId: 999, puid: "wf"));
-
-        var result = await service.GetWorkflowByPuid("project", "wf");
-
-        Assert.Equal(ServiceStatus.NotFound404, result.Status);
-    }
-
-    [Fact]
-    public async Task GetWorkflowByPuid_ValidInputs_ReturnsWorkflow()
-    {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-        var project = CreateProject(id: 7, puid: "project");
-        var workflow = CreateWorkflow(id: 1, projectId: 7, puid: "wf");
-
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(project);
-        A.CallTo(() => repo.GetWorkflowByPuid("wf")).Returns(workflow);
-
-        var result = await service.GetWorkflowByPuid("project", "wf");
-
-        Assert.True(result.Success);
-        Assert.NotNull(result.Data);
-        Assert.Equal("wf", result.Data!.Puid);
-    }
-
-    [Fact]
-    public async Task GetWorkflowsByProjectPuid_ProjectNotFound_ReturnsNotFound()
-    {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(Task.FromResult<Project?>(null));
-
-        var result = await service.GetWorkflowsByProjectPuid("project");
-
-        Assert.Equal(ServiceStatus.NotFound404, result.Status);
-    }
-
-    [Fact]
-    public async Task GetWorkflowsByProjectPuid_ProjectExists_ReturnsWorkflowList()
-    {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-        var project = CreateProject(id: 7, puid: "project");
-        var workflows = new List<Workflow> { CreateWorkflow(id: 1, projectId: 7), CreateWorkflow(id: 2, projectId: 7) };
-
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(project);
-        A.CallTo(() => repo.GetWorkflowsByProjectId(7)).Returns(workflows);
-
-        var result = await service.GetWorkflowsByProjectPuid("project");
-
-        Assert.True(result.Success);
-        Assert.NotNull(result.Data);
-        Assert.Equal(2, result.Data!.Count);
-    }
-
-    [Fact]
-    public async Task DeleteWorkflow_ProjectNotFound_ReturnsNotFound()
-    {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(Task.FromResult<Project?>(null));
-
-        var result = await service.DeleteWorkflow("project", "wf");
-
-        Assert.Equal(ServiceStatus.NotFound404, result.Status);
-    }
-
-    [Fact]
-    public async Task DeleteWorkflow_WorkflowNotFound_ReturnsNotFound()
-    {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-        var project = CreateProject(id: 7, puid: "project");
-
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(project);
-        A.CallTo(() => repo.GetWorkflowByPuid("wf")).Returns(Task.FromResult<Workflow?>(null));
-
-        var result = await service.DeleteWorkflow("project", "wf");
-
-        Assert.Equal(ServiceStatus.NotFound404, result.Status);
-    }
-
-    [Fact]
-    public async Task DeleteWorkflow_RepoReturnsFalse_ReturnsInternalServerError()
-    {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-        var project = CreateProject(id: 7, puid: "project");
-        var workflow = CreateWorkflow(id: 3, projectId: 7, puid: "wf");
-
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(project);
-        A.CallTo(() => repo.GetWorkflowByPuid("wf")).Returns(workflow);
-        A.CallTo(() => repo.DeleteWorkflow(3)).Returns(Task.FromResult(false));
-
-        var result = await service.DeleteWorkflow("project", "wf");
-
+        // Assert
         Assert.Equal(ServiceStatus.InternalServerError500, result.Status);
     }
 
     [Fact]
-    public async Task DeleteWorkflow_ValidRequest_ReturnsNoContent()
+    public async Task GetUserByPuid_Success_ReturnsOk()
     {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-        var project = CreateProject(id: 7, puid: "project");
-        var workflow = CreateWorkflow(id: 3, projectId: 7, puid: "wf");
+        // Arrange
+        var user = CreateTestUser(roleId: 1, username: "test");
+        var role = CreateTestRole(id: 1, name: "User");
+        A.CallTo(() => _repo.GetByPuid("valid")).Returns(user);
+        A.CallTo(() => _roleRepo.GetRole(1)).Returns(role);
 
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(project);
-        A.CallTo(() => repo.GetWorkflowByPuid("wf")).Returns(workflow);
-        A.CallTo(() => repo.DeleteWorkflow(3)).Returns(Task.FromResult(true));
+        // Act
+        var result = await _service.GetUserByPuid("valid");
 
-        var result = await service.DeleteWorkflow("project", "wf");
+        // Assert
+        Assert.Equal(ServiceStatus.Ok200, result.Status);
+        Assert.True(result.Data.Item2); // Verified
+        Assert.Equal("test", result.Data.Item1.Username);
+    }
 
-        Assert.True(result.Success);
+    [Fact]
+    public async Task GetUserByUsername_Success_ReturnsOk()
+    {
+        // Arrange
+        var user = CreateTestUser(roleId: 1, username: "test");
+        var role = CreateTestRole(id: 1, name: "User");
+        A.CallTo(() => _repo.GetByUsername("test")).Returns(user);
+        A.CallTo(() => _roleRepo.GetRole(1)).Returns(role);
+
+        // Act
+        var result = await _service.GetUserByUsername("test");
+
+        // Assert
+        Assert.Equal(ServiceStatus.Ok200, result.Status);
+        Assert.True(result.Data.Item2);
+    }
+
+    [Fact]
+    public async Task DeleteUserById_NotFound_ReturnsNotFound()
+    {
+        // Arrange
+        A.CallTo(() => _repo.GetByPuid("nonexistent")).Returns(Task.FromResult<User?>(null));
+
+        // Act
+        var result = await _service.DeleteUserById("nonexistent");
+
+        // Assert
+        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task DeleteUserById_RepoReturnsFalse_ReturnsInternalServerError()
+    {
+        // Arrange
+        var user = CreateTestUser();
+        A.CallTo(() => _repo.GetByPuid("valid")).Returns(user);
+        A.CallTo(() => _repo.DeleteUser(user.User_Id)).Returns(false);
+
+        // Act
+        var result = await _service.DeleteUserById("valid");
+
+        // Assert
+        Assert.Equal(ServiceStatus.InternalServerError500, result.Status);
+    }
+
+    [Fact]
+    public async Task DeleteUserById_Success_ReturnsNoContent()
+    {
+        // Arrange
+        var user = CreateTestUser();
+        A.CallTo(() => _repo.GetByPuid("valid")).Returns(user);
+        A.CallTo(() => _repo.DeleteUser(user.User_Id)).Returns(true);
+
+        // Act
+        var result = await _service.DeleteUserById("valid");
+
+        // Assert
         Assert.Equal(ServiceStatus.NoContent204, result.Status);
-    }
-
-    [Fact]
-    public async Task UpdateTargetDemand_ProjectNotFound_ReturnsNotFound()
-    {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(Task.FromResult<Project?>(null));
-
-        var result = await service.UpdateTargetDemand("project", "wf", new List<(string, double)>());
-
-        Assert.Equal(ServiceStatus.NotFound404, result.Status);
-    }
-
-    [Fact]
-    public async Task UpdateTargetDemand_WorkflowNotFound_ReturnsNotFound()
-    {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-        var project = CreateProject(id: 7, puid: "project");
-
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(project);
-        A.CallTo(() => repo.GetWorkflowByPuid("wf")).Returns(Task.FromResult<Workflow?>(null));
-
-        var result = await service.UpdateTargetDemand("project", "wf", new List<(string, double)>());
-
-        Assert.Equal(ServiceStatus.NotFound404, result.Status);
-    }
-
-    [Fact]
-    public async Task UpdateTargetDemand_CalculationThrowsInvalidOperation_ReturnsBadRequest()
-    {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-        var project = CreateProject(id: 7, puid: "project");
-        var workflow = CreateWorkflow(id: 3, projectId: 7, puid: "wf");
-
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(project);
-        A.CallTo(() => repo.GetWorkflowByPuid("wf")).Returns(workflow);
-        A.CallTo(() => workflowNodeService.UpsertRootDemands(A<Workflow>._, A<List<(string productPuid, double rate)>>._))
-            .ThrowsAsync(new InvalidOperationException("nope"));
-
-        var result = await service.UpdateTargetDemand("project", "wf", new List<(string, double)> { ("p1", 1.0) });
-
-        Assert.Equal(ServiceStatus.BadRequest400, result.Status);
-    }
-
-    [Fact]
-    public async Task UpdateTargetDemand_ValidRequest_ReturnsChartResponse()
-    {
-        var repo = A.Fake<IWorkflowRepository>();
-        var projectRepo = A.Fake<IProjectRepository>();
-        var workflowNodeService = A.Fake<IWorkflowNodeService>();
-        var service = CreateService(repo, projectRepo, workflowNodeService);
-        var project = CreateProject(id: 7, puid: "project");
-        var workflow = CreateWorkflow(id: 3, projectId: 7, puid: "wf");
-        var chart = new WorkflowChartResponse
-        {
-            Nodes = new List<WorkflowNodeResponse>(),
-            Edges = new List<WorkflowEdgeResponse>(),
-            Targets = new List<WorkflowTargetExchange>(),
-            ProductNodes = new List<WorkflowProductNodeResponse>()
-        };
-
-        A.CallTo(() => projectRepo.GetProjectByPuid("project")).Returns(project);
-        A.CallTo(() => repo.GetWorkflowByPuid("wf")).Returns(workflow);
-        A.CallTo(() => workflowNodeService.UpsertRootDemands(A<Workflow>._, A<List<(string productPuid, double rate)>>._))
-            .Returns(chart);
-
-        var result = await service.UpdateTargetDemand("project", "wf", new List<(string, double)> { ("p1", 1.0) });
-
-        Assert.True(result.Success);
-        Assert.NotNull(result.Data);
     }
 }

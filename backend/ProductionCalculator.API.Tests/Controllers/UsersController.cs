@@ -61,19 +61,19 @@ public class UsersControllerTests
     }
 
     [Fact]
-    public async Task Register_ValidRequest_Returns200Ok()
+    public async Task Register_ValidRequest_Returns201Created()
     {
         var service = A.Fake<IUserService>();
         var controller = CreateController(service);
         var user = CreateUser();
 
         A.CallTo(() => service.Register("user", "user@example.com", "password"))
-            .Returns(ServiceResult<User>.SuccessResult(user, ServiceStatus.Ok200));
+            .Returns(ServiceResult<User>.SuccessResult(user, ServiceStatus.Created201));
 
         var result = await controller.Register(new RegisterUserRequest { Username = "user", Email = "user@example.com", Password = "password" });
 
         var obj = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(200, obj.StatusCode);
+        Assert.Equal(201, obj.StatusCode);
         Assert.IsType<UserResponse>(obj.Value);
     }
 
@@ -224,18 +224,18 @@ public class UsersControllerTests
     }
 
     [Fact]
-    public async Task DeleteByPuid_UserExists_Returns200Ok()
+    public async Task DeleteByPuid_UserExists_Returns204NoContent()
     {
         var service = A.Fake<IUserService>();
         var controller = CreateController(service);
 
         A.CallTo(() => service.DeleteUserById("user123456"))
-            .Returns(ServiceResult.SuccessResult(ServiceStatus.Ok200));
+            .Returns(ServiceResult.SuccessResult(ServiceStatus.NoContent204));
 
         var result = await controller.DeleteBypuid("user123456");
 
         var status = Assert.IsType<StatusCodeResult>(result);
-        Assert.Equal(200, status.StatusCode);
+        Assert.Equal(204, status.StatusCode);
     }
 
     [Fact]
