@@ -122,7 +122,34 @@ namespace ProductionCalculator.Business.Services
                 return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, $"Node with PUID {nodePuid} not found in workflow ID {workflow.Workflow_Id}");
             }
 
-            throw new NotImplementedException();            
+            // Update node properties based on request
+            if (request.MachinePuid != null)
+            {
+                var machine = projectObjects.Machines.FirstOrDefault(m => m.Puid == request.MachinePuid);
+                if (machine == null)
+                {
+                    return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, $"Machine with PUID {request.MachinePuid} not found in project ID {workflow.Project_Id}");
+                }
+                fullNode.Node.Machine_Id = machine.Machine_Id;
+            }
+            fullNode.Modifiers.Clear();
+            foreach (var modifierPuid in request.ModifierPuids)
+            {
+                var modifier = projectObjects.Modifiers.FirstOrDefault(m => m.Puid == modifierPuid);
+                if (modifier == null)
+                {
+                    return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, $"Modifier with PUID {modifierPuid} not found in project ID {workflow.Project_Id}");
+                }
+                fullNode.Modifiers.Add(new WorkflowNodeModifier
+                {
+                    Workflow_Node_Modifier_Id = 0, // New node modifier
+                    Workflow_Node_Id = fullNode.Node.Node_Id,
+                    Modifier_Id = modifier.Modifier_Id,
+                    Modifier_Version = modifier.Version
+                });
+            }
+            fullNode.Node.Actual_Machine_Count = request.ActualMachineCount;
+            return await SafeCalculateChartAndResponse(workflow, nodeChart, projectObjects, recalculateDemand: false);
 		}
         
         public async Task<ServiceResult<WorkflowChartResponse>> SetRecipes(Workflow workflow, List<string> recipePuids)
@@ -177,7 +204,45 @@ namespace ProductionCalculator.Business.Services
 
 		public async Task<ServiceResult<WorkflowChartResponse>> SetExternal(Workflow workflow, string productPuid, bool isExternal, double? externalRate)
 		{
-			throw new NotImplementedException();
+			// Get existing chart and project objects
+            var nodeChart = await GetWorkflowChart(workflow);
+            var projectObjects = await GetProjectObjects(workflow.Project_Id);
+
+            // All demand updates require latest version of objects
+            if (!WorkflowIsUpToDate(nodeChart, projectObjects))
+            {
+                return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.Conflict409, "Node chart is out of date with project data. Please recalculate the node chart to get the latest version.");
+            }
+
+            // Find the product node to update
+            var product = projectObjects.Products.FirstOrDefault(p => p.Puid == productPuid);
+            if (product == null)
+            {
+                return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, $"Product with PUID {productPuid} not found in project ID {workflow.Project_Id}");
+            }
+            var productNode = nodeChart.ProductNodes.FirstOrDefault(pn => pn.Product_Id == product.Product_Id);
+            if (productNode == null)
+            {
+                // Create new product node if it doesn't exist
+                var newProductNode = new WorkflowProductNode 
+                {
+                    Workflow_Product_Node_Id = 0, // New product node
+                    Workflow_Id = workflow.Workflow_Id,
+                    Product_Id = product.Product_Id,
+                    Calculated_Flow_Rate = 0.0,
+                    Actual_Flow_Rate_In = externalRate ?? 0.0,
+                    Actual_Flow_Rate_Out = 0.0,
+                    Is_External = isExternal
+                };
+                nodeChart.ProductNodes.Add(newProductNode);
+            }
+            else
+            {
+                productNode.Actual_Flow_Rate_In = externalRate ?? 0.0;
+                productNode.Is_External = isExternal;
+            }
+
+            return await SafeCalculateChartAndResponse(workflow, nodeChart, projectObjects);
 		}
 
         public async Task<ServiceResult<WorkflowChartResponse>> UpgradeWorkflowChart(Workflow workflow)
@@ -209,13 +274,14 @@ namespace ProductionCalculator.Business.Services
         /// <summary>
         /// Calculates and returns the node chart API response and catches any calculation errors
         /// Used as a wrapper for all operations that update the chart to ensure consistent error handling and response formatting
+        /// If recalculateDemand is true, it will recalculate the chart using the demand driven approach which may change the structure of the chart.
         /// </summary>
-        private async Task<ServiceResult<WorkflowChartResponse>> SafeCalculateChartAndResponse(Workflow workflow, NodeChart nodeChart, ProjectObjects projectObjects)
+        private async Task<ServiceResult<WorkflowChartResponse>> SafeCalculateChartAndResponse(Workflow workflow, NodeChart nodeChart, ProjectObjects projectObjects, bool recalculateDemand = true)
         {
             // Recalculate chart
             try 
             {
-                var updatedChart = await CalculateNodeChart(workflow, nodeChart);
+                var updatedChart = recalculateDemand ? await CalculateNodeChartDS(workflow, nodeChart) : await CalculateNodeChartS(workflow, nodeChart);
                 var response = ConvertToResponse(projectObjects, updatedChart);
                 return ServiceResult<WorkflowChartResponse>.SuccessResult(response, ServiceStatus.Ok200);
             }
@@ -227,19 +293,36 @@ namespace ProductionCalculator.Business.Services
         }
 
         /// <summary>
-        /// Takes in a NodeChart, performs necessary calculations, and returns the updated NodeChart.
+        /// Calculates the node chart using a demand driven approach where it first ensures all demand is met and then calculates supply based on that demand.
+        /// This does not guarantee that the structure will be preserved.
         /// </summary>
-        private async Task<NodeChart> CalculateNodeChart(Workflow workflow, NodeChart nodeChart)
+        private async Task<NodeChart> CalculateNodeChartDS(Workflow workflow, NodeChart nodeChart)
         {
             var projectObjects = await GetProjectObjects(workflow.Project_Id);
             AddImportRecipes(projectObjects, nodeChart);
             var recipeRates = SolveDemand(projectObjects, nodeChart);
             var updatedChart = await UpdateChartDemand(projectObjects, nodeChart, recipeRates, workflow);
+            recipeRates = SolveSupply(projectObjects, updatedChart);
+            updatedChart = await UpdateChartSupply(projectObjects, updatedChart, recipeRates, workflow);
             return updatedChart;
         }
 
         /// <summary>
-        /// Updates the node chart based on calculated recipe rates.
+        /// Calculates the node chart for supply only.
+        /// This guarantees that the structure will be preserved.
+        /// Only affects the supply calculation.
+        /// </summary>
+        private async Task<NodeChart> CalculateNodeChartS(Workflow workflow, NodeChart nodeChart)
+        {
+            var projectObjects = await GetProjectObjects(workflow.Project_Id);
+            AddImportRecipes(projectObjects, nodeChart);
+            var recipeRates = SolveSupply(projectObjects, nodeChart);
+            nodeChart = await UpdateChartSupply(projectObjects, nodeChart, recipeRates, workflow);
+            return nodeChart;
+        }
+
+        /// <summary>
+        /// Structurally updates the node chart based on calculated recipe rates.
         /// Will reuse existing data where possible to minimize database changes and persist user specified values.
         /// First calls DB to update nodes, product nodes, and targets to get the primary keys assigned by DB.
         /// Then calls DB to update edges which depend on those primary keys.
@@ -359,6 +442,90 @@ namespace ProductionCalculator.Business.Services
             updatedChart = await _nodeService.WorkflowEdgeUpdate(workflow.Workflow_Id, updatedChart);
 
             return updatedChart;
+        }
+
+
+        /// <summary>
+        /// Updates the rates on the node chart based on new supply values while keeping the same structure.
+        /// Calls Db to update components with new calculated values.
+        /// </summary>
+        private async Task<NodeChart> UpdateChartSupply(ProjectObjects projectObjects, NodeChart nodeChart, Dictionary<int, double> recipeRates, Workflow workflow)
+        {
+            // Update nodes
+            foreach (var fullNode in nodeChart.Nodes)
+            {
+                var recipeId = fullNode.Node.Recipe_Id;
+                if (recipeRates.ContainsKey(recipeId))
+                {
+                    fullNode.Node.Calculated_Actual_Rate = recipeRates[recipeId];
+                }
+                else
+                {
+                    fullNode.Node.Calculated_Actual_Rate = 0.0;
+                }
+            }
+
+            // Update edges
+            var productFlowRateIn = new Dictionary<int, double>();
+            var productFlowRateOut = new Dictionary<int, double>();
+            foreach (var fullNode in nodeChart.Nodes)
+            {
+                var recipeId = fullNode.Node.Recipe_Id;
+                var relatedRecipeProducts = projectObjects.RecipeProducts.Where(rp => rp.Recipe_Id == recipeId);
+                foreach (var edge in nodeChart.Edges.Where(e => e.Producer_Node_Id == fullNode.Node.Node_Id || e.Consumer_Node_Id == fullNode.Node.Node_Id))
+                {
+                    var productNode = nodeChart.ProductNodes.First(pn => pn.Workflow_Product_Node_Id == edge.Product_Node_Id);
+                    var rp = relatedRecipeProducts.First(rp => rp.Product_Id == productNode.Product_Id);
+                    double flow = rp.Quantity * (recipeRates.ContainsKey(recipeId) ? recipeRates[recipeId] : 0.0);
+                    edge.Calculated_Flow_Rate = flow;
+
+                    // Accumulate flow rates for product nodes to update them later
+                    if (edge.Producer_Node_Id.HasValue)
+                    {
+                        if (!productFlowRateOut.ContainsKey(productNode.Workflow_Product_Node_Id))
+                        {
+                            productFlowRateOut[productNode.Workflow_Product_Node_Id] = 0.0;
+                        }
+                        productFlowRateOut[productNode.Workflow_Product_Node_Id] += flow;
+                    }
+                    if (edge.Consumer_Node_Id.HasValue)
+                    {
+                        if (!productFlowRateIn.ContainsKey(productNode.Workflow_Product_Node_Id))
+                        {
+                            productFlowRateIn[productNode.Workflow_Product_Node_Id] = 0.0;
+                        }
+                        productFlowRateIn[productNode.Workflow_Product_Node_Id] += flow;
+                    }
+                }
+            }
+
+            // Update product nodes
+            foreach (var productNode in nodeChart.ProductNodes)
+            {
+                // In
+                if (productFlowRateIn.ContainsKey(productNode.Workflow_Product_Node_Id))
+                {
+                    productNode.Actual_Flow_Rate_In = productFlowRateIn[productNode.Workflow_Product_Node_Id];
+                }
+                else
+                {
+                    productNode.Actual_Flow_Rate_In = 0.0;
+                }
+                // Out
+                if (productFlowRateOut.ContainsKey(productNode.Workflow_Product_Node_Id))
+                {
+                    productNode.Actual_Flow_Rate_Out = productFlowRateOut[productNode.Workflow_Product_Node_Id];
+                }
+                else
+                {
+                    productNode.Actual_Flow_Rate_Out = 0.0;
+                }
+            }
+
+            // Update chart in DB
+            await _nodeService.WorkflowUpdate(workflow.Workflow_Id, nodeChart);
+            await _nodeService.WorkflowEdgeUpdate(workflow.Workflow_Id, nodeChart);
+            return nodeChart;
         }
 
         /// <summary>
@@ -501,7 +668,8 @@ namespace ProductionCalculator.Business.Services
                     Workflow_Id = workflowId,
                     Product_Id = kvp.Key,
                     Calculated_Flow_Rate = kvp.Value,
-                    Actual_Flow_Rate = 0.0,
+                    Actual_Flow_Rate_In = 0.0,
+                    Actual_Flow_Rate_Out = 0.0,
                     Is_External = false // Update later when compared to original chart
                 };
                 productNodes.Add(productNode);
@@ -630,196 +798,197 @@ namespace ProductionCalculator.Business.Services
         private Dictionary<int, double> SolveSupply(ProjectObjects projectObjects, NodeChart nodeChart)
         {
             var recipeVarMap = new Dictionary<int, Variable>();
-            var targetDict = nodeChart.Targets.ToDictionary(t => t.Product_Id, t => t.Target_Rate);
-            Solver solver = Solver.CreateSolver("GLOP");
             var productConstraintMap = new Dictionary<int, Constraint>();
-            var recipeProductNetQuantities = new Dictionary<(int recipeId, int productId), double>();
+            var targetDict = nodeChart.Targets.ToDictionary(t => t.Product_Id, t => t.Target_Rate);
 
-            // Calculate net quantities for recipe-product pairs
+            var externalRateByProductId = nodeChart.ProductNodes
+                .Where(pn => pn.Is_External)
+                .ToDictionary(pn => pn.Product_Id, pn => pn.Actual_Flow_Rate_In);
+
+            var chartRecipeIds = nodeChart.Nodes
+                .Select(n => n.Node.Recipe_Id)
+                .Distinct()
+                .ToHashSet();
+
+            var chartRecipes = projectObjects.Recipes
+                .Where(r => chartRecipeIds.Contains(r.Recipe_Id))
+                .ToList();
+
+            var importRecipes = projectObjects.Recipes
+                .Where(r => r.Puid.StartsWith("IMPORT_"))
+                .ToList();
+
+            Solver solver = Solver.CreateSolver("GLOP");
+            Objective objective = solver.Objective();
+
+            double GetMaxRecipeRate(FullNode fullNode, Recipe recipe)
+            {
+                var machineCount = fullNode.Node.Actual_Machine_Count
+                    ?? fullNode.Node.Calculated_Machine_Count
+                    ?? 0.0;
+
+                if (machineCount <= 0.0)
+                {
+                    return 0.0;
+                }
+
+                var baseSpeed = 1.0;
+                if (fullNode.Node.Machine_Id.HasValue)
+                {
+                    var machine = projectObjects.Machines.FirstOrDefault(m => m.Machine_Id == fullNode.Node.Machine_Id.Value);
+                    if (machine != null)
+                    {
+                        baseSpeed = machine.Base_Speed;
+                    }
+                }
+                else
+                {
+                    var machineId = projectObjects.MachineRecipes
+                        .FirstOrDefault(mr => mr.Recipe_Id == fullNode.Node.Recipe_Id)
+                        ?.Machine_Id;
+                    if (machineId.HasValue)
+                    {
+                        var machine = projectObjects.Machines.FirstOrDefault(m => m.Machine_Id == machineId.Value);
+                        if (machine != null)
+                        {
+                            baseSpeed = machine.Base_Speed;
+                        }
+                    }
+                }
+
+                double flatSpeedBonus = 0.0;
+                double additivePercentBonus = 0.0;
+                double multiplicativeModifier = 1.0;
+                foreach (var workflowModifier in fullNode.Modifiers)
+                {
+                    var modifier = projectObjects.Modifiers.FirstOrDefault(m => m.Modifier_Id == workflowModifier.Modifier_Id);
+                    if (modifier != null)
+                    {
+                        flatSpeedBonus += modifier.Flat_Speed_Bonus;
+                        additivePercentBonus += modifier.Additive_Percent_Bonus;
+                        multiplicativeModifier *= modifier.Multiplicative_Modifiers;
+                    }
+                }
+
+                if (recipe.Base_Crafting_Time <= 0.0)
+                {
+                    return 0.0;
+                }
+
+                var effectiveSpeed = (baseSpeed + flatSpeedBonus) * (1.0 + additivePercentBonus) * multiplicativeModifier;
+                var recipesPerSecondPerMachine = effectiveSpeed / recipe.Base_Crafting_Time;
+                return Math.Max(0.0, recipesPerSecondPerMachine * machineCount);
+            }
+
+            // Real recipe variables (bounded by machine capacity)
+            foreach (var fullNode in nodeChart.Nodes)
+            {
+                var recipe = projectObjects.Recipes.First(r => r.Recipe_Id == fullNode.Node.Recipe_Id);
+                var maxRate = GetMaxRecipeRate(fullNode, recipe);
+                var variable = solver.MakeNumVar(0.0, maxRate, recipe.Name);
+                recipeVarMap[recipe.Recipe_Id] = variable;
+                objective.SetCoefficient(variable, 1.0);
+            }
+
+            // Import recipe variables (bounded by external flow rates)
+            foreach (var importRecipe in importRecipes)
+            {
+                var rp = projectObjects.RecipeProducts.FirstOrDefault(r => r.Recipe_Id == importRecipe.Recipe_Id);
+                if (rp == null)
+                {
+                    continue;
+                }
+
+                var maxRate = externalRateByProductId.ContainsKey(rp.Product_Id)
+                    ? Math.Max(0.0, externalRateByProductId[rp.Product_Id])
+                    : 0.0;
+
+                var variable = solver.MakeNumVar(0.0, maxRate, importRecipe.Name);
+                recipeVarMap[importRecipe.Recipe_Id] = variable;
+                objective.SetCoefficient(variable, 0.0);
+            }
+
+            // Create constraints for each product: Production - Consumption - Sinks >= 0
+            foreach (var product in projectObjects.Products)
+            {
+                var constraint = solver.MakeConstraint(0.0, double.PositiveInfinity, product.Name);
+                productConstraintMap[product.Product_Id] = constraint;
+            }
+
+            var recipeProductNetQuantities = new Dictionary<(int recipeId, int productId), double>();
             foreach (var rp in projectObjects.RecipeProducts)
             {
+                if (!recipeVarMap.ContainsKey(rp.Recipe_Id))
+                {
+                    continue;
+                }
+
                 var key = (rp.Recipe_Id, rp.Product_Id);
                 if (!recipeProductNetQuantities.ContainsKey(key))
+                {
                     recipeProductNetQuantities[key] = 0.0;
+                }
+
                 recipeProductNetQuantities[key] += rp.Quantity * (rp.Is_Input ? -1.0 : 1.0);
             }
 
-            // Identify active recipes (those in the chart nodes)
-            var recipeMaxRates = new Dictionary<int, double>();
-            foreach (var fullNode in nodeChart.Nodes)
+            foreach (var kvp in recipeProductNetQuantities)
             {
-                int rid = fullNode.Node.Recipe_Id;
-                double nodeMaxRate = 0.0;
-                if (fullNode.Node.Actual_Machine_Count.HasValue &&
-                    fullNode.Node.Calculated_Machine_Count.HasValue &&
-                    fullNode.Node.Calculated_Machine_Count.Value > 0 &&
-                    fullNode.Node.Calculated_Target_Rate.HasValue)
+                var (recipeId, productId) = kvp.Key;
+                if (!recipeVarMap.ContainsKey(recipeId) || !productConstraintMap.ContainsKey(productId))
                 {
-                    nodeMaxRate = fullNode.Node.Actual_Machine_Count.Value / fullNode.Node.Calculated_Machine_Count.Value * fullNode.Node.Calculated_Target_Rate.Value;
+                    continue;
                 }
-                if (!recipeMaxRates.ContainsKey(rid)) recipeMaxRates[rid] = 0.0;
-                recipeMaxRates[rid] += nodeMaxRate;
+
+                var variable = recipeVarMap[recipeId];
+                var constraint = productConstraintMap[productId];
+                constraint.SetCoefficient(variable, kvp.Value);
             }
 
-            // Dictionary of external productId with supply rate
-            var externalProductRates = new Dictionary<int, double>();
-            foreach (var productNode in nodeChart.ProductNodes)
+            // Add primary and overflow sink variables for targets
+            foreach (var target in targetDict)
             {
-                if (productNode.Is_External)
+                if (!productConstraintMap.ContainsKey(target.Key))
                 {
-                    externalProductRates[productNode.Product_Id] = productNode.Actual_Flow_Rate;
+                    continue;
                 }
+
+                var productConstraint = productConstraintMap[target.Key];
+                var primarySink = solver.MakeNumVar(0.0, Math.Max(0.0, target.Value), $"SINK_PRIMARY_{target.Key}");
+                var overflowSink = solver.MakeNumVar(0.0, double.PositiveInfinity, $"SINK_OVERFLOW_{target.Key}");
+
+                productConstraint.SetCoefficient(primarySink, -1.0);
+                productConstraint.SetCoefficient(overflowSink, -1.0);
+
+                objective.SetCoefficient(primarySink, TARGET_BONUS);
+                objective.SetCoefficient(overflowSink, OVERFLOW_BONUS);
             }
 
-            // --- Tiered Virtual Sinks for Each Target ---
-            // For each target, add two virtual sinks: primary (up to demand), overflow (unbounded)
-            var virtualSinkRecipes = new List<Recipe>();
-            var virtualSinkRecipeProducts = new List<RecipeProduct>();
-            var primarySinkIds = new Dictionary<int, int>(); // ProductId -> RecipeId
-            var overflowSinkIds = new Dictionary<int, int>();
-            int virtualSinkBaseId = int.MinValue + 1; // Unique negative IDs
-            int sinkOffset = 0;
-            foreach (var target in nodeChart.Targets)
-            {
-                // Primary sink
-                int primarySinkId = virtualSinkBaseId + sinkOffset++;
-                var primarySink = new Recipe
-                {
-                    Recipe_Id = primarySinkId,
-                    Project_Id = projectObjects.Recipes.First().Project_Id,
-                    Name = $"SINK_PRIMARY_{target.Product_Id}",
-                    Puid = $"SINK_PRIMARY_{target.Product_Id}",
-                    Description = "Primary sink for demand target",
-                    Base_Crafting_Time = 0.0,
-                    Version = 1,
-                    Created_At = DateTime.UtcNow,
-                    Last_Updated = DateTime.UtcNow
-                };
-                virtualSinkRecipes.Add(primarySink);
-                var primarySinkProduct = new RecipeProduct
-                {
-                    Recipe_Product_Id = primarySinkId,
-                    Product_Id = target.Product_Id,
-                    Recipe_Id = primarySinkId,
-                    Quantity = -1.0,
-                    Is_Input = true
-                };
-                virtualSinkRecipeProducts.Add(primarySinkProduct);
-                primarySinkIds[target.Product_Id] = primarySinkId;
-
-                // Overflow sink
-                int overflowSinkId = virtualSinkBaseId + sinkOffset++;
-                var overflowSink = new Recipe
-                {
-                    Recipe_Id = overflowSinkId,
-                    Project_Id = projectObjects.Recipes.First().Project_Id,
-                    Name = $"SINK_OVERFLOW_{target.Product_Id}",
-                    Puid = $"SINK_OVERFLOW_{target.Product_Id}",
-                    Description = "Overflow sink for demand target",
-                    Base_Crafting_Time = 0.0,
-                    Version = 1,
-                    Created_At = DateTime.UtcNow,
-                    Last_Updated = DateTime.UtcNow
-                };
-                virtualSinkRecipes.Add(overflowSink);
-                var overflowSinkProduct = new RecipeProduct
-                {
-                    Recipe_Product_Id = overflowSinkId,
-                    Product_Id = target.Product_Id,
-                    Recipe_Id = overflowSinkId,
-                    Quantity = -1.0,
-                    Is_Input = true
-                };
-                virtualSinkRecipeProducts.Add(overflowSinkProduct);
-                overflowSinkIds[target.Product_Id] = overflowSinkId;
-            }
-            // Add virtual sinks to project objects
-            projectObjects.Recipes.AddRange(virtualSinkRecipes);
-            projectObjects.RecipeProducts.AddRange(virtualSinkRecipeProducts);
-
-            // Create Variables for recipes
-            foreach (var recipe in projectObjects.Recipes)
-            {
-                bool isImport = recipe.Puid.StartsWith("IMPORT_");
-                int productIdFromImport = -recipe.Recipe_Id;
-                if (recipeMaxRates.ContainsKey(recipe.Recipe_Id))
-                {
-                    Variable x = solver.MakeNumVar(0.0, recipeMaxRates[recipe.Recipe_Id], recipe.Name);
-                    recipeVarMap[recipe.Recipe_Id] = x;
-                }
-                else if (isImport && externalProductRates.ContainsKey(productIdFromImport))
-                {
-                    Variable x = solver.MakeNumVar(0.0, externalProductRates[productIdFromImport], recipe.Name);
-                    recipeVarMap[recipe.Recipe_Id] = x;
-                }
-                else if (primarySinkIds.ContainsValue(recipe.Recipe_Id))
-                {
-                    // Bound: up to demand
-                    int productId = nodeChart.Targets.First(t => primarySinkIds[t.Product_Id] == recipe.Recipe_Id).Product_Id;
-                    double demand = targetDict[productId];
-                    Variable x = solver.MakeNumVar(0.0, demand, recipe.Name);
-                    recipeVarMap[recipe.Recipe_Id] = x;
-                }
-                else if (overflowSinkIds.ContainsValue(recipe.Recipe_Id))
-                {
-                    // Bound: unbounded
-                    Variable x = solver.MakeNumVar(0.0, double.PositiveInfinity, recipe.Name);
-                    recipeVarMap[recipe.Recipe_Id] = x;
-                }
-            }
-
-            // Objective: Tiered reward system
-            Objective objective = solver.Objective();
             objective.SetMaximization();
-            foreach (var kvp in recipeVarMap)
-            {
-                int rid = kvp.Key;
-                Variable x = kvp.Value;
-                double weight = -DEFAULT_COST; // Utilization
-                if (primarySinkIds.ContainsValue(rid))
-                {
-                    weight = -TARGET_BONUS; // Primary bucket
-                }
-                else if (overflowSinkIds.ContainsValue(rid))
-                {
-                    weight = -OVERFLOW_BONUS; // Secondary bucket
-                }
-                objective.SetCoefficient(x, weight);
-            }
-
-            // Constraints: Conservation of mass (Production - Consumption >= 0)
-            foreach (var product in projectObjects.Products)
-            {
-                Constraint c = solver.MakeConstraint(0.0, double.PositiveInfinity, product.Name);
-                productConstraintMap[product.Product_Id] = c;
-            }
-            foreach (var rp in projectObjects.RecipeProducts)
-            {
-                if (recipeVarMap.ContainsKey(rp.Recipe_Id) && productConstraintMap.ContainsKey(rp.Product_Id))
-                {
-                    Variable x = recipeVarMap[rp.Recipe_Id];
-                    Constraint c = productConstraintMap[rp.Product_Id];
-                    c.SetCoefficient(x, recipeProductNetQuantities[(rp.Recipe_Id, rp.Product_Id)]);
-                }
-            }
 
             Solver.ResultStatus resultStatus = solver.Solve();
+
             if (resultStatus != Solver.ResultStatus.OPTIMAL)
             {
-                throw new InvalidOperationException("No solution found for the supply calculation.");
+                throw new InvalidOperationException("No optimal solution found for the supply calculation.");
             }
 
-            // Return recipe rates without virtual sinks
             var recipeRates = new Dictionary<int, double>();
-            foreach (var kvp in recipeVarMap)
+            foreach (var recipe in chartRecipes)
             {
-                if (kvp.Value.SolutionValue() > 1e-5 && 
-                    !primarySinkIds.ContainsValue(kvp.Key) && 
-                    !overflowSinkIds.ContainsValue(kvp.Key))
+                if (!recipeVarMap.ContainsKey(recipe.Recipe_Id))
                 {
-                    recipeRates[kvp.Key] = kvp.Value.SolutionValue();
+                    continue;
+                }
+
+                var value = recipeVarMap[recipe.Recipe_Id].SolutionValue();
+                if (value > 1e-5)
+                {
+                    recipeRates[recipe.Recipe_Id] = value;
+                    Console.WriteLine($"Recipe '{recipe.Name}' (ID {recipe.Recipe_Id}): Run at rate {value:F2}");
                 }
             }
+
             return recipeRates;
         }
 
@@ -987,6 +1156,7 @@ namespace ProductionCalculator.Business.Services
                     Puid = fullNode.Node.Puid,
                     RecipePuid = projectObjects.Recipes.FirstOrDefault(r => r.Recipe_Id == fullNode.Node.Recipe_Id)?.Puid ?? "0000000000",
                     MachinePuid = fullNode.Node.Machine_Id.HasValue ? projectObjects.Machines.FirstOrDefault(m => m.Machine_Id == fullNode.Node.Machine_Id.Value)?.Puid : null,
+                    ActualMachineCount = fullNode.Node.Actual_Machine_Count,
                     CalculatedMachineCount = fullNode.Node.Calculated_Machine_Count,
                     CalculatedTargetRate = fullNode.Node.Calculated_Target_Rate,
                     CalculatedActualRate = fullNode.Node.Calculated_Actual_Rate,
@@ -1029,7 +1199,8 @@ namespace ProductionCalculator.Business.Services
                 {
                     ProductPuid = projectObjects.Products.FirstOrDefault(p => p.Product_Id == productNode.Product_Id)?.Puid ?? "0000000000",
                     CalculatedFlowRate = productNode.Calculated_Flow_Rate,
-                    ActualFlowRate = productNode.Actual_Flow_Rate,
+                    ActualFlowRateIn = productNode.Actual_Flow_Rate_In,
+                    ActualFlowRateOut = productNode.Actual_Flow_Rate_Out,
                     IsExternal = productNode.Is_External
                 };
                 response.ProductNodes.Add(productNodeResponse);
