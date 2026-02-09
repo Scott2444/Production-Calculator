@@ -118,7 +118,11 @@ namespace ProductionCalculator.Business.Services
 			return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
 		}
 
-		public async Task<ServiceResult<WorkflowChartResponse>> UpdateTargetDemand(string projectPuid, string workflowPuid, List<(string productPuid, double rate)> rootDemands)
+		// --------------------------------------
+		// Workflow chart operations
+		// --------------------------------------
+
+		public async Task<ServiceResult<WorkflowChartResponse>> GetWorkflowChartById(string projectPuid, string workflowPuid)
 		{
 			var project = await _projectRepo.GetProjectByPuid(projectPuid);
 			if (project == null) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Project not found.");
@@ -126,17 +130,61 @@ namespace ProductionCalculator.Business.Services
 			var workflow = await _repo.GetWorkflowByPuid(workflowPuid);
 			if (workflow == null || workflow.Project_Id != project.Project_Id) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Workflow not found.");
 
-			try
-			{
-				var chart = await _workflowNodeService.UpsertRootDemands(workflow, rootDemands);
-				return ServiceResult<WorkflowChartResponse>.SuccessResult(chart);
-			}
-			catch (InvalidOperationException ex)
-			{
-				Console.WriteLine(ex);
-				return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.BadRequest400, $"No possible workflow configuration for the given target demands. {ex.Message}");
-			}
+			return await _workflowNodeService.GetWorkflowChartById(workflow);
 		}
+
+        public async Task<ServiceResult<WorkflowChartResponse>> UpdateTargetDemand(string projectPuid, string workflowPuid, List<(string productPuid, double rate)> rootDemands)
+		{
+			var project = await _projectRepo.GetProjectByPuid(projectPuid);
+			if (project == null) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Project not found.");
+
+			var workflow = await _repo.GetWorkflowByPuid(workflowPuid);
+			if (workflow == null || workflow.Project_Id != project.Project_Id) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Workflow not found.");
+
+			return await _workflowNodeService.UpsertRootDemands(workflow, rootDemands);
+		}
+        public async Task<ServiceResult<WorkflowChartResponse>> UpdateNode(string projectPuid, string workflowPuid, string nodePuid, WorkflowNodeRequest request)
+		{
+			var project = await _projectRepo.GetProjectByPuid(projectPuid);
+			if (project == null) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Project not found.");
+
+			var workflow = await _repo.GetWorkflowByPuid(workflowPuid);
+			if (workflow == null || workflow.Project_Id != project.Project_Id) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Workflow not found.");
+
+			// WorkflowNodeService will check request fields
+			return await _workflowNodeService.UpdateNode(workflow, nodePuid, request);
+		}
+		public async Task<ServiceResult<WorkflowChartResponse>> SetRecipes(string projectPuid, string workflowPuid, List<string> recipePuids)
+		{
+			var project = await _projectRepo.GetProjectByPuid(projectPuid);
+			if (project == null) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Project not found.");
+
+			var workflow = await _repo.GetWorkflowByPuid(workflowPuid);
+			if (workflow == null || workflow.Project_Id != project.Project_Id) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Workflow not found.");
+
+			return await _workflowNodeService.SetRecipes(workflow, recipePuids);
+		}
+		public async Task<ServiceResult<WorkflowChartResponse>> SetExternal(string projectPuid, string workflowPuid, string productPuid, bool isExternal, double? externalRate)
+		{
+			var project = await _projectRepo.GetProjectByPuid(projectPuid);
+			if (project == null) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Project not found.");
+
+			var workflow = await _repo.GetWorkflowByPuid(workflowPuid);
+			if (workflow == null || workflow.Project_Id != project.Project_Id) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Workflow not found.");
+
+			return await _workflowNodeService.SetExternal(workflow, productPuid, isExternal, externalRate);
+		}
+        public async Task<ServiceResult<WorkflowChartResponse>> UpgradeWorkflowChart(string projectPuid, string workflowPuid)
+		{
+			var project = await _projectRepo.GetProjectByPuid(projectPuid);
+			if (project == null) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Project not found.");
+
+			var workflow = await _repo.GetWorkflowByPuid(workflowPuid);
+			if (workflow == null || workflow.Project_Id != project.Project_Id) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Workflow not found.");
+
+			return await _workflowNodeService.UpgradeWorkflowChart(workflow);
+		}
+
 		private async Task UpdateProjectLastUpdated(Project project)
         {
             project.Last_Updated = DateTime.UtcNow;

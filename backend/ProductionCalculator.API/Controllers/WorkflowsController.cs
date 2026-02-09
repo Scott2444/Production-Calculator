@@ -54,10 +54,50 @@ namespace ProductionCalculator.API.Controllers
         }
 
         [Authorize(Policy = "IsOwnerOrAdmin")]
-        [HttpPut("{workflowPuid}/target-demand")]
+        [HttpGet("{workflowPuid}/chart")]
+        public async Task<IActionResult> GetWorkflowChart(string projectPuid, string workflowPuid)
+        {
+            var result = await _service.GetWorkflowChartById(projectPuid, workflowPuid);
+            return FromServiceResult(result, r => r);
+        }
+
+        [Authorize(Policy = "IsOwnerOrAdmin")]
+        [HttpPatch("{workflowPuid}/chart")]
+        public async Task<IActionResult> UpdateWorkflow(string projectPuid, string workflowPuid)
+        {
+            var result = await _service.UpgradeWorkflowChart(projectPuid, workflowPuid);
+            return FromServiceResult(result, r => r);
+        }
+
+        [Authorize(Policy = "IsOwnerOrAdmin")]
+        [HttpPut("{workflowPuid}/target")]
         public async Task<IActionResult> UpdateTargetDemand(string projectPuid, string workflowPuid, [FromBody] WorkflowTargetRequest request)
         {
             var result = await _service.UpdateTargetDemand(projectPuid, workflowPuid, request.Targets.Select(t => (t.ProductPuid, t.TargetRate)).ToList());
+            return FromServiceResult(result, r => r);
+        }
+
+        [Authorize(Policy = "IsOwnerOrAdmin")]
+        [HttpPut("{workflowPuid}/nodes/{nodePuid}")]
+        public async Task<IActionResult> UpdateNode(string projectPuid, string workflowPuid, string nodePuid, [FromBody] WorkflowNodeRequest request)
+        {
+            var result = await _service.UpdateNode(projectPuid, workflowPuid, nodePuid, request);
+            return FromServiceResult(result, r => r);
+        }
+
+        [Authorize(Policy = "IsOwnerOrAdmin")]
+        [HttpPut("{workflowPuid}/recipes")]
+        public async Task<IActionResult> SetRecipes(string projectPuid, string workflowPuid, [FromBody] WorkflowRecipeRequest request)
+        {
+            var result = await _service.SetRecipes(projectPuid, workflowPuid, request.ModifierPuids);
+            return FromServiceResult(result, r => r);
+        }
+
+        [Authorize(Policy = "IsOwnerOrAdmin")]
+        [HttpPut("{workflowPuid}/external/{productPuid}")]
+        public async Task<IActionResult> SetExternal(string projectPuid, string workflowPuid, string productPuid, [FromBody] WorkflowExternalRequest request)
+        {
+            var result = await _service.SetExternal(projectPuid, workflowPuid, productPuid, request.IsExternal, request.ExternalRate);
             return FromServiceResult(result, r => r);
         }
     }

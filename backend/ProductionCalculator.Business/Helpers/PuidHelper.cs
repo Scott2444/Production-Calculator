@@ -11,6 +11,7 @@ namespace ProductionCalculator.Business.Helpers
         // Base58 alphabet (no 0, O, I, l, +, /) to be url friendly
         private const string Base58Alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
         private const int PuidLength = 10;
+        private const string ReservedPuid = "0000000000";
 
         /// <summary>
         /// Generates a unique public ID for a resource, checking for collisions using the provided async exists function.
@@ -23,7 +24,7 @@ namespace ProductionCalculator.Business.Helpers
             do
             {
                 puid = GeneratePuid();
-            } while (await exists(puid));
+            } while (puid == ReservedPuid || await exists(puid));
             return puid;
         }
 
