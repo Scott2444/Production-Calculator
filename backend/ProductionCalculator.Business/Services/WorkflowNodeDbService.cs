@@ -10,13 +10,15 @@ namespace ProductionCalculator.Business.Services
         private readonly IWorkflowNodeModifierRepository _modifierRepo;
         private readonly IWorkflowEdgeRepository _edgeRepo;
         private readonly IWorkflowProductNodeRepository _productNodeRepo;
+        private readonly IWorkflowRecipeRepository _recipeRepo;
 
 		public WorkflowNodeDbService(
             IWorkflowNodeRepository nodeRepo, 
             IWorkflowTargetRepository targetRepo, 
             IWorkflowNodeModifierRepository modifierRepo, 
             IWorkflowEdgeRepository edgeRepo,
-            IWorkflowProductNodeRepository productNodeRepo
+            IWorkflowProductNodeRepository productNodeRepo,
+            IWorkflowRecipeRepository recipeRepo
             )
 		{
 			_nodeRepo = nodeRepo;
@@ -24,6 +26,7 @@ namespace ProductionCalculator.Business.Services
 			_modifierRepo = modifierRepo;
             _edgeRepo = edgeRepo;
             _productNodeRepo = productNodeRepo;
+            _recipeRepo = recipeRepo;
 		}
         public async Task<NodeChart> GetByWorkflowId(int workflowId, bool isTracked = false)
         {
@@ -40,12 +43,14 @@ namespace ProductionCalculator.Business.Services
             var edges = await _edgeRepo.GetByWorkflow(workflowId, isTracked);
             var targets = await _targetRepo.GetByWorkflowId(workflowId, isTracked);
             var productNodes = await _productNodeRepo.GetByWorkflowId(workflowId, isTracked);
+            var recipes = await _recipeRepo.GetByWorkflowId(workflowId, isTracked);
             return new NodeChart
             {
                 Nodes = nodes,
                 Edges = edges,
                 Targets = targets,
-                ProductNodes = productNodes
+                ProductNodes = productNodes,
+                PreferredRecipes = recipes
             };
         }
         
@@ -55,7 +60,7 @@ namespace ProductionCalculator.Business.Services
         /// Modifies NodeChart to reflect primary keys assigned as it is in the DB.
         /// Returns updated NodeChart.
         /// </summary>
-        public async Task<NodeChart> WorkflowNodeAndTargetUpdate(int workflowId, NodeChart nodeChart)
+        public async Task<NodeChart> WorkflowUpdate(int workflowId, NodeChart nodeChart)
         {
             var originalChart = await GetByWorkflowId(workflowId, isTracked: false);
             
@@ -63,6 +68,7 @@ namespace ProductionCalculator.Business.Services
             await UpdateTargets(nodeChart.Targets, originalChart.Targets);
             await UpdateModifiers(nodeChart.Nodes.SelectMany(n => n.Modifiers).ToList(), originalChart.Nodes.SelectMany(n => n.Modifiers).ToList());
             await UpdateProductNodes(nodeChart.ProductNodes, originalChart.ProductNodes);
+            await UpdateRecipes(nodeChart.PreferredRecipes, originalChart.PreferredRecipes);
             return nodeChart;
         }
 
@@ -101,13 +107,13 @@ namespace ProductionCalculator.Business.Services
             var inputsToDelete = originalDict.Values.Where(en => !newDict.ContainsKey(en.Node_Id)).ToList();
 
             // Add new
-            await _nodeRepo.AddWorkflowNodes(inputsToAdd);
+            if (inputsToAdd.Any()) await _nodeRepo.AddWorkflowNodes(inputsToAdd);
 
             // Update existing
-            await _nodeRepo.UpdateWorkflowNodes(inputsToUpdate);
+            if (inputsToUpdate.Any()) await _nodeRepo.UpdateWorkflowNodes(inputsToUpdate);
 
             // Delete removed
-            await _nodeRepo.DeleteWorkflowNodes(inputsToDelete.Select(i => i.Node_Id).ToList());
+            if (inputsToDelete.Any()) await _nodeRepo.DeleteWorkflowNodes(inputsToDelete.Select(i => i.Node_Id).ToList());
         }
 
         /// <summary>
@@ -129,13 +135,13 @@ namespace ProductionCalculator.Business.Services
             var inputsToDelete = originalDict.Values.Where(et => !newDict.ContainsKey(et.Workflow_Target_Id)).ToList();
 
             // Add new
-            await _targetRepo.AddWorkflowTargets(inputsToAdd);
+            if (inputsToAdd.Any()) await _targetRepo.AddWorkflowTargets(inputsToAdd);
 
             // Update existing
-            await _targetRepo.UpdateWorkflowTargets(inputsToUpdate);
+            if (inputsToUpdate.Any()) await _targetRepo.UpdateWorkflowTargets(inputsToUpdate);
 
             // Delete removed
-            await _targetRepo.DeleteWorkflowTargets(inputsToDelete.Select(i => i.Workflow_Target_Id).ToList());
+            if (inputsToDelete.Any()) await _targetRepo.DeleteWorkflowTargets(inputsToDelete.Select(i => i.Workflow_Target_Id).ToList());
         }
 
         /// <summary>
@@ -157,13 +163,41 @@ namespace ProductionCalculator.Business.Services
             var inputsToDelete = originalDict.Values.Where(et => !newDict.ContainsKey(et.Workflow_Node_Modifier_Id)).ToList();
 
             // Add new
-            await _modifierRepo.AddWorkflowNodeModifiers(inputsToAdd);
+            if (inputsToAdd.Any()) await _modifierRepo.AddWorkflowNodeModifiers(inputsToAdd);
 
             // Update existing
-            await _modifierRepo.UpdateWorkflowNodeModifiers(inputsToUpdate);
+            if (inputsToUpdate.Any()) await _modifierRepo.UpdateWorkflowNodeModifiers(inputsToUpdate);
 
             // Delete removed
-            await _modifierRepo.DeleteWorkflowNodeModifiers(inputsToDelete.Select(i => i.Workflow_Node_Modifier_Id).ToList());
+            if (inputsToDelete.Any()) await _modifierRepo.DeleteWorkflowNodeModifiers(inputsToDelete.Select(i => i.Workflow_Node_Modifier_Id).ToList());
+        }
+
+        /// <summary>
+        /// Handles the logic of determining which recipes need to be created, updated, or deleted, and performs those operations.
+        /// Calls repos to perform DB operations.
+        /// </summary>
+        private async Task UpdateRecipes(List<WorkflowRecipe> newRecipes, List<WorkflowRecipe> originalRecipes)
+        {
+            // Use dictionaries for O(1) lookups
+            var originalDict = originalRecipes.ToDictionary(t => t.Workflow_Recipe_Id);
+            // Limit newDict to only recipes that have an assigned Workflow_Recipe_Id to avoid issues with new recipes having default 0 value
+            var newDict = newRecipes.Where(t => t.Workflow_Recipe_Id != 0).ToDictionary(t => t.Workflow_Recipe_Id);
+            
+            // Add: in new, not in original
+            var inputsToAdd = newRecipes.Where(nt => !originalDict.ContainsKey(nt.Workflow_Recipe_Id)).ToList();
+            // Update: in both, but values differ
+            var inputsToUpdate = newRecipes.Where(nt => originalDict.TryGetValue(nt.Workflow_Recipe_Id, out var ot) && !ot.ValueEquals(nt)).ToList();
+            // Delete: in original, not in new
+            var inputsToDelete = originalDict.Values.Where(et => !newDict.ContainsKey(et.Workflow_Recipe_Id)).ToList();
+
+            // Add new
+            if (inputsToAdd.Any()) await _recipeRepo.AddWorkflowRecipes(inputsToAdd);
+
+            // Update existing
+            if (inputsToUpdate.Any()) await _recipeRepo.UpdateWorkflowRecipes(inputsToUpdate);
+
+            // Delete removed
+            if (inputsToDelete.Any()) await _recipeRepo.DeleteWorkflowRecipes(inputsToDelete.Select(i => i.Workflow_Recipe_Id).ToList());
         }
 
         /// <summary>
@@ -184,13 +218,13 @@ namespace ProductionCalculator.Business.Services
             var inputsToDelete = originalDict.Values.Where(et => !newDict.ContainsKey(et.Workflow_Edge_Id)).ToList();
 
             // Add new
-            await _edgeRepo.AddWorkflowEdges(inputsToAdd);
+            if (inputsToAdd.Any()) await _edgeRepo.AddWorkflowEdges(inputsToAdd);
 
             // Update existing
-            await _edgeRepo.UpdateWorkflowEdges(inputsToUpdate);
+            if (inputsToUpdate.Any()) await _edgeRepo.UpdateWorkflowEdges(inputsToUpdate);
 
             // Delete removed
-            await _edgeRepo.DeleteWorkflowEdges(inputsToDelete.Select(i => i.Workflow_Edge_Id).ToList());
+            if (inputsToDelete.Any()) await _edgeRepo.DeleteWorkflowEdges(inputsToDelete.Select(i => i.Workflow_Edge_Id).ToList());
         }
 
         /// <summary>
@@ -211,13 +245,13 @@ namespace ProductionCalculator.Business.Services
             var inputsToDelete = originalDict.Values.Where(et => !newDict.ContainsKey(et.Workflow_Product_Node_Id)).ToList();
 
             // Add new
-            await _productNodeRepo.AddWorkflowProductNodes(inputsToAdd);
+            if (inputsToAdd.Any()) await _productNodeRepo.AddWorkflowProductNodes(inputsToAdd);
 
             // Update existing
-            await _productNodeRepo.UpdateWorkflowProductNodes(inputsToUpdate);
+            if (inputsToUpdate.Any()) await _productNodeRepo.UpdateWorkflowProductNodes(inputsToUpdate);
 
             // Delete removed
-            await _productNodeRepo.DeleteWorkflowProductNodes(inputsToDelete.Select(i => i.Workflow_Product_Node_Id).ToList());
+            if (inputsToDelete.Any()) await _productNodeRepo.DeleteWorkflowProductNodes(inputsToDelete.Select(i => i.Workflow_Product_Node_Id).ToList());
         }
 	}
 }

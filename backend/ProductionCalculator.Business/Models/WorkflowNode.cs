@@ -8,7 +8,6 @@ namespace ProductionCalculator.Business.Models
 		public required string Puid { get; set; }
 		public required int Recipe_Id { get; set; }
 		public required int Recipe_Version { get; set; }
-		public required bool Is_Preferred { get; set; }
 		public int? Machine_Id { get; set; }
 		public int? Machine_Version { get; set; }
 		public double? Actual_Machine_Count { get; set; }
@@ -24,7 +23,6 @@ namespace ProductionCalculator.Business.Models
 				&& Puid == other.Puid
 				&& Recipe_Id == other.Recipe_Id
 				&& Recipe_Version == other.Recipe_Version
-				&& Is_Preferred == other.Is_Preferred
 				&& Machine_Id == other.Machine_Id
 				&& Machine_Version == other.Machine_Version
 				&& Actual_Machine_Count == other.Actual_Machine_Count
@@ -36,7 +34,7 @@ namespace ProductionCalculator.Business.Models
 		public override int GetHashCode()
 		{
 			return HashCode.Combine(
-				(Node_Id, Workflow_Id, Puid, Recipe_Id, Recipe_Version, Is_Preferred, Machine_Id, Machine_Version, Actual_Machine_Count, Calculated_Machine_Count, Calculated_Target_Rate, Calculated_Actual_Rate)
+				(Node_Id, Workflow_Id, Puid, Recipe_Id, Recipe_Version, Machine_Id, Machine_Version, Actual_Machine_Count, Calculated_Machine_Count, Calculated_Target_Rate, Calculated_Actual_Rate)
 			);
 		}
 	}

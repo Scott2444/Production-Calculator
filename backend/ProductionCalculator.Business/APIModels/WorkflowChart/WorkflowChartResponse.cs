@@ -6,5 +6,6 @@ namespace ProductionCalculator.Business.APIModels
         public required List<WorkflowEdgeResponse> Edges { get; set; } = [];
         public required List<WorkflowTargetExchange> Targets { get; set; } = [];
 		public required List<WorkflowProductNodeResponse> ProductNodes { get; set; } = [];
+		public required List<string> PreferredRecipes { get; set; } = [];
 	}
 }

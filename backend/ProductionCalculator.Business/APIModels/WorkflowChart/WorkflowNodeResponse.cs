@@ -4,7 +4,6 @@ namespace ProductionCalculator.Business.APIModels
 	{
 		public required string Puid { get; set; }
 		public required string RecipePuid { get; set; }
-		public required bool IsPreferred { get; set; }
 		public string? MachinePuid { get; set; }
 		public double? ActualMachineCount { get; set; }
 		public double? CalculatedMachineCount { get; set; }

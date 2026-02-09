@@ -25,10 +25,6 @@ namespace ProductionCalculator.Data.Configurations
             builder.Property(e => e.Recipe_Version)
                 .HasColumnName("recipe_version")
                 .IsRequired();
-            builder.Property(e => e.Is_Preferred)
-                .HasColumnName("is_preferred")
-                .HasDefaultValue(false)
-                .IsRequired();
             builder.Property(e => e.Machine_Id)
                 .HasColumnName("machine_id");
             builder.Property(e => e.Machine_Version)

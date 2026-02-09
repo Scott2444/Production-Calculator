@@ -27,6 +27,7 @@ namespace ProductionCalculator.Data.Extensions
             services.AddScoped<IWorkflowNodeModifierRepository, WorkflowNodeModifierRepository>();
             services.AddScoped<IWorkflowEdgeRepository, WorkflowEdgeRepository>();
             services.AddScoped<IWorkflowProductNodeRepository, WorkflowProductNodeRepository>();
+            services.AddScoped<IWorkflowRecipeRepository, WorkflowRecipeRepository>();
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             services.AddScoped<IVerificationCodeRepository, VerificationCodeRepository>();
             return services;

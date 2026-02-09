@@ -23,6 +23,7 @@ namespace ProductionCalculator.Business.Services
         private readonly IWorkflowNodeRepository _workflowNodeRepo;
 
         private const double EXTERNAL_IMPORT = 0.0001; // Very low cost for externally provided products
+        private const double PREFERRED_RECIPE = 0.01;
         private const double DEFAULT_COST = 1.0; // Default cost for recipes
         private const double TARGET_BONUS = 100000.0; // Bonus to encourage meeting target supply
         private const double OVERFLOW_BONUS = 1000.0; // Bonus to encourage producing this product
@@ -126,7 +127,52 @@ namespace ProductionCalculator.Business.Services
         
         public async Task<ServiceResult<WorkflowChartResponse>> SetRecipes(Workflow workflow, List<string> recipePuids)
         {
-            throw new NotImplementedException();
+            // Get existing chart and project objects
+            var nodeChart = await GetWorkflowChart(workflow);
+            var projectObjects = await GetProjectObjects(workflow.Project_Id);
+
+            // All demand updates require latest version of objects
+            if (!WorkflowIsUpToDate(nodeChart, projectObjects))
+            {
+                return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.Conflict409, "Node chart is out of date with project data. Please recalculate the node chart to get the latest version.");
+            }
+
+             // Validate recipes and convert to IDs
+            var recipeIds = new List<int>();
+            foreach (var recipePuid in recipePuids)
+            {
+                var recipe = projectObjects.Recipes.FirstOrDefault(r => r.Puid == recipePuid);
+                if (recipe == null)
+                {
+                    return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, $"Recipe with PUID {recipePuid} not found in project ID {workflow.Project_Id}");
+                }
+                recipeIds.Add(recipe.Recipe_Id);
+             }
+
+             // Upsert preferred recipes
+             var updatedPreferredRecipes = new List<WorkflowRecipe>();
+             foreach (var recipeId in recipeIds)
+             {
+                var existingPreferredRecipe = nodeChart.PreferredRecipes.FirstOrDefault(pr => pr.Recipe_Id == recipeId);
+                if (existingPreferredRecipe != null)
+                {
+                    updatedPreferredRecipes.Add(existingPreferredRecipe);
+                }
+                else
+                {
+                    var newPreferredRecipe = new WorkflowRecipe
+                    {
+                        Workflow_Recipe_Id = 0, // New preferred recipe
+                        Workflow_Id = workflow.Workflow_Id,
+                        Recipe_Id = recipeId
+                    };
+                    updatedPreferredRecipes.Add(newPreferredRecipe);
+                }
+             }
+             nodeChart.PreferredRecipes = updatedPreferredRecipes;
+
+             // Recalculate chart
+             return await SafeCalculateChartAndResponse(workflow, nodeChart, projectObjects);
         }
 
 		public async Task<ServiceResult<WorkflowChartResponse>> SetExternal(Workflow workflow, string productPuid, bool isExternal, double? externalRate)
@@ -205,7 +251,8 @@ namespace ProductionCalculator.Business.Services
                 Nodes = new List<FullNode>(),
                 Edges = new List<WorkflowEdge>(),
                 ProductNodes = new List<WorkflowProductNode>(),
-                Targets = nodeChart.Targets
+                Targets = nodeChart.Targets,
+                PreferredRecipes = nodeChart.PreferredRecipes
             };
 
             // Get recipes that are imported to exclude from nodes
@@ -252,7 +299,6 @@ namespace ProductionCalculator.Business.Services
                             Puid = puid,
                             Recipe_Id = recipeId,
                             Recipe_Version = recipe.Version,
-                            Is_Preferred = false,
                             Machine_Id = null,
                             Machine_Version = null,
                             Actual_Machine_Count = null,
@@ -285,7 +331,7 @@ namespace ProductionCalculator.Business.Services
             }
 
             // Nodes, Product_Nodes, and Targets are ready, now save to DB to get primary keys assigned
-            updatedChart = await _nodeService.WorkflowNodeAndTargetUpdate(workflow.Workflow_Id, updatedChart);
+            updatedChart = await _nodeService.WorkflowUpdate(workflow.Workflow_Id, updatedChart);
 
             // Update edges
             updatedChart.Edges = AssembleEdges(updatedChart, recipeRates, projectObjects);
@@ -471,6 +517,7 @@ namespace ProductionCalculator.Business.Services
         {
             var recipeVarMap = new Dictionary<int, Variable>();
             var targetDict = nodeChart.Targets.ToDictionary(t => t.Product_Id, t => t.Target_Rate);
+            var preferredRecipeIds = nodeChart.PreferredRecipes.Select(pr => pr.Recipe_Id).ToHashSet();
 
             Solver solver = Solver.CreateSolver("GLOP");
             var productConstraintMap = new Dictionary<int, Constraint>();
@@ -489,6 +536,12 @@ namespace ProductionCalculator.Business.Services
                 if (recipe.Puid.StartsWith("IMPORT_"))
                 {
                     objective.SetCoefficient(x, EXTERNAL_IMPORT);
+                    continue;
+                }
+                // Preferred recipes
+                if (preferredRecipeIds.Contains(recipe.Recipe_Id))
+                {
+                    objective.SetCoefficient(x, PREFERRED_RECIPE);
                     continue;
                 }
                 objective.SetCoefficient(x, DEFAULT_COST);
@@ -871,12 +924,21 @@ namespace ProductionCalculator.Business.Services
                 }
             }
 
-            Console.WriteLine("Checking product versions");
             // Products - Check that product still exists
             foreach (var productNode in nodeChart.ProductNodes)
             {
                 var product = projectObjects.Products.FirstOrDefault(p => p.Product_Id == productNode.Product_Id);
                 if (product == null)
+                {
+                    return false;
+                }
+            }
+
+            // Preferred Recipes - Check that preferred recipe still exists
+            foreach (var preferredRecipe in nodeChart.PreferredRecipes)
+            {
+                var recipe = projectObjects.Recipes.FirstOrDefault(r => r.Recipe_Id == preferredRecipe.Recipe_Id);
+                if (recipe == null)
                 {
                     return false;
                 }
@@ -898,6 +960,9 @@ namespace ProductionCalculator.Business.Services
             // We can remove all outdated product nodes since it will be recalculated anyways
             nodeChart.ProductNodes = nodeChart.ProductNodes.Where(pn => projectObjects.Products.Any(p => p.Product_Id == pn.Product_Id)).ToList();
 
+            // Remove preferred recipes that have been deleted
+            nodeChart.PreferredRecipes = nodeChart.PreferredRecipes.Where(pr => projectObjects.Recipes.Any(r => r.Recipe_Id == pr.Recipe_Id)).ToList();
+
             return nodeChart;
         }
 
@@ -912,7 +977,8 @@ namespace ProductionCalculator.Business.Services
                 Nodes = new List<WorkflowNodeResponse>(),
                 Edges = new List<WorkflowEdgeResponse>(),
                 Targets = new List<WorkflowTargetExchange>(),
-                ProductNodes = new List<WorkflowProductNodeResponse>()
+                ProductNodes = new List<WorkflowProductNodeResponse>(),
+                PreferredRecipes = new List<string>()
             };
             foreach (var fullNode in nodeChart.Nodes)
             {
@@ -920,7 +986,6 @@ namespace ProductionCalculator.Business.Services
                 {
                     Puid = fullNode.Node.Puid,
                     RecipePuid = projectObjects.Recipes.FirstOrDefault(r => r.Recipe_Id == fullNode.Node.Recipe_Id)?.Puid ?? "0000000000",
-                    IsPreferred = fullNode.Node.Is_Preferred,
                     MachinePuid = fullNode.Node.Machine_Id.HasValue ? projectObjects.Machines.FirstOrDefault(m => m.Machine_Id == fullNode.Node.Machine_Id.Value)?.Puid : null,
                     CalculatedMachineCount = fullNode.Node.Calculated_Machine_Count,
                     CalculatedTargetRate = fullNode.Node.Calculated_Target_Rate,
@@ -968,6 +1033,12 @@ namespace ProductionCalculator.Business.Services
                     IsExternal = productNode.Is_External
                 };
                 response.ProductNodes.Add(productNodeResponse);
+            }
+
+            foreach (var preferredRecipe in nodeChart.PreferredRecipes)
+            {
+                var recipePuid = projectObjects.Recipes.FirstOrDefault(r => r.Recipe_Id == preferredRecipe.Recipe_Id)?.Puid ?? "0000000000";
+                response.PreferredRecipes.Add(recipePuid);
             }
 
             return response;

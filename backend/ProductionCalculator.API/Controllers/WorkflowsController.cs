@@ -89,7 +89,7 @@ namespace ProductionCalculator.API.Controllers
         [HttpPut("{workflowPuid}/recipes")]
         public async Task<IActionResult> SetRecipes(string projectPuid, string workflowPuid, [FromBody] WorkflowRecipeRequest request)
         {
-            var result = await _service.SetRecipes(projectPuid, workflowPuid, request.ModifierPuids);
+            var result = await _service.SetRecipes(projectPuid, workflowPuid, request.RecipePuids);
             return FromServiceResult(result, r => r);
         }
 

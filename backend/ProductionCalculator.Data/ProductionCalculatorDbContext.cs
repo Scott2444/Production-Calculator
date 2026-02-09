@@ -31,6 +31,7 @@ namespace ProductionCalculator.Data
             modelBuilder.ApplyConfiguration(new WorkflowNodeModifierConfiguration());
             modelBuilder.ApplyConfiguration(new WorkflowEdgeConfiguration());
             modelBuilder.ApplyConfiguration(new WorkflowProductNodeConfiguration());
+            modelBuilder.ApplyConfiguration(new WorkflowRecipeConfiguration());
             modelBuilder.ApplyConfiguration(new RefreshTokenConfiguration());
             modelBuilder.ApplyConfiguration(new VerificationCodeConfiguration());
         }
