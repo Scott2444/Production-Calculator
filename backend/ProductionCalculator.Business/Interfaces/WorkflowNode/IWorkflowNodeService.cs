@@ -3,7 +3,7 @@ using ProductionCalculator.Business.APIModels;
 
 namespace ProductionCalculator.Business.Interfaces
 {
-    public interface IWorkflowNodeService
+    public interface IWorkflowChartService
     {
         Task<ServiceResult<WorkflowChartResponse>> GetWorkflowChartById(Workflow workflow);
         Task<ServiceResult<WorkflowChartResponse>> UpsertRootDemands(Workflow workflow, List<(string productPuid, double rate)> rootDemands);

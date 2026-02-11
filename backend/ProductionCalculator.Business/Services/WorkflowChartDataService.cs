@@ -3,7 +3,7 @@ using ProductionCalculator.Business.Models;
 
 namespace ProductionCalculator.Business.Services
 {
-	public class WorkflowNodeDbService : IWorkflowNodeDbService
+	public class WorkflowNodeDbService : IWorkflowChartDataService
 	{
 		private readonly IWorkflowNodeRepository _nodeRepo;
 		private readonly IWorkflowTargetRepository _targetRepo;
@@ -70,6 +70,15 @@ namespace ProductionCalculator.Business.Services
             await UpdateProductNodes(nodeChart.ProductNodes, originalChart.ProductNodes);
             await UpdateRecipes(nodeChart.PreferredRecipes, originalChart.PreferredRecipes);
             return nodeChart;
+        }
+
+        /// <summary>
+        /// Checks if a node with the specified PUID exists.
+        /// Used when creating nodes to ensure PUID uniqueness.
+        /// </summary>
+        public async Task<bool> NodePuidExists(string puid)
+        {
+            return await _nodeRepo.PuidExists(puid);
         }
 
         /// <summary>

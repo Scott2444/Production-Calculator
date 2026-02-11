@@ -35,7 +35,7 @@ public class WorkflowServiceTests
         };
     }
 
-    private static WorkflowService CreateService(IWorkflowRepository repo, IProjectRepository projectRepo, IWorkflowNodeService nodeService)
+    private static WorkflowService CreateService(IWorkflowRepository repo, IProjectRepository projectRepo, IWorkflowChartService nodeService)
     {
         var currentUser = A.Fake<ICurrentUserService>();
         return new WorkflowService(currentUser, repo, projectRepo, nodeService);
@@ -46,7 +46,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
 
         var result = await service.AddWorkflow("projectPuid", "", "desc");
@@ -59,7 +59,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         A.CallTo(() => projectRepo.GetProjectByPuid("missing")).Returns(Task.FromResult<Project?>(null));
 
@@ -73,7 +73,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(id: 10, puid: "projPuid");
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
@@ -89,7 +89,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(id: 10, puid: "projPuid");
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
@@ -109,7 +109,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
 
         var result = await service.UpdateWorkflow("projPuid", "wfPuid", "", "desc");
@@ -122,7 +122,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         A.CallTo(() => projectRepo.GetProjectByPuid("missing")).Returns(Task.FromResult<Project?>(null));
 
@@ -136,7 +136,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(puid: "projPuid");
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
@@ -152,7 +152,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(id: 10, puid: "projPuid");
         var workflow = CreateWorkflow(projectId: 20, puid: "wfPuid");
@@ -169,7 +169,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(id: 10, puid: "projPuid");
         var workflow = CreateWorkflow(id: 1, projectId: 10, puid: "wfPuid", name: "MyWF");
@@ -187,7 +187,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(id: 10, puid: "projPuid");
         var workflow = CreateWorkflow(id: 1, projectId: 10, puid: "wfPuid", name: "OldName");
@@ -208,7 +208,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         A.CallTo(() => projectRepo.GetProjectByPuid("missing")).Returns(Task.FromResult<Project?>(null));
 
@@ -222,7 +222,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(puid: "projPuid");
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
@@ -238,7 +238,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(id: 10, puid: "projPuid");
         var workflow = CreateWorkflow(projectId: 20, puid: "wfPuid");
@@ -255,7 +255,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(id: 10, puid: "projPuid");
         var workflow = CreateWorkflow(projectId: 10, puid: "wfPuid");
@@ -273,7 +273,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         A.CallTo(() => projectRepo.GetProjectByPuid("missing")).Returns(Task.FromResult<Project?>(null));
 
@@ -287,7 +287,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(id: 10, puid: "projPuid");
         var workflows = new List<Workflow> { CreateWorkflow(projectId: 10) };
@@ -305,7 +305,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         A.CallTo(() => projectRepo.GetProjectByPuid("missing")).Returns(Task.FromResult<Project?>(null));
 
@@ -319,7 +319,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(puid: "projPuid");
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
@@ -335,7 +335,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(id: 10, puid: "projPuid");
         var workflow = CreateWorkflow(id: 1, projectId: 10, puid: "wfPuid");
@@ -353,7 +353,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(id: 10, puid: "projPuid");
         var workflow = CreateWorkflow(id: 1, projectId: 10, puid: "wfPuid");
@@ -372,7 +372,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         A.CallTo(() => projectRepo.GetProjectByPuid("missing")).Returns(Task.FromResult<Project?>(null));
 
@@ -386,7 +386,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(puid: "projPuid");
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
@@ -402,7 +402,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(id: 10, puid: "projPuid");
         var workflow = CreateWorkflow(projectId: 10, puid: "wfPuid");
@@ -424,7 +424,7 @@ public class WorkflowServiceTests
     {
         var repo = A.Fake<IWorkflowRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var nodeService = A.Fake<IWorkflowNodeService>();
+        var nodeService = A.Fake<IWorkflowChartService>();
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(id: 10, puid: "projPuid");
         var workflow = CreateWorkflow(projectId: 10, puid: "wfPuid");
