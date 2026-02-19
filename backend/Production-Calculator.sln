@@ -5,17 +5,17 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend", "backend", "{1AE8ACA6-933B-BF2A-3671-3E2EAC007D16}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProductionCalculator.API", "backend\ProductionCalculator.API\ProductionCalculator.API.csproj", "{33171ACA-77E9-1C9C-AF1C-43F36B0E6CEA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProductionCalculator.API", "ProductionCalculator.API\ProductionCalculator.API.csproj", "{33171ACA-77E9-1C9C-AF1C-43F36B0E6CEA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProductionCalculator.Business", "backend\ProductionCalculator.Business\ProductionCalculator.Business.csproj", "{F201E0C5-76B1-4A65-9D5C-17AF49029E98}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProductionCalculator.Business", "ProductionCalculator.Business\ProductionCalculator.Business.csproj", "{F201E0C5-76B1-4A65-9D5C-17AF49029E98}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProductionCalculator.Data", "backend\ProductionCalculator.Data\ProductionCalculator.Data.csproj", "{6B90C6E9-A669-4507-A0C9-F92ADE211F9B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProductionCalculator.Data", "ProductionCalculator.Data\ProductionCalculator.Data.csproj", "{6B90C6E9-A669-4507-A0C9-F92ADE211F9B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProductionCalculator.Data.Tests", "backend\ProductionCalculator.Data.Tests\ProductionCalculator.Data.Tests.csproj", "{773FD43D-3B15-43C7-B49B-3A2F70196EF3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProductionCalculator.Data.Tests", "ProductionCalculator.Data.Tests\ProductionCalculator.Data.Tests.csproj", "{773FD43D-3B15-43C7-B49B-3A2F70196EF3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProductionCalculator.Business.Tests", "backend\ProductionCalculator.Business.Tests\ProductionCalculator.Business.Tests.csproj", "{6A0EDD3E-7D57-411C-80EC-DAB6943F8EC2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProductionCalculator.Business.Tests", "ProductionCalculator.Business.Tests\ProductionCalculator.Business.Tests.csproj", "{6A0EDD3E-7D57-411C-80EC-DAB6943F8EC2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProductionCalculator.API.Tests", "backend\ProductionCalculator.API.Tests\ProductionCalculator.API.Tests.csproj", "{D7C5A07D-27E1-4540-A2F9-5A4C46B09966}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProductionCalculator.API.Tests", "ProductionCalculator.API.Tests\ProductionCalculator.API.Tests.csproj", "{D7C5A07D-27E1-4540-A2F9-5A4C46B09966}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
