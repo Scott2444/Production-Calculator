@@ -1,4 +1,3 @@
-
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.APIModels;

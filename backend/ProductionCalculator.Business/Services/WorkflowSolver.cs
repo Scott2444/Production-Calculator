@@ -20,6 +20,11 @@ namespace ProductionCalculator.Business.Services
         /// </summary>
         public Dictionary<int, double> SolveDemand(ProjectObjects projectObjects, NodeChart nodeChart)
         {
+            if (nodeChart.Targets.Any(t => t.Target_Rate < 0.0))
+            {
+                throw new ArgumentOutOfRangeException(nameof(nodeChart), "Target rates must be non-negative.");
+            }
+
             var recipeVarMap = new Dictionary<int, Variable>();
             var targetDict = nodeChart.Targets.ToDictionary(t => t.Product_Id, t => t.Target_Rate);
             var preferredRecipeIds = nodeChart.PreferredRecipes.Select(pr => pr.Recipe_Id).ToHashSet();
@@ -144,6 +149,16 @@ namespace ProductionCalculator.Business.Services
         /// </summary>
         public Dictionary<int, double> SolveSupply(ProjectObjects projectObjects, NodeChart nodeChart)
         {
+            if (nodeChart.Targets.Any(t => t.Target_Rate < 0.0))
+            {
+                throw new ArgumentOutOfRangeException(nameof(nodeChart), "Target rates must be non-negative.");
+            }
+
+            if (nodeChart.Nodes.Any(n => (n.Node.Actual_Machine_Count ?? 0.0) < 0.0))
+            {
+                throw new ArgumentOutOfRangeException(nameof(nodeChart), "Actual machine counts must be non-negative.");
+            }
+
             var recipeVarMap = new Dictionary<int, Variable>();
             var productConstraintMap = new Dictionary<int, Constraint>();
             var targetDict = nodeChart.Targets.ToDictionary(t => t.Product_Id, t => t.Target_Rate);
