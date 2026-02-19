@@ -2,75 +2,75 @@
 # Must be override with environment specific file (e.g., docker-compose.dev.yml)
 name: production-calculator
 services:
-  backend:
-    image: scott2444/production-calculator-backend
-    container_name: backend
-    restart: always
-    environment:
-      - ASPNETCORE_URLS=http://0.0.0.0:5000
-    volumes:
-      - ./scripts/backend-entrypoint.sh:/backend-entrypoint.sh
-    entrypoint: ["/bin/sh", "/backend-entrypoint.sh"]
-    depends_on:
-      postgres:
-        condition: service_healthy
-        restart: true
-      flyway:
-        condition: service_completed_successfully
-    secrets:
-      - server_password
-      - resend_apitoken
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/HealthCheck"]
-      interval: 10s
-      retries: 5
-      start_period: 10s
-      timeout: 10s
+    backend:
+        image: scott2444/production-calculator-backend
+        container_name: backend
+        restart: always
+        environment:
+            - ASPNETCORE_URLS=http://0.0.0.0:5000
+        volumes:
+            - ./scripts/backend-entrypoint.sh:/backend-entrypoint.sh
+        entrypoint: ["/bin/sh", "/backend-entrypoint.sh"]
+        depends_on:
+            postgres:
+                condition: service_healthy
+                restart: true
+            flyway:
+                condition: service_completed_successfully
+        secrets:
+            - server_password
+            - resend_apitoken
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:5000/HealthCheck"]
+            interval: 10s
+            retries: 5
+            start_period: 10s
+            timeout: 10s
 
-  postgres:
-    image: postgres:18
-    container_name: postgres
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-      POSTGRES_DB: production_calculator
-    volumes:
-      - db_data:/var/lib/postgresql
-      - ./database/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
-      - ./database/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
-    secrets:
-      - postgres_password
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready"]
-      interval: 10s
-      retries: 5
-      start_period: 5s
-      timeout: 10s
+    postgres:
+        image: postgres:18
+        container_name: postgres
+        restart: always
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+            POSTGRES_DB: production_calculator
+        volumes:
+            - db_data:/var/lib/postgresql
+            - ./database/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
+            - ./database/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
+        secrets:
+            - postgres_password
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready"]
+            interval: 10s
+            retries: 5
+            start_period: 5s
+            timeout: 10s
 
-  flyway:
-    image: flyway/flyway:10
-    container_name: flyway
-    depends_on:
-      - postgres
-    volumes:
-      - ./database/migrations:/flyway/sql
-      - ./scripts/flyway-entrypoint.sh:/flyway-entrypoint.sh
-    entrypoint: ["/bin/sh", "/flyway-entrypoint.sh"]
-    command: -url=jdbc:postgresql://postgres:5432/production_calculator -user=flyway migrate
-    restart: "no"
-    secrets:
-      - flyway_password
+    flyway:
+        image: flyway/flyway:10
+        container_name: flyway
+        depends_on:
+            - postgres
+        volumes:
+            - ./database/migrations:/flyway/sql
+            - ./scripts/flyway-entrypoint.sh:/flyway-entrypoint.sh
+        entrypoint: ["/bin/sh", "/flyway-entrypoint.sh"]
+        command: -url=jdbc:postgresql://postgres:5432/production_calculator -user=flyway migrate
+        restart: "no"
+        secrets:
+            - flyway_password
 
 volumes:
-  db_data:
+    db_data:
 
 secrets:
-  postgres_password:
-    file: ./secrets/postgres_password.txt
-  flyway_password:
-    file: ./secrets/flyway_password.txt
-  server_password:
-    file: ./secrets/server_password.txt
-  resend_apitoken:
-    file: ./secrets/resend_apitoken.txt
+    postgres_password:
+        file: ./secrets/postgres_password.txt
+    flyway_password:
+        file: ./secrets/flyway_password.txt
+    server_password:
+        file: ./secrets/server_password.txt
+    resend_apitoken:
+        file: ./secrets/resend_apitoken.txt
