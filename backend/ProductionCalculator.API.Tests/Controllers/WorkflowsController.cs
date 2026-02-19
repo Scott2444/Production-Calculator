@@ -187,7 +187,7 @@ public class WorkflowsControllerTests
     {
         var service = A.Fake<IWorkflowService>();
         var req = new WorkflowTargetRequest { Targets = [new WorkflowTargetExchange { ProductPuid = "p1", TargetRate = 10.0 }] };
-        var chart = new WorkflowChartResponse { Nodes = [], Edges = [], Targets = [], ProductNodes = [] };
+        var chart = new WorkflowChartResponse { Nodes = [], Edges = [], Targets = [], ProductNodes = [], PreferredRecipes = [] };
         A.CallTo(() => service.UpdateTargetDemand("projPuid", "wfPuid", A<List<(string, double)>>._)).Returns(ServiceResult<WorkflowChartResponse>.SuccessResult(chart));
         var controller = CreateController(service);
 

@@ -407,11 +407,11 @@ public class WorkflowServiceTests
         var project = CreateProject(id: 10, puid: "projPuid");
         var workflow = CreateWorkflow(projectId: 10, puid: "wfPuid");
         var demands = new List<(string, double)> { ("prod1", 10.0) };
-        var chart = new WorkflowChartResponse { Nodes = [], Edges = [], Targets = [], ProductNodes = [] };
+        var chart = new WorkflowChartResponse { Nodes = [], Edges = [], Targets = [], ProductNodes = [], PreferredRecipes = [] };
 
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
-        A.CallTo(() => nodeService.UpsertRootDemands(workflow, demands)).Returns(chart);
+        A.CallTo(() => nodeService.UpsertRootDemands(workflow, demands)).Returns(ServiceResult<WorkflowChartResponse>.SuccessResult(chart));
 
         var result = await service.UpdateTargetDemand("projPuid", "wfPuid", demands);
 
@@ -432,7 +432,7 @@ public class WorkflowServiceTests
 
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
-        A.CallTo(() => nodeService.UpsertRootDemands(workflow, demands)).Throws(new InvalidOperationException("Infeasible"));
+        A.CallTo(() => nodeService.UpsertRootDemands(workflow, demands)).Returns(ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.BadRequest400, "Infeasible"));
 
         var result = await service.UpdateTargetDemand("projPuid", "wfPuid", demands);
 
