@@ -62,7 +62,7 @@ namespace ProductionCalculator.Business.Services
 			var project = await _projectRepo.GetProjectByPuid(projectPuid);
 			if (project == null) return ServiceResult<Workflow>.Fail(ServiceStatus.NotFound404, "Project not found.");
 
-            // Check if product exists and belongs to project (IMPORTANT FOR AUTHORIZATION!)
+            // Check if workflow exists and belongs to project (IMPORTANT FOR AUTHORIZATION!)
 			var workflow = await _repo.GetWorkflowByPuid(puid);
 			if (workflow == null || workflow.Project_Id != project.Project_Id) return ServiceResult<Workflow>.Fail(ServiceStatus.NotFound404, "Workflow not found.");
 
@@ -127,6 +127,7 @@ namespace ProductionCalculator.Business.Services
 			var project = await _projectRepo.GetProjectByPuid(projectPuid);
 			if (project == null) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Project not found.");
 
+			// Check if workflow exists and belongs to project (IMPORTANT FOR AUTHORIZATION!)
 			var workflow = await _repo.GetWorkflowByPuid(workflowPuid);
 			if (workflow == null || workflow.Project_Id != project.Project_Id) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Workflow not found.");
 
@@ -138,6 +139,7 @@ namespace ProductionCalculator.Business.Services
 			var project = await _projectRepo.GetProjectByPuid(projectPuid);
 			if (project == null) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Project not found.");
 
+			// Check if workflow exists and belongs to project (IMPORTANT FOR AUTHORIZATION!)
 			var workflow = await _repo.GetWorkflowByPuid(workflowPuid);
 			if (workflow == null || workflow.Project_Id != project.Project_Id) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Workflow not found.");
 
@@ -148,6 +150,7 @@ namespace ProductionCalculator.Business.Services
 			var project = await _projectRepo.GetProjectByPuid(projectPuid);
 			if (project == null) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Project not found.");
 
+			// Check if workflow exists and belongs to project (IMPORTANT FOR AUTHORIZATION!)
 			var workflow = await _repo.GetWorkflowByPuid(workflowPuid);
 			if (workflow == null || workflow.Project_Id != project.Project_Id) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Workflow not found.");
 
@@ -159,6 +162,7 @@ namespace ProductionCalculator.Business.Services
 			var project = await _projectRepo.GetProjectByPuid(projectPuid);
 			if (project == null) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Project not found.");
 
+			// Check if workflow exists and belongs to project (IMPORTANT FOR AUTHORIZATION!)
 			var workflow = await _repo.GetWorkflowByPuid(workflowPuid);
 			if (workflow == null || workflow.Project_Id != project.Project_Id) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Workflow not found.");
 
@@ -169,6 +173,7 @@ namespace ProductionCalculator.Business.Services
 			var project = await _projectRepo.GetProjectByPuid(projectPuid);
 			if (project == null) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Project not found.");
 
+			// Check if workflow exists and belongs to project (IMPORTANT FOR AUTHORIZATION!)
 			var workflow = await _repo.GetWorkflowByPuid(workflowPuid);
 			if (workflow == null || workflow.Project_Id != project.Project_Id) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Workflow not found.");
 
@@ -179,6 +184,7 @@ namespace ProductionCalculator.Business.Services
 			var project = await _projectRepo.GetProjectByPuid(projectPuid);
 			if (project == null) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Project not found.");
 
+			// Check if workflow exists and belongs to project (IMPORTANT FOR AUTHORIZATION!)
 			var workflow = await _repo.GetWorkflowByPuid(workflowPuid);
 			if (workflow == null || workflow.Project_Id != project.Project_Id) return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Workflow not found.");
 

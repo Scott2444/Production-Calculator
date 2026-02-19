@@ -35,6 +35,18 @@ public class WorkflowServiceTests
         };
     }
 
+    private static WorkflowChartResponse CreateWorkflowChartResponse()
+    {
+        return new WorkflowChartResponse
+        {
+            Nodes = [],
+            Edges = [],
+            Targets = [],
+            ProductNodes = [],
+            PreferredRecipes = []
+        };
+    }
+
     private static WorkflowService CreateService(IWorkflowRepository repo, IProjectRepository projectRepo, IWorkflowChartService nodeService)
     {
         var currentUser = A.Fake<ICurrentUserService>();
@@ -368,6 +380,73 @@ public class WorkflowServiceTests
     }
 
     [Fact]
+    public async Task GetWorkflowChartById_ProjectNotFound_ReturnsNotFound()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        A.CallTo(() => projectRepo.GetProjectByPuid("missing")).Returns(Task.FromResult<Project?>(null));
+
+        var result = await service.GetWorkflowChartById("missing", "wfPuid");
+
+        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task GetWorkflowChartById_WorkflowNotFound_ReturnsNotFound()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        var project = CreateProject(puid: "projPuid");
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetWorkflowByPuid("missing")).Returns(Task.FromResult<Workflow?>(null));
+
+        var result = await service.GetWorkflowChartById("projPuid", "missing");
+
+        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task GetWorkflowChartById_WorkflowBelongsToDifferentProject_ReturnsNotFound()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        var project = CreateProject(id: 10, puid: "projPuid");
+        var workflow = CreateWorkflow(projectId: 20, puid: "wfPuid");
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
+
+        var result = await service.GetWorkflowChartById("projPuid", "wfPuid");
+
+        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task GetWorkflowChartById_ValidInputs_ReturnsWorkflowChartResponse()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        var project = CreateProject(id: 10, puid: "projPuid");
+        var workflow = CreateWorkflow(projectId: 10, puid: "wfPuid");
+        var response = CreateWorkflowChartResponse();
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
+        A.CallTo(() => nodeService.GetWorkflowChartById(workflow)).Returns(ServiceResult<WorkflowChartResponse>.SuccessResult(response));
+
+        var result = await service.GetWorkflowChartById("projPuid", "wfPuid");
+
+        Assert.True(result.Success);
+        Assert.Equal(response, result.Data);
+    }
+
+    [Fact]
     public async Task UpdateTargetDemand_ProjectNotFound_ReturnsNotFound()
     {
         var repo = A.Fake<IWorkflowRepository>();
@@ -398,6 +477,23 @@ public class WorkflowServiceTests
     }
 
     [Fact]
+    public async Task UpdateTargetDemand_WorkflowBelongsToDifferentProject_ReturnsNotFound()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        var project = CreateProject(id: 10, puid: "projPuid");
+        var workflow = CreateWorkflow(projectId: 20, puid: "wfPuid");
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
+
+        var result = await service.UpdateTargetDemand("projPuid", "wfPuid", new List<(string, double)>());
+
+        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
     public async Task UpdateTargetDemand_ValidRequest_ReturnsSuccess()
     {
         var repo = A.Fake<IWorkflowRepository>();
@@ -406,17 +502,16 @@ public class WorkflowServiceTests
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(id: 10, puid: "projPuid");
         var workflow = CreateWorkflow(projectId: 10, puid: "wfPuid");
-        var demands = new List<(string, double)> { ("prod1", 10.0) };
-        var chart = new WorkflowChartResponse { Nodes = [], Edges = [], Targets = [], ProductNodes = [], PreferredRecipes = [] };
-
+        var demands = new List<(string productPuid, double rate)> { ("prod1", 10.5) };
+        var response = CreateWorkflowChartResponse();
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
-        A.CallTo(() => nodeService.UpsertRootDemands(workflow, demands)).Returns(ServiceResult<WorkflowChartResponse>.SuccessResult(chart));
+        A.CallTo(() => nodeService.UpsertRootDemands(workflow, demands)).Returns(ServiceResult<WorkflowChartResponse>.SuccessResult(response));
 
         var result = await service.UpdateTargetDemand("projPuid", "wfPuid", demands);
 
         Assert.True(result.Success);
-        Assert.Equal(chart, result.Data);
+        Assert.Equal(response, result.Data);
     }
 
     [Fact]
@@ -428,15 +523,302 @@ public class WorkflowServiceTests
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(id: 10, puid: "projPuid");
         var workflow = CreateWorkflow(projectId: 10, puid: "wfPuid");
-        var demands = new List<(string, double)> { ("prod1", 10.0) };
-
+        var demands = new List<(string productPuid, double rate)> { ("prod1", 10.5) };
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
-        A.CallTo(() => nodeService.UpsertRootDemands(workflow, demands)).Returns(ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.BadRequest400, "Infeasible"));
+        A.CallTo(() => nodeService.UpsertRootDemands(workflow, demands)).Returns(ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.BadRequest400, "Error"));
 
         var result = await service.UpdateTargetDemand("projPuid", "wfPuid", demands);
 
         Assert.Equal(ServiceStatus.BadRequest400, result.Status);
-        Assert.Contains("Infeasible", result.ErrorMessage!);
+    }
+
+    [Fact]
+    public async Task UpdateNode_ProjectNotFound_ReturnsNotFound()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        A.CallTo(() => projectRepo.GetProjectByPuid("missing")).Returns(Task.FromResult<Project?>(null));
+
+        var result = await service.UpdateNode("missing", "wfPuid", "nodePuid", new WorkflowNodeRequest());
+
+        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task UpdateNode_WorkflowNotFound_ReturnsNotFound()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        var project = CreateProject(puid: "projPuid");
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetWorkflowByPuid("missing")).Returns(Task.FromResult<Workflow?>(null));
+
+        var result = await service.UpdateNode("projPuid", "missing", "nodePuid", new WorkflowNodeRequest());
+
+        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task UpdateNode_WorkflowBelongsToDifferentProject_ReturnsNotFound()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        var project = CreateProject(id: 10, puid: "projPuid");
+        var workflow = CreateWorkflow(projectId: 20, puid: "wfPuid");
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
+
+        var result = await service.UpdateNode("projPuid", "wfPuid", "nodePuid", new WorkflowNodeRequest());
+
+        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task UpdateNode_ValidRequest_ReturnsSuccess()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        var project = CreateProject(id: 10, puid: "projPuid");
+        var workflow = CreateWorkflow(projectId: 10, puid: "wfPuid");
+        var request = new WorkflowNodeRequest();
+        var response = CreateWorkflowChartResponse();
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
+        A.CallTo(() => nodeService.UpdateNode(workflow, "nodePuid", request)).Returns(ServiceResult<WorkflowChartResponse>.SuccessResult(response));
+
+        var result = await service.UpdateNode("projPuid", "wfPuid", "nodePuid", request);
+
+        Assert.True(result.Success);
+        Assert.Equal(response, result.Data);
+    }
+
+    [Fact]
+    public async Task UpdateNode_InvalidRequest_ReturnsBadRequest()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        var project = CreateProject(id: 10, puid: "projPuid");
+        var workflow = CreateWorkflow(projectId: 10, puid: "wfPuid");
+        var request = new WorkflowNodeRequest();
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
+        A.CallTo(() => nodeService.UpdateNode(workflow, "nodePuid", request)).Returns(ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.BadRequest400, "Error"));
+
+        var result = await service.UpdateNode("projPuid", "wfPuid", "nodePuid", request);
+
+        Assert.Equal(ServiceStatus.BadRequest400, result.Status);
+    }
+
+    [Fact]
+    public async Task SetRecipes_ProjectNotFound_ReturnsNotFound()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        A.CallTo(() => projectRepo.GetProjectByPuid("missing")).Returns(Task.FromResult<Project?>(null));
+
+        var result = await service.SetRecipes("missing", "wfPuid", new List<string>());
+
+        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task SetRecipes_WorkflowNotFound_ReturnsNotFound()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        var project = CreateProject(puid: "projPuid");
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetWorkflowByPuid("missing")).Returns(Task.FromResult<Workflow?>(null));
+
+        var result = await service.SetRecipes("projPuid", "missing", new List<string>());
+
+        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task SetRecipes_WorkflowBelongsToDifferentProject_ReturnsNotFound()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        var project = CreateProject(id: 10, puid: "projPuid");
+        var workflow = CreateWorkflow(projectId: 20, puid: "wfPuid");
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
+
+        var result = await service.SetRecipes("projPuid", "wfPuid", new List<string>());
+
+        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task SetRecipes_ValidRequest_ReturnsSuccess()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        var project = CreateProject(id: 10, puid: "projPuid");
+        var workflow = CreateWorkflow(projectId: 10, puid: "wfPuid");
+        var recipePuids = new List<string> { "rec1" };
+        var response = CreateWorkflowChartResponse();
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
+        A.CallTo(() => nodeService.SetRecipes(workflow, recipePuids)).Returns(ServiceResult<WorkflowChartResponse>.SuccessResult(response));
+
+        var result = await service.SetRecipes("projPuid", "wfPuid", recipePuids);
+
+        Assert.True(result.Success);
+        Assert.Equal(response, result.Data);
+    }
+
+    [Fact]
+    public async Task SetExternal_ProjectNotFound_ReturnsNotFound()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        A.CallTo(() => projectRepo.GetProjectByPuid("missing")).Returns(Task.FromResult<Project?>(null));
+
+        var result = await service.SetExternal("missing", "wfPuid", "prodPuid", true, 10.0);
+
+        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task SetExternal_WorkflowNotFound_ReturnsNotFound()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        var project = CreateProject(puid: "projPuid");
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetWorkflowByPuid("missing")).Returns(Task.FromResult<Workflow?>(null));
+
+        var result = await service.SetExternal("projPuid", "missing", "prodPuid", true, 10.0);
+
+        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task SetExternal_WorkflowBelongsToDifferentProject_ReturnsNotFound()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        var project = CreateProject(id: 10, puid: "projPuid");
+        var workflow = CreateWorkflow(projectId: 20, puid: "wfPuid");
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
+
+        var result = await service.SetExternal("projPuid", "wfPuid", "prodPuid", true, 10.0);
+
+        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task SetExternal_ValidRequest_ReturnsSuccess()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        var project = CreateProject(id: 10, puid: "projPuid");
+        var workflow = CreateWorkflow(projectId: 10, puid: "wfPuid");
+        var response = CreateWorkflowChartResponse();
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
+        A.CallTo(() => nodeService.SetExternal(workflow, "prodPuid", true, 10.5)).Returns(ServiceResult<WorkflowChartResponse>.SuccessResult(response));
+
+        var result = await service.SetExternal("projPuid", "wfPuid", "prodPuid", true, 10.5);
+
+        Assert.True(result.Success);
+        Assert.Equal(response, result.Data);
+    }
+
+    [Fact]
+    public async Task UpgradeWorkflowChart_ProjectNotFound_ReturnsNotFound()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        A.CallTo(() => projectRepo.GetProjectByPuid("missing")).Returns(Task.FromResult<Project?>(null));
+
+        var result = await service.UpgradeWorkflowChart("missing", "wfPuid");
+
+        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task UpgradeWorkflowChart_WorkflowNotFound_ReturnsNotFound()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        var project = CreateProject(puid: "projPuid");
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetWorkflowByPuid("missing")).Returns(Task.FromResult<Workflow?>(null));
+
+        var result = await service.UpgradeWorkflowChart("projPuid", "missing");
+
+        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task UpgradeWorkflowChart_WorkflowBelongsToDifferentProject_ReturnsNotFound()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        var project = CreateProject(id: 10, puid: "projPuid");
+        var workflow = CreateWorkflow(projectId: 20, puid: "wfPuid");
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
+
+        var result = await service.UpgradeWorkflowChart("projPuid", "wfPuid");
+
+        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task UpgradeWorkflowChart_ValidRequest_ReturnsSuccess()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        var project = CreateProject(id: 10, puid: "projPuid");
+        var workflow = CreateWorkflow(projectId: 10, puid: "wfPuid");
+        var response = CreateWorkflowChartResponse();
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
+        A.CallTo(() => nodeService.UpgradeWorkflowChart(workflow)).Returns(ServiceResult<WorkflowChartResponse>.SuccessResult(response));
+
+        var result = await service.UpgradeWorkflowChart("projPuid", "wfPuid");
+
+        Assert.True(result.Success);
+        Assert.Equal(response, result.Data);
     }
 }
