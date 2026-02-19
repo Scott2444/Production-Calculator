@@ -1,4 +1,5 @@
 using FakeItEasy;
+using Microsoft.Extensions.Logging;
 using ProductionCalculator.Business.Helpers;
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
@@ -43,7 +44,8 @@ public class ProjectServiceTests
         IProjectRepository repo,
         IUserRepository userRepo)
     {
-        return new ProjectService(currentUser, repo, userRepo);
+        var logger = A.Fake<ILogger<ProjectService>>();
+        return new ProjectService(currentUser, repo, userRepo, logger);
     }
 
     // AddProject Tests

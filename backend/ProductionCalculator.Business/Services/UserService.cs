@@ -1,18 +1,20 @@
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Helpers;
-
+using Microsoft.Extensions.Logging;
 namespace ProductionCalculator.Business.Services
 {
     public class UserService : IUserService
     {
         private readonly IUserRepository _repo;
         private readonly IRoleRepository _roleRepo;
+        private readonly ILogger<UserService> _logger;
 
-        public UserService(IUserRepository repo, IRoleRepository roleRepo)
+        public UserService(IUserRepository repo, IRoleRepository roleRepo, ILogger<UserService> logger)
         {
             _repo = repo;
             _roleRepo = roleRepo;
+            _logger = logger;
         }
 
         public async Task<ServiceResult<User>> Register(string username, string email, string password)
@@ -51,6 +53,7 @@ namespace ProductionCalculator.Business.Services
             };
 
             await _repo.AddUser(user);
+            _logger.LogInformation("User state change: User '{Username}' (PUID: {UserPuid}) registered.", user.Username, user.Puid);
             return ServiceResult<User>.SuccessResult(user, ServiceStatus.Created201);
         }
 
@@ -107,6 +110,7 @@ namespace ProductionCalculator.Business.Services
             if (!deleted)
                 return ServiceResult.Fail(ServiceStatus.InternalServerError500);
 
+            _logger.LogInformation("User state change: User '{Username}' (PUID: {UserPuid}) deleted.", user.Username, user.Puid);
             return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
         }
     }

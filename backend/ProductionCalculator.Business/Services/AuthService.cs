@@ -6,6 +6,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Resend;
 using Resend.Payloads;
 
@@ -24,6 +25,7 @@ namespace ProductionCalculator.Business.Services
         private readonly IResend _resend;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<AuthService> _logger;
         public AuthService
         (
             ICurrentUserService currentUserService,
@@ -36,7 +38,8 @@ namespace ProductionCalculator.Business.Services
             IVerificationCodeRepository verificationCodeRepository,
             IResend resend,
             IHttpContextAccessor httpContextAccessor,
-            IConfiguration configuration
+            IConfiguration configuration,
+            ILogger<AuthService> logger
         )
         {
             _currentUserService = currentUserService;
@@ -50,6 +53,7 @@ namespace ProductionCalculator.Business.Services
             _resend = resend;
             _httpContextAccessor = httpContextAccessor;
             _configuration = configuration;
+            _logger = logger;
         }
         /// <summary>
         /// Checks if the resource identified by puid in the route is public.
@@ -130,11 +134,15 @@ namespace ProductionCalculator.Business.Services
             // Validate user credentials
             var user = await _userRepo.GetByUsername(username);
             if (user == null)
+            {
+                _logger.LogInformation("Login failure: User {Username} not found.", username);
                 return (ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "Invalid username or password."), null, null);
+            }
 
             // Lockout check
             if (user.Lockout_Until != null && user.Lockout_Until > DateTime.UtcNow)
             {
+                _logger.LogInformation("Login failure: User {Username} is locked out until {LockoutUntil}.", username, user.Lockout_Until);
                 return (ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "Invalid username or password."), null, null);
             }
 
@@ -144,6 +152,7 @@ namespace ProductionCalculator.Business.Services
                 // Increment failed login attempts and possibly lockout
                 LockoutHelper.UpdateUserLockout(_configuration, ref user);
                 await _userRepo.UpdateUser(user);
+                _logger.LogInformation("Login failure: Invalid password for user {Username}. Failed attempts: {FailedAttempts}.", username, user.Failed_Login_Attempts);
                 return (ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "Invalid username or password."), null, null);
             }
             
@@ -152,7 +161,10 @@ namespace ProductionCalculator.Business.Services
             var puid = user.Puid;
             var role = await _roleRepo.GetRole(user.Role_Id);
             if (role == null)
+            {
+                _logger.LogError("Login failure: Role id {RoleId} not found for user {Username}.", user.Role_Id, username);
                 return (ServiceResult<AuthResponse>.Fail(ServiceStatus.InternalServerError500, $"User id {user.Role_Id} not found."), null, null);
+            }
 
             // Generate JWT
             var accessToken = _jwtHelper.GenerateToken(puid, role.Role_Name);
@@ -165,29 +177,43 @@ namespace ProductionCalculator.Business.Services
             user.Lockout_Until = null;
             await _userRepo.UpdateUser(user);
 
+            _logger.LogInformation("Login success: User {Username} logged in.", username);
+
             return (ServiceResult<AuthResponse>.SuccessResult(new AuthResponse { Puid = puid, Username = user.Username }), accessToken, refreshToken);
         }
         public async Task<(ServiceResult<AuthResponse> result, string? accessToken)> RefreshToken(string? refreshToken)
         {
             if (string.IsNullOrEmpty(refreshToken))
+            {
                 return (ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "Refresh token is required."), null);
+            }
 
             // Validate refresh token
             var storedToken = await _refreshTokenRepo.GetRefreshTokenByToken(refreshToken);
             if (storedToken == null || storedToken.Expires_At <= DateTime.UtcNow || storedToken.Revoked_At != null)
+            {
+                _logger.LogInformation("Refresh token failure: Invalid or expired token {RefreshToken}.", refreshToken);
                 return (ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "Invalid or expired refresh token."), null);
+            }
 
             // Get user info
             var user = await _userRepo.GetById(storedToken.User_Id);
             if (user == null)
-                return (ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "User not found."), null);
+            {
+                _logger.LogInformation("Refresh token failure: User id {UserId} not found for token.", storedToken.User_Id);
+                return (ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "Invalid or expired refresh token."), null);
+            }
 
             // Get role name for JWT
             var role = await _roleRepo.GetRole(user.Role_Id);
             if (role == null)
-                return (ServiceResult<AuthResponse>.Fail(ServiceStatus.InternalServerError500, "Invalid role."), null);
+            {
+                _logger.LogError("Refresh token failure: Invalid role {RoleId} for user {Username}.", user.Role_Id, user.Username);
+                return (ServiceResult<AuthResponse>.Fail(ServiceStatus.InternalServerError500, "Invalid or expired refresh token."), null);
+            }
 
             var newAccessToken = _jwtHelper.GenerateToken(user.Puid, role.Role_Name);
+            _logger.LogInformation("Refresh token success: Access token issued for user {Username}.", user.Username);
             return (ServiceResult<AuthResponse>.SuccessResult(new AuthResponse { Puid = user.Puid, Username = user.Username }), newAccessToken);
         }
 
@@ -198,6 +224,7 @@ namespace ProductionCalculator.Business.Services
             var expireMinutes = verificationCodeSettings["ExpireMinutes"];
             if (maxRequests == null || expireMinutes == null)
             {
+                _logger.LogError("RequestVerificationCode failure: Verification code parameters not configured.");
                 throw new Exception("Verification code parameters not configured.");
             }
             int maxRequestsInt = int.Parse(maxRequests);
@@ -251,7 +278,15 @@ namespace ProductionCalculator.Business.Services
             await _verificationCodeRepository.AddVerificationCode(verificationCode);
 
             // Send code via email using Resend
-            await _resend.EmailSendAsync( VerificationCodeHelper.GenerateEmail(user.Email, code, expireMinutes));
+            try
+            {
+                await _resend.EmailSendAsync(VerificationCodeHelper.GenerateEmail(user.Email, code, expireMinutesInt.ToString()));
+                _logger.LogInformation("Verification code sent to {Email} for user {Username}.", user.Email, user.Username);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "External service failure: Failed to send verification email to {Email} for user {Username}. Error: {Message}", user.Email, user.Username, ex.Message);
+            }
 
             return ServiceResult.SuccessResult();
         }
@@ -261,10 +296,16 @@ namespace ProductionCalculator.Business.Services
             // Get current user from JWT
             var userPuid = _currentUserService.UserPuid;
             if (userPuid == null)
-                return ServiceResult.Fail(ServiceStatus.BadRequest400, "Invalid or expired verification code.");  // Should not happen, but avoid user enumeration
+            {
+                _logger.LogInformation("VerifyCode failure: Unable to determine current user.");
+                return ServiceResult.Fail(ServiceStatus.BadRequest400, "Invalid or expired verification code.");
+            }
             var user = await _userRepo.GetByPuid(userPuid);
             if (user == null)
-                return ServiceResult.Fail(ServiceStatus.BadRequest400, "Invalid or expired verification code."); 
+            {
+                _logger.LogInformation("VerifyCode failure: User with PUID {UserPuid} not found.", userPuid);
+                return ServiceResult.Fail(ServiceStatus.BadRequest400, "Invalid or expired verification code.");
+            }
 
             // Get existing codes
             var existingCodes = await _verificationCodeRepository.GetVerificationCodesByUserId(user.User_Id);
@@ -281,6 +322,7 @@ namespace ProductionCalculator.Business.Services
             var verificationCodeSettings = _configuration.GetSection("VerificationCode")["MaxAttempts"];
             if (verificationCodeSettings == null)
             {
+                _logger.LogError("VerifyCode failure: MaxAttempts not configured.");
                 throw new Exception("Verification code parameters not configured.");
             }
             int maxAttemptsInt = int.Parse(verificationCodeSettings);
@@ -288,6 +330,7 @@ namespace ProductionCalculator.Business.Services
             {
                 if (pc.Attempts >= maxAttemptsInt)
                 {
+                    _logger.LogInformation("VerifyCode failure: Max attempts exceeded for user {Username}.", user.Username);
                     return ServiceResult.Fail(ServiceStatus.TooManyRequests429, "Maximum verification code attempts exceeded. Please try again later.");
                 }
             }
@@ -299,6 +342,7 @@ namespace ProductionCalculator.Business.Services
             });
             if (attemptedCode == null)  // Invalid code, increment attempts on all non-expired codes
             {
+                _logger.LogInformation("VerifyCode failure: Invalid code entered by user {Username}.", user.Username);
                 foreach (var pc in existingCodes)
                 {
                     pc.Attempts += 1;
@@ -309,6 +353,7 @@ namespace ProductionCalculator.Business.Services
 
             // Valid code - set user to verified
             await SetUserToVerified(user.User_Id);
+            _logger.LogInformation("Business state change: User {Username} successfully verified their email.", user.Username);
 
             return ServiceResult.SuccessResult();
         }
@@ -338,8 +383,11 @@ namespace ProductionCalculator.Business.Services
         {
             var userRole = await _roleRepo.GetRole("User");
             if (userRole == null)
+            {
+                _logger.LogError("SetUserToVerified failure: 'User' role not found in the system.");
                 throw new Exception("User role not found.");
-
+            }
+            
             var user = await _userRepo.GetById(userId);
             if (user != null)
             {

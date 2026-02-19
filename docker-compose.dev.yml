@@ -14,3 +14,20 @@ services:
 
     flyway:
         container_name: flyway-dev
+
+    prometheus:
+        container_name: prometheus-dev
+        ports:
+            - "5161:9090"
+    loki:
+        container_name: loki-dev
+        ports:
+            - "5171:3100"
+
+    promtail:
+        container_name: promtail-dev
+
+    grafana:
+        container_name: grafana-dev
+        ports:
+            - "5181:3000"
