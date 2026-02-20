@@ -3,7 +3,7 @@
 name: production-calculator
 services:
     backend:
-        image: scott2444/production-calculator-backend
+        image: scott2444/production-calculator-backend:${TAG:-latest}
         container_name: backend
         restart: always
         environment:
