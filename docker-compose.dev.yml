@@ -23,6 +23,8 @@ services:
 
     promtail:
         container_name: promtail-dev
+        environment:
+            - PROJECT_NAME=${COMPOSE_PROJECT_NAME:-production-calculator-dev}
 
     grafana:
         container_name: grafana-dev

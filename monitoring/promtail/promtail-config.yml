@@ -1,8 +1,8 @@
 server:
     http_listen_port: 9080
 
-positions:
-    filename: /tmp/positions.yaml
+limits_config:
+    readline_rate_enabled: true
 
 clients:
     - url: http://loki:3100/loki/api/v1/push
@@ -16,18 +16,19 @@ scrape_configs:
       relabel_configs:
           - source_labels:
                 ["__meta_docker_container_label_com_docker_compose_project"]
-            regex: "production-calculator.*"
+            regex: "${PROJECT_NAME}"
             action: keep
 
-            # Relabel the job label to be the compose service name if it exists
           - source_labels:
                 ["__meta_docker_container_label_com_docker_compose_service"]
-            regex: ".+"
+            regex: "backend"
+            action: keep
+
+          - source_labels:
+                ["__meta_docker_container_label_com_docker_compose_service"]
             target_label: "job"
 
-          # If it's NOT a compose service, fall back to the container name
           - source_labels: ["__meta_docker_container_name"]
-            regex: "/(.*)"
             target_label: "container"
 
           - source_labels: ["__meta_docker_container_log_path"]
