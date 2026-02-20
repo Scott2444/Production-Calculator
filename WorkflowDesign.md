@@ -1,6 +1,6 @@
 # Workflow Design
 
-Workflow calculations are the centeral idea and the most complex part of this project.
+Workflow calculations are the central idea and the most complex part of this project.
 Basic Critera:
 
 1. Automatically calculate a production line based on a product rate requirement

@@ -70,10 +70,3 @@ effective_speed =<br>
 products_per_second =<br>
 (2 / 0.5) \* 18<br>
 = 72 ingots/sec<br>
-
-# Running
-
-## Backend
-
-For local development, add $env:ASPNETCORE_ENVIRONMENT="Local"<br>
-Also add secrets vault<br>
