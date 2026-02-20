@@ -17,12 +17,9 @@ services:
 
     prometheus:
         container_name: prometheus-staging
-        ports:
-            - "5162:9090"
+
     loki:
         container_name: loki-staging
-        ports:
-            - "5172:3100"
 
     promtail:
         container_name: promtail-staging

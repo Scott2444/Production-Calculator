@@ -113,6 +113,8 @@ services:
         restart: always
         volumes:
             - grafana_data:/var/lib/grafana
+            - ./monitoring/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+            - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
         depends_on:
             - prometheus
             - loki

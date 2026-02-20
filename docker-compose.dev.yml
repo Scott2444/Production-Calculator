@@ -17,12 +17,9 @@ services:
 
     prometheus:
         container_name: prometheus-dev
-        ports:
-            - "5161:9090"
+
     loki:
         container_name: loki-dev
-        ports:
-            - "5171:3100"
 
     promtail:
         container_name: promtail-dev
