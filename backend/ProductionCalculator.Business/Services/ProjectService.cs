@@ -1,6 +1,7 @@
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Helpers;
+using Microsoft.Extensions.Logging;
 
 namespace ProductionCalculator.Business.Services
 {
@@ -9,11 +10,13 @@ namespace ProductionCalculator.Business.Services
         private readonly ICurrentUserService _currentUser;
         private readonly IProjectRepository _repo;
         private readonly IUserRepository _userRepo;
-        public ProjectService(ICurrentUserService currentUser, IProjectRepository repo, IUserRepository userRepo) 
+        private readonly ILogger<ProjectService> _logger;
+        public ProjectService(ICurrentUserService currentUser, IProjectRepository repo, IUserRepository userRepo, ILogger<ProjectService> logger) 
         { 
             _currentUser = currentUser; 
             _repo = repo;
             _userRepo = userRepo;
+            _logger = logger;
         }
 
         // Use _currentUser.UserId or _currentUser.Username as needed
@@ -60,6 +63,7 @@ namespace ProductionCalculator.Business.Services
             };
 
             await _repo.AddProject(project);
+            _logger.LogInformation("Project state change: change: Project '{ProjectName}' (PUID: {ProjectPuid}) created by user {UserPuid}.", project.Name, project.Puid, user.Puid);
             return ServiceResult<Project>.SuccessResult(project, ServiceStatus.Created201);
         }
         public async Task<ServiceResult<Project>> UpdateProject(string projectPuid, string name, string? description, bool? isPublic, string? aliasProjectPuid)
@@ -97,6 +101,7 @@ namespace ProductionCalculator.Business.Services
             project.Last_Updated = DateTime.UtcNow;
 
             await _repo.UpdateProject(project);
+            _logger.LogInformation("Project state change: change: Project '{ProjectName}' (PUID: {ProjectPuid}) updated by user {UserPuid}.", project.Name, project.Puid, user.Puid);
             return ServiceResult<Project>.SuccessResult(project, ServiceStatus.Ok200);
         }
         public async Task<ServiceResult<Project>> GetProjectByPuid(string puid)
@@ -126,8 +131,13 @@ namespace ProductionCalculator.Business.Services
             if (project == null) return ServiceResult.Fail(ServiceStatus.NotFound404, $"Project with PUID {puid} not found.");
 
             var success = await _repo.DeleteProject(project.Project_Id);
-            if (!success) return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete project.");
+            if (!success)
+            {
+                _logger.LogError("DeleteProject failure: Failed to delete project {ProjectPuid} from repository.", puid);
+                return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete project.");
+            }
 
+            _logger.LogInformation("Project state change: Project '{ProjectName}' (PUID: {ProjectPuid}) deleted.", project.Name, project.Puid);
             return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
         }
         public async Task<ServiceResult<Project>> ResolveProject(string username, string projectName)

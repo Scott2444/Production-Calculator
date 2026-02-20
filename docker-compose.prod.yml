@@ -1,16 +1,32 @@
 name: production-calculator-prod
 services:
-  backend:
-    container_name: backend-prod
-    ports:
-      - 5143:5000
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
+    backend:
+        container_name: backend-prod
+        ports:
+            - 5143:5000
+        environment:
+            - ASPNETCORE_ENVIRONMENT=Production
 
-  postgres:
-    container_name: postgres-prod
-    ports:
-      - 5153:5432
+    postgres:
+        container_name: postgres-prod
+        ports:
+            - 5153:5432
 
-  flyway:
-    container_name: flyway-prod
+    flyway:
+        container_name: flyway-prod
+
+    prometheus:
+        container_name: prometheus-prod
+
+    loki:
+        container_name: loki-prod
+
+    promtail:
+        container_name: promtail-prod
+        environment:
+            - PROJECT_NAME=${COMPOSE_PROJECT_NAME:-production-calculator-prod}
+
+    grafana:
+        container_name: grafana-prod
+        ports:
+            - "5183:3000"

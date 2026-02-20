@@ -1,5 +1,6 @@
 using FakeItEasy;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Services;
 using ProductionCalculator.Business.Models;
@@ -23,6 +24,7 @@ public class AuthServiceTests
     private readonly IResend _resend;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<AuthService> _logger;
     private readonly JwtHelper _jwtHelper;
     private readonly RefreshTokenHelper _refreshTokenHelper;
     private readonly AuthService _authService;
@@ -38,6 +40,7 @@ public class AuthServiceTests
         _resend = A.Fake<IResend>();
         _httpContextAccessor = A.Fake<IHttpContextAccessor>();
         _configuration = A.Fake<IConfiguration>();
+        _logger = A.Fake<ILogger<AuthService>>();
 
         // Setup config for helpers - Use explicit section mocking for reliability
         var jwtSection = A.Fake<IConfigurationSection>();
@@ -72,7 +75,8 @@ public class AuthServiceTests
             _verificationCodeRepository,
             _resend,
             _httpContextAccessor,
-            _configuration
+            _configuration,
+            _logger
         );
     }
 

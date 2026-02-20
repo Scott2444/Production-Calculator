@@ -1,13 +1,11 @@
-using System.Text;
 using Microsoft.OpenApi.Models;
 using ProductionCalculator.API.Helpers;
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Services;
 using ProductionCalculator.Business.Helpers;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authorization;
 using ProductionCalculator.API.Authorization;
+using Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +18,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Add application services and data
+LogConfig.SetupLogConfig(builder);
 ConfigurationHelper.SetupConnectionString(builder);
 ConfigurationHelper.SetupResend(builder);
 CorsPolicyHelper.SetupCorsPolicy(builder);
@@ -53,32 +52,12 @@ builder.Services.AddJwtAuthAndPolicies(builder.Configuration);
 
 var app = builder.Build();
 
+app.UseExceptionMiddleware();
+
+LogConfig.SetupApiLogging(app);
+
 if (app.Environment.IsDevelopment())
 {
-    app.Use(async (context, next) =>
-    {
-        var loggerFactory = context.RequestServices.GetRequiredService<ILoggerFactory>();
-        var logger = loggerFactory.CreateLogger("RequestTrace");
-
-        logger.LogInformation(
-            "HTTP {Method} {Path}{Query} UA:{UserAgent} Trace:{TraceId}",
-            context.Request.Method,
-            context.Request.Path,
-            context.Request.QueryString,
-            context.Request.Headers.UserAgent.ToString(),
-            context.TraceIdentifier);
-
-        await next();
-
-        logger.LogInformation(
-            "=> {StatusCode} {Method} {Path}{Query} Trace:{TraceId}",
-            context.Response.StatusCode,
-            context.Request.Method,
-            context.Request.Path,
-            context.Request.QueryString,
-            context.TraceIdentifier);
-    });
-
     app.UseSwagger(c =>
     {
         c.RouteTemplate = "api/swagger/{documentName}/swagger.json";
@@ -98,5 +77,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.UseHttpMetrics();
+app.MapMetrics();
 
 app.Run();

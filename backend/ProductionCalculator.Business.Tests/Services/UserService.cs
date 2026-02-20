@@ -2,6 +2,7 @@
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Services;
+using Microsoft.Extensions.Logging;
 
 namespace ProductionCalculator.Business.Tests;
 
@@ -9,13 +10,15 @@ public class UserServiceTests
 {
     private readonly IUserRepository _repo;
     private readonly IRoleRepository _roleRepo;
+    private readonly ILogger<UserService> _logger;
     private readonly UserService _service;
 
     public UserServiceTests()
     {
         _repo = A.Fake<IUserRepository>();
         _roleRepo = A.Fake<IRoleRepository>();
-        _service = new UserService(_repo, _roleRepo);
+        _logger = A.Fake<ILogger<UserService>>();
+        _service = new UserService(_repo, _roleRepo, _logger);
     }
 
     private User CreateTestUser(string username = "test", string email = "test@test.com", string puid = "user123456", int roleId = 1)

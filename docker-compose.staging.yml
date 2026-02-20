@@ -1,16 +1,32 @@
 name: production-calculator-staging
 services:
-  backend:
-    container_name: backend-staging
-    ports:
-      - 5142:5000
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Staging
+    backend:
+        container_name: backend-staging
+        ports:
+            - 5142:5000
+        environment:
+            - ASPNETCORE_ENVIRONMENT=Staging
 
-  postgres:
-    container_name: postgres-staging
-    ports:
-      - 5152:5432
+    postgres:
+        container_name: postgres-staging
+        ports:
+            - 5152:5432
 
-  flyway:
-    container_name: flyway-staging
+    flyway:
+        container_name: flyway-staging
+
+    prometheus:
+        container_name: prometheus-staging
+
+    loki:
+        container_name: loki-staging
+
+    promtail:
+        container_name: promtail-staging
+        environment:
+            - PROJECT_NAME=${COMPOSE_PROJECT_NAME:-production-calculator-staging}
+
+    grafana:
+        container_name: grafana-staging
+        ports:
+            - "5182:3000"

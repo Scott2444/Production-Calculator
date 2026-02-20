@@ -2,8 +2,7 @@ name: Build and Deploy Production Calculator
 
 on:
     push:
-        branches:
-            - main
+        branches: ["**"]
 
 jobs:
     unit-test:
@@ -11,7 +10,6 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v4
-
             - name: Run backend unit tests
               run: dotnet test
               working-directory: ./backend
@@ -28,7 +26,9 @@ jobs:
               uses: docker/metadata-action@v5
               with:
                   images: scott2444/production-calculator-backend
-                  tags: latest
+                  tags: |
+                      type=raw,value=latest,enable={{is_default_branch}}
+                      type=sha,format=long
 
             - name: Log in to Docker Hub
               uses: docker/login-action@v3
@@ -65,12 +65,16 @@ jobs:
                   private_key_value: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
                   service_token_id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
                   service_token_secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-                  commands: cd ~/production-calculator;
-                      git pull origin main;
-                      docker compose -f "docker-compose.yml" -f "docker-compose.dev.yml" pull;
+                  commands: |
+                      cd ~/production-calculator
+                      git fetch --all
+                      git checkout ${{ github.sha }}
+                      export TAG=sha-${{ github.sha }}
+                      docker compose -f "docker-compose.yml" -f "docker-compose.dev.yml" pull
                       docker compose -f "docker-compose.yml" -f "docker-compose.dev.yml" up -d
 
     deploy_staging:
+        if: github.ref == 'refs/heads/main'
         needs: deploy_development
         environment: Staging
         runs-on: ubuntu-latest
@@ -85,12 +89,16 @@ jobs:
                   private_key_value: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
                   service_token_id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
                   service_token_secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-                  commands: cd ~/production-calculator;
-                      git pull origin main;
-                      docker compose -f "docker-compose.yml" -f "docker-compose.staging.yml" pull;
+                  commands: |
+                      cd ~/production-calculator
+                      git fetch --all
+                      git checkout ${{ github.sha }}
+                      export TAG=sha-${{ github.sha }}
+                      docker compose -f "docker-compose.yml" -f "docker-compose.staging.yml" pull
                       docker compose -f "docker-compose.yml" -f "docker-compose.staging.yml" up -d
 
     deploy_production:
+        if: github.ref == 'refs/heads/main'
         needs: deploy_staging
         environment: Production
         runs-on: ubuntu-latest
@@ -105,7 +113,10 @@ jobs:
                   private_key_value: ${{ secrets.SERVER_SSH_PRIVATE_KEY }}
                   service_token_id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
                   service_token_secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-                  commands: cd ~/production-calculator;
-                      git pull origin main;
-                      docker compose -f "docker-compose.yml" -f "docker-compose.prod.yml" pull;
+                  commands: |
+                      cd ~/production-calculator
+                      git fetch --all
+                      git checkout ${{ github.sha }}
+                      export TAG=sha-${{ github.sha }}
+                      docker compose -f "docker-compose.yml" -f "docker-compose.prod.yml" pull
                       docker compose -f "docker-compose.yml" -f "docker-compose.prod.yml" up -d
