@@ -1,0 +1,55 @@
+name: production-calculator-db
+
+networks:
+    shared-network:
+        external: true
+
+services:
+    postgres:
+        image: postgres:18
+        container_name: postgres
+        restart: always
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+            POSTGRES_DB: production_calculator
+        volumes:
+            - db_data:/var/lib/postgresql
+            - ./database/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
+            - ./database/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
+        secrets:
+            - postgres_password
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready"]
+            interval: 10s
+            retries: 5
+            start_period: 5s
+            timeout: 10s
+        networks:
+            - shared-network
+
+    flyway:
+        image: flyway/flyway:10
+        container_name: flyway
+        depends_on:
+            postgres:
+                condition: service_healthy
+        volumes:
+            - ./database/migrations:/flyway/sql
+            - ./scripts/flyway-entrypoint.sh:/flyway-entrypoint.sh
+        entrypoint: ["/bin/sh", "/flyway-entrypoint.sh"]
+        command: -url=jdbc:postgresql://postgres:5432/production_calculator -user=flyway migrate
+        restart: "no"
+        secrets:
+            - flyway_password
+        networks:
+            - shared-network
+
+volumes:
+    db_data:
+
+secrets:
+    postgres_password:
+        file: ./secrets/postgres_password.txt
+    flyway_password:
+        file: ./secrets/flyway_password.txt

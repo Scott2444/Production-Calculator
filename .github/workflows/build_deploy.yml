@@ -70,6 +70,14 @@ jobs:
                       git fetch --all
                       git checkout ${{ github.sha }}
                       export TAG=sha-${{ github.sha }}
+
+                      docker network create calculator-dev-network || true
+
+                      if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+                          docker compose -f "docker-compose.db.yml" -f "docker-compose.db.dev.yml" pull
+                          docker compose -f "docker-compose.db.yml" -f "docker-compose.db.dev.yml" up -d
+                      fi
+
                       docker compose -f "docker-compose.yml" -f "docker-compose.dev.yml" pull
                       docker compose -f "docker-compose.yml" -f "docker-compose.dev.yml" up -d
 
@@ -94,6 +102,14 @@ jobs:
                       git fetch --all
                       git checkout ${{ github.sha }}
                       export TAG=sha-${{ github.sha }}
+
+                      docker network create calculator-staging-network || true
+
+                      if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+                          docker compose -f "docker-compose.db.yml" -f "docker-compose.db.staging.yml" pull
+                          docker compose -f "docker-compose.db.yml" -f "docker-compose.db.staging.yml" up -d
+                      fi
+
                       docker compose -f "docker-compose.yml" -f "docker-compose.staging.yml" pull
                       docker compose -f "docker-compose.yml" -f "docker-compose.staging.yml" up -d
 
@@ -118,5 +134,13 @@ jobs:
                       git fetch --all
                       git checkout ${{ github.sha }}
                       export TAG=sha-${{ github.sha }}
+
+                      docker network create calculator-prod-network || true
+
+                      if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+                          docker compose -f "docker-compose.db.yml" -f "docker-compose.db.prod.yml" pull
+                          docker compose -f "docker-compose.db.yml" -f "docker-compose.db.prod.yml" up -d
+                      fi
+
                       docker compose -f "docker-compose.yml" -f "docker-compose.prod.yml" pull
                       docker compose -f "docker-compose.yml" -f "docker-compose.prod.yml" up -d

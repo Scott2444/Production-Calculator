@@ -1,0 +1,17 @@
+name: production-calculator-db-prod
+
+networks:
+    shared-network:
+        name: calculator-prod-network
+
+services:
+    postgres:
+        container_name: postgres-prod
+        ports:
+            - 5153:5432
+        networks:
+            shared-network:
+                aliases:
+                    - postgres
+    flyway:
+        container_name: flyway-prod
