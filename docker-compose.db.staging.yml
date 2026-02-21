@@ -15,3 +15,7 @@ services:
                     - postgres
     flyway:
         container_name: flyway-staging
+
+volumes:
+    db_data:
+        name: production-calculator-staging_db_data

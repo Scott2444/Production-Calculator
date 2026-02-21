@@ -15,3 +15,7 @@ services:
                     - postgres
     flyway:
         container_name: flyway-dev
+
+volumes:
+    db_data:
+        name: production-calculator-dev_db_data
