@@ -85,8 +85,6 @@ Yield has these fields:
 
 1. Output Multiplier
 2. Input Multiplier
-3. Additive Output
-4. Additive Input
 
 Attributes can attach to Recipes, Machines, and Modifiers.<br>
 Attribute links to Recipes and Machines can only store the base value.<br>
