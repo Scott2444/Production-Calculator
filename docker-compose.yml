@@ -1,6 +1,9 @@
-# Base Docker Compose file
-# Must be override with environment specific file (e.g., docker-compose.dev.yml)
 name: production-calculator
+
+networks:
+    shared-network:
+        external: true
+
 services:
     backend:
         image: scott2444/production-calculator-backend:${TAG:-latest}
@@ -11,12 +14,6 @@ services:
         volumes:
             - ./scripts/backend-entrypoint.sh:/backend-entrypoint.sh
         entrypoint: ["/bin/sh", "/backend-entrypoint.sh"]
-        depends_on:
-            postgres:
-                condition: service_healthy
-                restart: true
-            flyway:
-                condition: service_completed_successfully
         secrets:
             - server_password
             - resend_apitoken
@@ -26,42 +23,8 @@ services:
             retries: 5
             start_period: 10s
             timeout: 10s
-
-    # Database and Migration Services
-    postgres:
-        image: postgres:18
-        container_name: postgres
-        restart: always
-        environment:
-            POSTGRES_USER: postgres
-            POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-            POSTGRES_DB: production_calculator
-        volumes:
-            - db_data:/var/lib/postgresql
-            - ./database/postgres/postgresql.conf:/etc/postgresql/postgresql.conf
-            - ./database/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf
-        secrets:
-            - postgres_password
-        healthcheck:
-            test: ["CMD-SHELL", "pg_isready"]
-            interval: 10s
-            retries: 5
-            start_period: 5s
-            timeout: 10s
-
-    flyway:
-        image: flyway/flyway:10
-        container_name: flyway
-        depends_on:
-            - postgres
-        volumes:
-            - ./database/migrations:/flyway/sql
-            - ./scripts/flyway-entrypoint.sh:/flyway-entrypoint.sh
-        entrypoint: ["/bin/sh", "/flyway-entrypoint.sh"]
-        command: -url=jdbc:postgresql://postgres:5432/production_calculator -user=flyway migrate
-        restart: "no"
-        secrets:
-            - flyway_password
+        networks:
+            - shared-network
 
     # Monitoring and Logging Services
     prometheus:
@@ -81,6 +44,8 @@ services:
                     memory: 1g
         depends_on:
             - backend
+        networks:
+            - shared-network
 
     loki:
         image: grafana/loki:latest
@@ -94,6 +59,8 @@ services:
             resources:
                 limits:
                     memory: 1g
+        networks:
+            - shared-network
 
     promtail:
         image: grafana/promtail:latest
@@ -108,6 +75,8 @@ services:
         command: -config.file=/etc/promtail/config.yml -config.expand-env=true
         depends_on:
             - loki
+        networks:
+            - shared-network
 
     grafana:
         image: grafana/grafana:latest
@@ -124,18 +93,15 @@ services:
             resources:
                 limits:
                     memory: 512m
+        networks:
+            - shared-network
 
 volumes:
-    db_data:
     prometheus_data:
     loki_data:
     grafana_data:
 
 secrets:
-    postgres_password:
-        file: ./secrets/postgres_password.txt
-    flyway_password:
-        file: ./secrets/flyway_password.txt
     server_password:
         file: ./secrets/server_password.txt
     resend_apitoken:

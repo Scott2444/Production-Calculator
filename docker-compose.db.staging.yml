@@ -1,0 +1,21 @@
+name: production-calculator-db-staging
+
+networks:
+    shared-network:
+        name: calculator-staging-network
+
+services:
+    postgres:
+        container_name: postgres-staging
+        ports:
+            - 5152:5432
+        networks:
+            shared-network:
+                aliases:
+                    - postgres
+    flyway:
+        container_name: flyway-staging
+
+volumes:
+    db_data:
+        name: production-calculator-staging_db_data

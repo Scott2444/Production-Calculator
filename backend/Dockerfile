@@ -1,12 +1,12 @@
 # Build stage
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM scott2444/dotnet-sdk:9.0 AS build
 WORKDIR /src
 COPY . .
 RUN dotnet restore ProductionCalculator.API/ProductionCalculator.API.csproj
 RUN dotnet publish ProductionCalculator.API/ProductionCalculator.API.csproj -c Release -o /app/publish
 
 # Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
+FROM scott2444/dotnet-aspnet:9.0 AS runtime
 RUN apt-get update && apt-get install -y curl
 WORKDIR /app
 COPY --from=build /app/publish .
