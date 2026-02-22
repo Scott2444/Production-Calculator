@@ -1,4 +1,4 @@
-# Workflow Design
+# Workflow Solver Design
 
 Workflow calculations are the central idea and the most complex part of this project.
 Basic Critera:
