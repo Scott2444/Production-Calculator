@@ -31,6 +31,7 @@ public class MachineControllerTests
             Description = "desc",
             BaseSpeed = 10.0,
             RecipePuids = new List<string>(),
+            Attributes = new List<AttributeRateExchange>(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -98,9 +99,9 @@ public class MachineControllerTests
     public async Task AddMachine_ValidRequest_Returns201Created()
     {
         var service = A.Fake<IMachineService>();
-        var req = new MachineRequest { Name = "New Mach", BaseSpeed = 10.0, RecipePuids = new List<string>() };
+        var req = new MachineRequest { Name = "New Mach", BaseSpeed = 10.0, RecipePuids = new List<string>(), Attributes = new List<AttributeRateExchange>() };
         var machine = CreateMachineResponse(name: "New Mach");
-        A.CallTo(() => service.AddMachine("projPuid", "New Mach", A<string>._, 10.0, A<List<string>>._)).Returns(ServiceResult<MachineResponse>.SuccessResult(machine, ServiceStatus.Created201));
+        A.CallTo(() => service.AddMachine("projPuid", "New Mach", A<string>._, 10.0, A<List<string>>._, A<List<AttributeRateExchange>>._)).Returns(ServiceResult<MachineResponse>.SuccessResult(machine, ServiceStatus.Created201));
         var controller = CreateController(service);
 
         var result = await controller.AddMachine("projPuid", req);
@@ -113,8 +114,8 @@ public class MachineControllerTests
     public async Task AddMachine_ServiceReturnsError_ReturnsErrorStatus()
     {
         var service = A.Fake<IMachineService>();
-        var req = new MachineRequest { Name = "New Mach", BaseSpeed = 10.0, RecipePuids = new List<string>() };
-        A.CallTo(() => service.AddMachine("projPuid", "New Mach", A<string>._, 10.0, A<List<string>>._)).Returns(ServiceResult<MachineResponse>.Fail(ServiceStatus.BadRequest400, "Error"));
+        var req = new MachineRequest { Name = "New Mach", BaseSpeed = 10.0, RecipePuids = new List<string>(), Attributes = new List<AttributeRateExchange>() };
+        A.CallTo(() => service.AddMachine("projPuid", "New Mach", A<string>._, 10.0, A<List<string>>._, A<List<AttributeRateExchange>>._)).Returns(ServiceResult<MachineResponse>.Fail(ServiceStatus.BadRequest400, "Error"));
         var controller = CreateController(service);
 
         var result = await controller.AddMachine("projPuid", req);
@@ -127,9 +128,9 @@ public class MachineControllerTests
     public async Task UpdateMachine_ValidRequest_Returns200OkWithResponse()
     {
         var service = A.Fake<IMachineService>();
-        var req = new MachineRequest { Name = "Updated Mach", BaseSpeed = 15.0, RecipePuids = new List<string>() };
+        var req = new MachineRequest { Name = "Updated Mach", BaseSpeed = 15.0, RecipePuids = new List<string>(), Attributes = new List<AttributeRateExchange>() };
         var machine = CreateMachineResponse(name: "Updated Mach");
-        A.CallTo(() => service.UpdateMachine("projPuid", "machPuid", "Updated Mach", A<string>._, 15.0, A<List<string>>._)).Returns(ServiceResult<MachineResponse>.SuccessResult(machine));
+        A.CallTo(() => service.UpdateMachine("projPuid", "machPuid", "Updated Mach", A<string>._, 15.0, A<List<string>>._, A<List<AttributeRateExchange>>._)).Returns(ServiceResult<MachineResponse>.SuccessResult(machine));
         var controller = CreateController(service);
 
         var result = await controller.UpdateMachine("projPuid", "machPuid", req);
@@ -142,8 +143,8 @@ public class MachineControllerTests
     public async Task UpdateMachine_ServiceReturnsError_ReturnsErrorStatus()
     {
         var service = A.Fake<IMachineService>();
-        var req = new MachineRequest { Name = "Updated Mach", BaseSpeed = 15.0, RecipePuids = new List<string>() };
-        A.CallTo(() => service.UpdateMachine("projPuid", "machPuid", "Updated Mach", A<string>._, 15.0, A<List<string>>._)).Returns(ServiceResult<MachineResponse>.Fail(ServiceStatus.Conflict409, "Conflict"));
+        var req = new MachineRequest { Name = "Updated Mach", BaseSpeed = 15.0, RecipePuids = new List<string>(), Attributes = new List<AttributeRateExchange>() };
+        A.CallTo(() => service.UpdateMachine("projPuid", "machPuid", "Updated Mach", A<string>._, 15.0, A<List<string>>._, A<List<AttributeRateExchange>>._)).Returns(ServiceResult<MachineResponse>.Fail(ServiceStatus.Conflict409, "Conflict"));
         var controller = CreateController(service);
 
         var result = await controller.UpdateMachine("projPuid", "machPuid", req);

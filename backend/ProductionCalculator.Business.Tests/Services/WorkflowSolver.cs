@@ -59,27 +59,66 @@ public class WorkflowSolverTests
 		};
 	}
 
-	private static ProjectObjects BuildProjectObjects(List<Product> products, List<Recipe> recipes, List<RecipeProduct> recipeProducts)
+	private static ProjectObjects BuildProjectObjects(
+		List<Product> products,
+		List<Recipe> recipes,
+		List<RecipeProduct> recipeProducts,
+		List<Modifier>? modifiers = null)
 	{
 		return new ProjectObjects
 		{
 			Products = products,
+			Attributes = [],
 			Recipes = recipes,
 			RecipeProducts = recipeProducts,
+			RecipeAttributes = [],
 			Machines = [],
 			MachineRecipes = [],
-			Modifiers = []
+			MachineAttributes = [],
+			Modifiers = modifiers ?? [],
+			ModifierAttributes = []
+		};
+	}
+
+	private static Modifier Modifier(int id, string name, double inputMult, double outputMult)
+	{
+		return new Modifier
+		{
+			Modifier_Id = id,
+			Project_Id = 1,
+			Puid = $"m{id}",
+			Name = name,
+			Flat_Bonus = 0,
+			Percent_Bonus = 0,
+			Multiplicative_Bonus = 0,
+			Input_Percent = inputMult,
+			Output_Percent = outputMult,
+			Version = 1,
+			Created_At = StaticNow,
+			Last_Updated = StaticNow
+		};
+	}
+
+	private static WorkflowNodeModifier WorkflowNodeModifier(int id, int nodeId, int modifierId)
+	{
+		return new WorkflowNodeModifier
+		{
+			Workflow_Node_Modifier_Id = id,
+			Workflow_Node_Id = nodeId,
+			Modifier_Id = modifierId,
+			Modifier_Version = 1
 		};
 	}
 
 	private static NodeChart BuildDemandNodeChart(
 		IEnumerable<(int productId, double targetRate)> targets,
 		IEnumerable<int>? externalProductIds = null,
-		IEnumerable<int>? preferredRecipeIds = null)
+		IEnumerable<int>? preferredRecipeIds = null,
+		IEnumerable<FullNode>? nodes = null)
 	{
 		return new NodeChart
 		{
-			Nodes = [],
+			Nodes = nodes?.ToList() ?? [],
 			Edges = [],
 			Targets = targets.Select((t, i) => new WorkflowTarget
 			{
@@ -705,5 +744,161 @@ public class WorkflowSolverTests
 
 		Assert.Single(result);
 		AssertRate(result, 10, 5.0);
+	}
+
+	[Fact]
+	public void SolveDemand_WithOutputModifier_ReturnsCorrect()
+	{
+		var raw = Product(1, "Raw");
+		var final = Product(2, "Final");
+		var recipe = Recipe(10, "MakeFinal");
+		var modifier = Modifier(100, "OutputBoost", 0.0, 0.5); // +50% output
+
+		var projectObjects = BuildProjectObjects(
+			[raw, final],
+			[recipe],
+			[Input(1, 10, 1, 1.0), Output(2, 10, 2, 1.0)],
+			[modifier]);
+
+		var node = BuildNode(10, null, null, null);
+		node.Modifiers.Add(WorkflowNodeModifier(1, 10, 100));
+
+		var nodeChart = BuildDemandNodeChart([(2, 15.0)], externalProductIds: [1], nodes: [node]);
+
+		var result = new WorkflowSolver().SolveDemand(projectObjects, nodeChart);
+
+		// 1.0 * (1 + 0.5) = 1.5 per run. Need 15.0 units. Rate = 15.0 / 1.5 = 10.0.
+		AssertRate(result, 10, 10.0);
+	}
+
+	[Fact]
+	public void SolveDemand_WithInputModifier_ReturnsCorrect()
+	{
+		var raw = Product(1, "Raw");
+		var intermediate = Product(2, "Intermediate");
+		var final = Product(3, "Final");
+		var recipe1 = Recipe(10, "RawToIntermediate");
+		var recipe2 = Recipe(20, "IntermediateToFinal");
+		var modifier = Modifier(100, "InputEfficiency", -0.5, 0.0); // 50% less input needed
+
+		var projectObjects = BuildProjectObjects(
+			[raw, intermediate, final],
+			[recipe1, recipe2],
+			[
+				Input(1, 10, 1, 1.0), Output(2, 10, 2, 1.0),
+				Input(3, 20, 2, 1.0), Output(4, 20, 3, 1.0)
+			],
+			[modifier]);
+
+		var node2 = BuildNode(20, null, null, null);
+		node2.Modifiers.Add(WorkflowNodeModifier(1, 20, 100));
+
+		// Targeting 10 Final units. Recipe2 produces 1.0 Final per run. Rate2 = 10.
+		// Recipe2 needs 1.0 * (1 - 0.5) = 0.5 Intermediate per run.
+		// Total Intermediate needed = 10 * 0.5 = 5.0.
+		// Recipe1 produces 1.0 Intermediate per run. Rate1 = 5.0.
+
+		var nodeChart = BuildDemandNodeChart([(3, 10.0)], externalProductIds: [1], nodes: [node2]);
+
+		var result = new WorkflowSolver().SolveDemand(projectObjects, nodeChart);
+
+		AssertRate(result, 20, 10.0);
+		AssertRate(result, 10, 5.0);
+	}
+
+	[Fact]
+	public void SolveSupply_WithOutputModifier_ReturnsCorrect()
+	{
+		var raw = Product(1, "Raw");
+		var final = Product(2, "Final");
+		var recipe = Recipe(10, "MakeFinal");
+		var modifier = Modifier(100, "DoubleOutput", 1.0, 2.0); // +100% output
+
+		var projectObjects = BuildProjectObjects(
+			[raw, final],
+			[recipe],
+			[Input(1, 10, 1, 1.0), Output(2, 10, 2, 1.0)],
+			[modifier]);
+
+		var node = BuildNode(10, 10.0, 1.0, 1.0);
+		node.Modifiers.Add(WorkflowNodeModifier(1, 10, 100));
+
+		// 10 machines, each runs at rate 1.0. Total baseline rate = 10.0.
+		// Output is 1.0 * (1 + 1.0) = 2.0 per run.
+		// Total supply = 10.0 * 2.0 = 20.0.
+
+		var nodeChart = BuildSupplyNodeChart(
+			nodes: [node],
+			targets: [(2, 25.0)],
+			externalImports: [(1, 100.0)]);
+
+		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
+
+		AssertRate(result, 10, 10.0);
+	}
+
+	[Fact]
+	public void SolveSupply_WithMultipleModifiers_ReturnsCorrect()
+	{
+		var raw = Product(1, "Raw");
+		var final = Product(2, "Final");
+		var recipe = Recipe(10, "MakeFinal");
+		var mod1 = Modifier(101, "Mod1", 0.0, 0.5); // +50% output
+		var mod2 = Modifier(102, "Mod2", 0.0, 0.2); // +20% output
+
+		var projectObjects = BuildProjectObjects(
+			[raw, final],
+			[recipe],
+			[Input(1, 10, 1, 1.0), Output(2, 10, 2, 1.0)],
+			[mod1, mod2]);
+
+		var node = BuildNode(10, 10.0, 1.0, 1.0);
+		node.Modifiers.Add(WorkflowNodeModifier(1, 10, 101));
+		node.Modifiers.Add(WorkflowNodeModifier(2, 10, 102));
+
+		// Combined output multiplier: (1 + 0.5) * (1 + 0.2) = 1.5 * 1.2 = 1.8
+		// Rate 10.0 -> 18.0 units produced.
+
+		var nodeChart = BuildSupplyNodeChart(
+			nodes: [node],
+			targets: [(2, 100.0)],
+			externalImports: [(1, 100.0)]);
+
+		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
+
+		AssertRate(result, 10, 10.0);
+	}
+
+	[Fact]
+	public void SolveSupply_WithInputModifierBottleneck_ReturnsCorrect()
+	{
+		var raw = Product(1, "Raw");
+		var final = Product(2, "Final");
+		var recipe = Recipe(10, "MakeFinal");
+		var modifier = Modifier(100, "InputEfficiency", -0.5, 0.0); // 50% less input needed
+
+		var projectObjects = BuildProjectObjects(
+			[raw, final],
+			[recipe],
+			[Input(1, 10, 1, 1.0), Output(2, 10, 2, 1.0)],
+			[modifier]);
+
+		var node = BuildNode(10, 20.0, 1.0, 1.0); // 20 units capacity
+		node.Modifiers.Add(WorkflowNodeModifier(1, 10, 100));
+
+		// Input: 1.0 * (1 - 0.5) = 0.5 Raw per run.
+		// External supply of Raw: 5.0.
+		// Maximum runs possible based on Raw: 5.0 / 0.5 = 10.0.
+		// Machine capacity: 20.0.
+		// Expected rate: 10.0.
+
+		var nodeChart = BuildSupplyNodeChart(
+			nodes: [node],
+			targets: [(2, 100.0)],
+			externalImports: [(1, 5.0)]);
+
+		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
+
+		AssertRate(result, 10, 10.0);
 	}
 }

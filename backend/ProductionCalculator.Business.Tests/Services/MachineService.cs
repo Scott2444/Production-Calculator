@@ -1,4 +1,5 @@
 using FakeItEasy;
+using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Services;
@@ -54,11 +55,22 @@ public class MachineServiceTests
     private static MachineService CreateService(
         IMachineRepository repo, 
         IMachineRecipeRepository machineRecipeRepo, 
+        IMachineAttributeRepository machineAttributeRepo,
         IRecipeRepository recipeRepo, 
+        IAttributeRepository attributeRepo,
         IProjectRepository projectRepo)
     {
         var currentUser = A.Fake<ICurrentUserService>();
-        return new MachineService(currentUser, repo, machineRecipeRepo, recipeRepo, projectRepo);
+        return new MachineService(currentUser, repo, machineRecipeRepo, machineAttributeRepo, recipeRepo, attributeRepo, projectRepo);
+    }
+
+    private static MachineService CreateService(
+        IMachineRepository repo,
+        IMachineRecipeRepository machineRecipeRepo,
+        IRecipeRepository recipeRepo,
+        IProjectRepository projectRepo)
+    {
+        return CreateService(repo, machineRecipeRepo, A.Fake<IMachineAttributeRepository>(), recipeRepo, A.Fake<IAttributeRepository>(), projectRepo);
     }
 
     [Fact]
@@ -68,7 +80,7 @@ public class MachineServiceTests
         var machineRecipeRepo = A.Fake<IMachineRecipeRepository>();
         var recipeRepo = A.Fake<IRecipeRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, machineRecipeRepo, recipeRepo, projectRepo);
+        var service = CreateService(repo, machineRecipeRepo, A.Fake<IMachineAttributeRepository>(), recipeRepo, A.Fake<IAttributeRepository>(), projectRepo);
 
         var result = await service.AddMachine("projPuid", "", "desc", 10.0, new List<string>());
 
@@ -82,7 +94,7 @@ public class MachineServiceTests
         var machineRecipeRepo = A.Fake<IMachineRecipeRepository>();
         var recipeRepo = A.Fake<IRecipeRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, machineRecipeRepo, recipeRepo, projectRepo);
+        var service = CreateService(repo, machineRecipeRepo, A.Fake<IMachineAttributeRepository>(), recipeRepo, A.Fake<IAttributeRepository>(), projectRepo);
         A.CallTo(() => projectRepo.GetProjectByPuid("missing")).Returns(Task.FromResult<Project?>(null));
 
         var result = await service.AddMachine("missing", "Mach", "desc", 10.0, new List<string>());
@@ -97,7 +109,7 @@ public class MachineServiceTests
         var machineRecipeRepo = A.Fake<IMachineRecipeRepository>();
         var recipeRepo = A.Fake<IRecipeRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, machineRecipeRepo, recipeRepo, projectRepo);
+        var service = CreateService(repo, machineRecipeRepo, A.Fake<IMachineAttributeRepository>(), recipeRepo, A.Fake<IAttributeRepository>(), projectRepo);
         var project = CreateProject(id: 10, puid: "projPuid");
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetMachinesByProjectId(10)).Returns(new List<Machine> { CreateMachine(name: "Existing") });
@@ -114,7 +126,7 @@ public class MachineServiceTests
         var machineRecipeRepo = A.Fake<IMachineRecipeRepository>();
         var recipeRepo = A.Fake<IRecipeRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, machineRecipeRepo, recipeRepo, projectRepo);
+        var service = CreateService(repo, machineRecipeRepo, A.Fake<IMachineAttributeRepository>(), recipeRepo, A.Fake<IAttributeRepository>(), projectRepo);
         var project = CreateProject(id: 10, puid: "projPuid");
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetMachinesByProjectId(10)).Returns(new List<Machine>());
@@ -131,7 +143,7 @@ public class MachineServiceTests
         var machineRecipeRepo = A.Fake<IMachineRecipeRepository>();
         var recipeRepo = A.Fake<IRecipeRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, machineRecipeRepo, recipeRepo, projectRepo);
+        var service = CreateService(repo, machineRecipeRepo, A.Fake<IMachineAttributeRepository>(), recipeRepo, A.Fake<IAttributeRepository>(), projectRepo);
         var project = CreateProject(id: 10, puid: "projPuid");
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetMachinesByProjectId(10)).Returns(new List<Machine>());
@@ -149,19 +161,35 @@ public class MachineServiceTests
         var machineRecipeRepo = A.Fake<IMachineRecipeRepository>();
         var recipeRepo = A.Fake<IRecipeRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, machineRecipeRepo, recipeRepo, projectRepo);
+        var machineAttributeRepo = A.Fake<IMachineAttributeRepository>();
+        var attributeRepo = A.Fake<IAttributeRepository>();
+        var service = CreateService(repo, machineRecipeRepo, machineAttributeRepo, recipeRepo, attributeRepo, projectRepo);
         var project = CreateProject(id: 10, puid: "projPuid");
         var recipe = CreateRecipe(id: 20, projectId: 10, puid: "recPuid");
+        var attribute = new ProjectAttribute
+        {
+            Attribute_Id = 15,
+            Project_Id = 10,
+            Puid = "a1",
+            Name = "Attr",
+            Description = "desc",
+            Unit = "u",
+            Version = 1,
+            Created_At = DateTime.UtcNow,
+            Last_Updated = DateTime.UtcNow
+        };
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetMachinesByProjectId(10)).Returns(new List<Machine>());
         A.CallTo(() => recipeRepo.GetByPuid("recPuid")).Returns(recipe);
+        A.CallTo(() => attributeRepo.GetAttributeByPuid("a1")).Returns(attribute);
 
-        var result = await service.AddMachine("projPuid", "NewMach", "desc", 10.0, new List<string> { "recPuid" });
+        var result = await service.AddMachine("projPuid", "NewMach", "desc", 10.0, new List<string> { "recPuid" }, [new AttributeRateExchange { Puid = "a1", Rate = 2 }]);
 
         Assert.True(result.Success);
         Assert.Equal(ServiceStatus.Created201, result.Status);
         A.CallTo(() => repo.AddMachine(A<Machine>.That.Matches(m => m.Name == "NewMach" && m.Project_Id == 10))).MustHaveHappenedOnceExactly();
         A.CallTo(() => machineRecipeRepo.AddMachineRecipes(A<IEnumerable<MachineRecipe>>.That.Matches(mrs => mrs.Any(mr => mr.Recipe_Id == 20)))).MustHaveHappenedOnceExactly();
+        A.CallTo(() => machineAttributeRepo.AddMachineAttributes(A<IEnumerable<MachineAttribute>>.That.Matches(mas => mas.Any(ma => ma.Attribute_Id == 15 && ma.Rate == 2)))).MustHaveHappenedOnceExactly();
         A.CallTo(() => projectRepo.UpdateProject(A<Project>.That.Matches(p => p.Project_Id == 10))).MustHaveHappenedOnceExactly();
     }
 
@@ -172,7 +200,7 @@ public class MachineServiceTests
         var machineRecipeRepo = A.Fake<IMachineRecipeRepository>();
         var recipeRepo = A.Fake<IRecipeRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, machineRecipeRepo, recipeRepo, projectRepo);
+        var service = CreateService(repo, machineRecipeRepo, A.Fake<IMachineAttributeRepository>(), recipeRepo, A.Fake<IAttributeRepository>(), projectRepo);
         A.CallTo(() => projectRepo.GetProjectByPuid("missing")).Returns(Task.FromResult<Project?>(null));
 
         var result = await service.GetMachineByPuid("missing", "machPuid");

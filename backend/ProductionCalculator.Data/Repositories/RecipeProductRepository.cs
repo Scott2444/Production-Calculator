@@ -23,20 +23,15 @@ namespace ProductionCalculator.Data.Repositories
                 .Where(rp => rp.Recipe_Id == recipeId)
                 .ToListAsync();
         }
-        public async Task UpsertRecipeProducts(IEnumerable<RecipeProduct> recipeProducts)
+        public async Task AddRecipeProducts(IEnumerable<RecipeProduct> recipeProducts)
         {
-            foreach (var recipeProduct in recipeProducts)
-            {
-                var existing = await GetById(recipeProduct.Recipe_Product_Id);
-                if (existing == null)
-                {
-                    await _db.Set<RecipeProduct>().AddAsync(recipeProduct);
-                }
-                else
-                {
-                    _db.Set<RecipeProduct>().Update(recipeProduct);
-                }
-            }
+            await _db.Set<RecipeProduct>().AddRangeAsync(recipeProducts);
+            await _db.SaveChangesAsync();
+        }
+
+        public async Task UpdateRecipeProducts(IEnumerable<RecipeProduct> recipeProducts)
+        {
+            _db.Set<RecipeProduct>().UpdateRange(recipeProducts);
             await _db.SaveChangesAsync();
         }
         public async Task<bool> DeleteRecipeProduct(int id)

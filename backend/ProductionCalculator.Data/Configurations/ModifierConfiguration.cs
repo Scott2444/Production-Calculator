@@ -26,18 +26,28 @@ namespace ProductionCalculator.Data.Configurations
             builder.Property(u => u.Description)
                 .HasColumnName("description");
 
-            builder.Property(u => u.Flat_Speed_Bonus)
-                .HasColumnName("flat_speed_bonus")
+            builder.Property(u => u.Flat_Bonus)
+                .HasColumnName("flat_bonus")
                 .HasColumnType("Numeric(13, 5)")
                 .IsRequired();
             
-            builder.Property(u => u.Additive_Percent_Bonus)
-                .HasColumnName("additive_percent_bonus")
+            builder.Property(u => u.Percent_Bonus)
+                .HasColumnName("percent_bonus")
                 .HasColumnType("Numeric(13, 5)")
                 .IsRequired();
             
-            builder.Property(u => u.Multiplicative_Modifiers)
-                .HasColumnName("multiplicative_modifiers")
+            builder.Property(u => u.Multiplicative_Bonus)
+                .HasColumnName("multiplicative_bonus")
+                .HasColumnType("Numeric(13, 5)")
+                .IsRequired();
+
+            builder.Property(u => u.Input_Percent)
+                .HasColumnName("input_percent")
+                .HasColumnType("Numeric(13, 5)")
+                .IsRequired();
+
+            builder.Property(u => u.Output_Percent)
+                .HasColumnName("output_percent")
                 .HasColumnType("Numeric(13, 5)")
                 .IsRequired();
 

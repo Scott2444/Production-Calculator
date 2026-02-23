@@ -30,9 +30,11 @@ public class ModifierServiceTests
             Puid = puid,
             Name = name,
             Description = "Description",
-            Flat_Speed_Bonus = 1.0,
-            Additive_Percent_Bonus = 0.5,
-            Multiplicative_Modifiers = 1.1,
+            Flat_Bonus = 1.0,
+            Percent_Bonus = 0.5,
+            Multiplicative_Bonus = 1.1,
+            Input_Percent = 1.0,
+            Output_Percent = 1.0,
             Version = 1,
             Created_At = DateTime.UtcNow,
             Last_Updated = DateTime.UtcNow
@@ -42,7 +44,7 @@ public class ModifierServiceTests
     private static ModifierService CreateService(IModifierRepository repo, IProjectRepository projectRepo)
     {
         var currentUser = A.Fake<ICurrentUserService>();
-        return new ModifierService(currentUser, projectRepo, repo);
+        return new ModifierService(currentUser, projectRepo, repo, A.Fake<IModifierAttributeRepository>(), A.Fake<IAttributeRepository>());
     }
 
     [Fact]

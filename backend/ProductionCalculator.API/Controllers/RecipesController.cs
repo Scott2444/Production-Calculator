@@ -33,7 +33,7 @@ namespace ProductionCalculator.API.Controllers
         [HttpPost]
         public async Task<IActionResult> AddRecipe(string projectPuid, [FromBody] RecipeRequest req)
         {
-            var result = await _service.AddRecipe(projectPuid, req.Name, req.Description, req.BaseCraftingTime, req.Inputs, req.Outputs);
+            var result = await _service.AddRecipe(projectPuid, req.Name, req.Description, req.BaseCraftingTime, req.Inputs, req.Outputs, req.Attributes);
             return FromServiceResult(result, (r) => r);
         }
 
@@ -41,7 +41,7 @@ namespace ProductionCalculator.API.Controllers
         [HttpPut("{recipePuid}")]
         public async Task<IActionResult> UpdateRecipe(string projectPuid, string recipePuid, [FromBody] RecipeRequest req)
         {
-            var result = await _service.UpdateRecipe(projectPuid, recipePuid, req.Name, req.Description, req.BaseCraftingTime, req.Inputs, req.Outputs);
+            var result = await _service.UpdateRecipe(projectPuid, recipePuid, req.Name, req.Description, req.BaseCraftingTime, req.Inputs, req.Outputs, req.Attributes);
             return FromServiceResult(result, r => r);
         }
 

@@ -24,9 +24,12 @@ namespace ProductionCalculator.API.Controllers
                 Puid = r.Puid,
                 Name = r.Name,
                 Description = r.Description,
-                FlatSpeedBonus = r.Flat_Speed_Bonus,
-                AdditivePercentBonus = r.Additive_Percent_Bonus,
-                MultiplicativeModifier = r.Multiplicative_Modifiers,
+                FlatBonus = r.Flat_Bonus,
+                PercentBonus = r.Percent_Bonus,
+                MultiplicativeBonus = r.Multiplicative_Bonus,
+                InputPercent = r.Input_Percent,
+                OutputPercent = r.Output_Percent,
+                Attributes = [],
                 CreatedAt = r.Created_At,
                 UpdatedAt = r.Last_Updated
             });
@@ -41,9 +44,12 @@ namespace ProductionCalculator.API.Controllers
                 Puid = m.Puid,
                 Name = m.Name,
                 Description = m.Description,
-                FlatSpeedBonus = m.Flat_Speed_Bonus,
-                AdditivePercentBonus = m.Additive_Percent_Bonus,
-                MultiplicativeModifier = m.Multiplicative_Modifiers,
+                FlatBonus = m.Flat_Bonus,
+                PercentBonus = m.Percent_Bonus,
+                MultiplicativeBonus = m.Multiplicative_Bonus,
+                InputPercent = m.Input_Percent,
+                OutputPercent = m.Output_Percent,
+                Attributes = [],
                 CreatedAt = m.Created_At,
                 UpdatedAt = m.Last_Updated
             }).ToList());
@@ -53,15 +59,18 @@ namespace ProductionCalculator.API.Controllers
         [HttpPost]
         public async Task<IActionResult> AddModifier(string projectPuid, [FromBody] ModifierRequest req)
         {
-            var result = await _service.AddModifier(projectPuid, req.Name, req.Description, req.FlatSpeedBonus, req.AdditivePercentBonus, req.MultiplicativeModifier);
+            var result = await _service.AddModifier(projectPuid, req.Name, req.Description, req.FlatBonus, req.PercentBonus, req.MultiplicativeBonus, req.InputPercent, req.OutputPercent, req.Attributes);
             return FromServiceResult(result, (r) => new ModifierResponse
             {
                 Puid = r.Puid,
                 Name = r.Name,
                 Description = r.Description,
-                FlatSpeedBonus = r.Flat_Speed_Bonus,
-                AdditivePercentBonus = r.Additive_Percent_Bonus,
-                MultiplicativeModifier = r.Multiplicative_Modifiers,
+                FlatBonus = r.Flat_Bonus,
+                PercentBonus = r.Percent_Bonus,
+                MultiplicativeBonus = r.Multiplicative_Bonus,
+                InputPercent = r.Input_Percent,
+                OutputPercent = r.Output_Percent,
+                Attributes = req.Attributes,
                 CreatedAt = r.Created_At,
                 UpdatedAt = r.Last_Updated
             });
@@ -71,15 +80,18 @@ namespace ProductionCalculator.API.Controllers
         [HttpPut("{modifierPuid}")]
         public async Task<IActionResult> UpdateModifier(string projectPuid, string modifierPuid, [FromBody] ModifierRequest req)
         {
-            var result = await _service.UpdateModifier(projectPuid, modifierPuid, req.Name, req.Description, req.FlatSpeedBonus, req.AdditivePercentBonus, req.MultiplicativeModifier);
+            var result = await _service.UpdateModifier(projectPuid, modifierPuid, req.Name, req.Description, req.FlatBonus, req.PercentBonus, req.MultiplicativeBonus, req.InputPercent, req.OutputPercent, req.Attributes);
             return FromServiceResult(result, r => new ModifierResponse
             {
                 Puid = r.Puid,
                 Name = r.Name,
                 Description = r.Description,
-                FlatSpeedBonus = r.Flat_Speed_Bonus,
-                AdditivePercentBonus = r.Additive_Percent_Bonus,
-                MultiplicativeModifier = r.Multiplicative_Modifiers,
+                FlatBonus = r.Flat_Bonus,
+                PercentBonus = r.Percent_Bonus,
+                MultiplicativeBonus = r.Multiplicative_Bonus,
+                InputPercent = r.Input_Percent,
+                OutputPercent = r.Output_Percent,
+                Attributes = req.Attributes,
                 CreatedAt = r.Created_At,
                 UpdatedAt = r.Last_Updated
             });
