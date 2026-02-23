@@ -26,7 +26,7 @@ namespace ProductionCalculator.Business.Services
             _modifierAttributeRepo = modifierAttributeRepo;
             _attributeRepo = attributeRepo;
         }
-        public async Task<ServiceResult<Modifier>> AddModifier(string projectPuid, string name, string? description, double flatBonus, double percentBonus, double multiplicativeBonus, double inputMultiplier = 1.0, double outputMultiplier = 1.0, List<ModifierAttributeExchange>? attributes = null)
+        public async Task<ServiceResult<Modifier>> AddModifier(string projectPuid, string name, string? description, double flatBonus, double percentBonus, double multiplicativeBonus, double inputPercent = 0.0, double outputPercent = 0.0, List<ModifierAttributeExchange>? attributes = null)
         {
             attributes ??= [];
             if (string.IsNullOrWhiteSpace(name)) return ServiceResult<Modifier>.Fail(ServiceStatus.BadRequest400, "Modifier name is required.");
@@ -38,9 +38,6 @@ namespace ProductionCalculator.Business.Services
             // Check if name already exists for this project
             var existingModifiers = await _repo.GetModifiersByProjectId(project.Project_Id);
             if (existingModifiers.Any(p => p.Name == name)) return ServiceResult<Modifier>.Fail(ServiceStatus.Conflict409, "Modifier name already exists for this project.");
-
-            // Validate inputMultiplier and outputMultiplier
-            if (inputMultiplier <= 0 || outputMultiplier <= 0) return ServiceResult<Modifier>.Fail(ServiceStatus.BadRequest400, "Input and output multipliers must be greater than 0.");
 
             var validatedAttributes = await ValidateAttributes(attributes, project.Project_Id);
             if (validatedAttributes.error != null)
@@ -65,8 +62,8 @@ namespace ProductionCalculator.Business.Services
                 Flat_Bonus = flatBonus,
                 Percent_Bonus = percentBonus,
                 Multiplicative_Bonus = multiplicativeBonus,
-                Input_Multiplier = inputMultiplier,
-                Output_Multiplier = outputMultiplier,
+                Input_Percent = inputPercent,
+                Output_Percent = outputPercent,
                 Version = 1,
                 Created_At = DateTime.UtcNow,
                 Last_Updated = DateTime.UtcNow
@@ -91,7 +88,7 @@ namespace ProductionCalculator.Business.Services
             await UpdateProjectLastUpdated(project);
             return ServiceResult<Modifier>.SuccessResult(modifier, ServiceStatus.Created201);
         }
-        public async Task<ServiceResult<Modifier>> UpdateModifier(string projectPuid, string puid, string? name, string? description, double flatBonus, double percentBonus, double multiplicativeBonus, double inputMultiplier = 1.0, double outputMultiplier = 1.0, List<ModifierAttributeExchange>? attributes = null)
+        public async Task<ServiceResult<Modifier>> UpdateModifier(string projectPuid, string puid, string? name, string? description, double flatBonus, double percentBonus, double multiplicativeBonus, double inputPercent = 0.0, double outputPercent = 0.0, List<ModifierAttributeExchange>? attributes = null)
         {
             attributes ??= [];
             if (string.IsNullOrWhiteSpace(name)) return ServiceResult<Modifier>.Fail(ServiceStatus.BadRequest400, "Modifier name is required.");
@@ -108,9 +105,6 @@ namespace ProductionCalculator.Business.Services
             var existingModifiers = await _repo.GetModifiersByProjectId(project.Project_Id);
             if (existingModifiers.Any(p => p.Name == name && p.Puid != puid)) return ServiceResult<Modifier>.Fail(ServiceStatus.Conflict409, "Modifier name already exists for this project.");
 
-            // Validate inputMultiplier and outputMultiplier
-            if (inputMultiplier <= 0 || outputMultiplier <= 0) return ServiceResult<Modifier>.Fail(ServiceStatus.BadRequest400, "Input and output multipliers must be greater than 0.");
-
             var validatedAttributes = await ValidateAttributes(attributes, project.Project_Id);
             if (validatedAttributes.error != null)
             {
@@ -126,14 +120,14 @@ namespace ProductionCalculator.Business.Services
             if (modifier.Flat_Bonus != flatBonus || 
                 modifier.Percent_Bonus != percentBonus || 
                 modifier.Multiplicative_Bonus != multiplicativeBonus ||
-                modifier.Input_Multiplier != inputMultiplier ||
-                modifier.Output_Multiplier != outputMultiplier) 
+                modifier.Input_Percent != inputPercent ||
+                modifier.Output_Percent != outputPercent) 
                 { modifier.Version += 1; } // Only increment version if tangible change
             modifier.Flat_Bonus = flatBonus;
             modifier.Percent_Bonus = percentBonus;
             modifier.Multiplicative_Bonus = multiplicativeBonus;
-            modifier.Input_Multiplier = inputMultiplier;
-            modifier.Output_Multiplier = outputMultiplier;
+            modifier.Input_Percent = inputPercent;
+            modifier.Output_Percent = outputPercent;
             modifier.Last_Updated = DateTime.UtcNow;
 
             await _repo.UpdateModifier(modifier);

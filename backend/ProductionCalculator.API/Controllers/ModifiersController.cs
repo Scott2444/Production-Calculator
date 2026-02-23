@@ -27,8 +27,8 @@ namespace ProductionCalculator.API.Controllers
                 FlatBonus = r.Flat_Bonus,
                 PercentBonus = r.Percent_Bonus,
                 MultiplicativeBonus = r.Multiplicative_Bonus,
-                InputMultiplier = r.Input_Multiplier,
-                OutputMultiplier = r.Output_Multiplier,
+                InputPercent = r.Input_Percent,
+                OutputPercent = r.Output_Percent,
                 Attributes = [],
                 CreatedAt = r.Created_At,
                 UpdatedAt = r.Last_Updated
@@ -47,8 +47,8 @@ namespace ProductionCalculator.API.Controllers
                 FlatBonus = m.Flat_Bonus,
                 PercentBonus = m.Percent_Bonus,
                 MultiplicativeBonus = m.Multiplicative_Bonus,
-                InputMultiplier = m.Input_Multiplier,
-                OutputMultiplier = m.Output_Multiplier,
+                InputPercent = m.Input_Percent,
+                OutputPercent = m.Output_Percent,
                 Attributes = [],
                 CreatedAt = m.Created_At,
                 UpdatedAt = m.Last_Updated
@@ -59,7 +59,7 @@ namespace ProductionCalculator.API.Controllers
         [HttpPost]
         public async Task<IActionResult> AddModifier(string projectPuid, [FromBody] ModifierRequest req)
         {
-            var result = await _service.AddModifier(projectPuid, req.Name, req.Description, req.FlatBonus, req.PercentBonus, req.MultiplicativeBonus, req.InputMultiplier, req.OutputMultiplier, req.Attributes);
+            var result = await _service.AddModifier(projectPuid, req.Name, req.Description, req.FlatBonus, req.PercentBonus, req.MultiplicativeBonus, req.InputPercent, req.OutputPercent, req.Attributes);
             return FromServiceResult(result, (r) => new ModifierResponse
             {
                 Puid = r.Puid,
@@ -68,8 +68,8 @@ namespace ProductionCalculator.API.Controllers
                 FlatBonus = r.Flat_Bonus,
                 PercentBonus = r.Percent_Bonus,
                 MultiplicativeBonus = r.Multiplicative_Bonus,
-                InputMultiplier = r.Input_Multiplier,
-                OutputMultiplier = r.Output_Multiplier,
+                InputPercent = r.Input_Percent,
+                OutputPercent = r.Output_Percent,
                 Attributes = req.Attributes,
                 CreatedAt = r.Created_At,
                 UpdatedAt = r.Last_Updated
@@ -80,7 +80,7 @@ namespace ProductionCalculator.API.Controllers
         [HttpPut("{modifierPuid}")]
         public async Task<IActionResult> UpdateModifier(string projectPuid, string modifierPuid, [FromBody] ModifierRequest req)
         {
-            var result = await _service.UpdateModifier(projectPuid, modifierPuid, req.Name, req.Description, req.FlatBonus, req.PercentBonus, req.MultiplicativeBonus, req.InputMultiplier, req.OutputMultiplier, req.Attributes);
+            var result = await _service.UpdateModifier(projectPuid, modifierPuid, req.Name, req.Description, req.FlatBonus, req.PercentBonus, req.MultiplicativeBonus, req.InputPercent, req.OutputPercent, req.Attributes);
             return FromServiceResult(result, r => new ModifierResponse
             {
                 Puid = r.Puid,
@@ -89,8 +89,8 @@ namespace ProductionCalculator.API.Controllers
                 FlatBonus = r.Flat_Bonus,
                 PercentBonus = r.Percent_Bonus,
                 MultiplicativeBonus = r.Multiplicative_Bonus,
-                InputMultiplier = r.Input_Multiplier,
-                OutputMultiplier = r.Output_Multiplier,
+                InputPercent = r.Input_Percent,
+                OutputPercent = r.Output_Percent,
                 Attributes = req.Attributes,
                 CreatedAt = r.Created_At,
                 UpdatedAt = r.Last_Updated

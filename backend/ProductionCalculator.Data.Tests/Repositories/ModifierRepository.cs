@@ -29,8 +29,8 @@ public class ModifierRepositoryTests
             Flat_Bonus = 1.0,
             Percent_Bonus = 0.5,
             Multiplicative_Bonus = 1.1,
-            Input_Multiplier = 1.0,
-            Output_Multiplier = 1.0,
+            Input_Percent = 1.0,
+            Output_Percent = 1.0,
             Version = 1,
             Created_At = DateTime.UtcNow,
             Last_Updated = DateTime.UtcNow

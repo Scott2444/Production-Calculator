@@ -41,13 +41,13 @@ namespace ProductionCalculator.Data.Configurations
                 .HasColumnType("Numeric(13, 5)")
                 .IsRequired();
 
-            builder.Property(u => u.Input_Multiplier)
-                .HasColumnName("input_multiplier")
+            builder.Property(u => u.Input_Percent)
+                .HasColumnName("input_percent")
                 .HasColumnType("Numeric(13, 5)")
                 .IsRequired();
 
-            builder.Property(u => u.Output_Multiplier)
-                .HasColumnName("output_multiplier")
+            builder.Property(u => u.Output_Percent)
+                .HasColumnName("output_percent")
                 .HasColumnType("Numeric(13, 5)")
                 .IsRequired();
 
