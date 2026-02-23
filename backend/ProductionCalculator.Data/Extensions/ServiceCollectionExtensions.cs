@@ -16,11 +16,15 @@ namespace ProductionCalculator.Data.Extensions
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IProjectRepository, ProjectRepository>();
             services.AddScoped<IProductRepository, ProductRepository>();
+            services.AddScoped<IAttributeRepository, AttributeRepository>();
             services.AddScoped<IRecipeRepository, RecipeRepository>();
             services.AddScoped<IRecipeProductRepository, RecipeProductRepository>();
+            services.AddScoped<IRecipeAttributeRepository, RecipeAttributeRepository>();
             services.AddScoped<IMachineRepository, MachineRepository>();
             services.AddScoped<IMachineRecipeRepository, MachineRecipeRepository>();
+            services.AddScoped<IMachineAttributeRepository, MachineAttributeRepository>();
             services.AddScoped<IModifierRepository, ModifierRepository>();
+            services.AddScoped<IModifierAttributeRepository, ModifierAttributeRepository>();
             services.AddScoped<IWorkflowRepository, WorkflowRepository>();
             services.AddScoped<IWorkflowNodeRepository, WorkflowNodeRepository>();
             services.AddScoped<IWorkflowTargetRepository, WorkflowTargetRepository>();

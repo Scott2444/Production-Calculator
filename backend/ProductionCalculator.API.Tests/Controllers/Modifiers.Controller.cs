@@ -31,9 +31,11 @@ public class ModifiersControllerTests
             Puid = puid,
             Name = name,
             Description = "desc",
-            Flat_Speed_Bonus = 1.0,
-            Additive_Percent_Bonus = 2.0,
-            Multiplicative_Modifiers = 3.0,
+            Flat_Bonus = 1.0,
+            Percent_Bonus = 2.0,
+            Multiplicative_Bonus = 3.0,
+            Input_Multiplier = 1.0,
+            Output_Multiplier = 1.0,
             Version = 1,
             Created_At = DateTime.UtcNow,
             Last_Updated = DateTime.UtcNow
@@ -133,8 +135,8 @@ public class ModifiersControllerTests
     {
         var service = A.Fake<IModifierService>();
         var modifier = CreateModifier();
-        var req = new ModifierRequest { Name = "New", Description = "Desc", FlatSpeedBonus = 1, AdditivePercentBonus = 2, MultiplicativeModifier = 3 };
-        A.CallTo(() => service.AddModifier("projPuid", req.Name, req.Description, req.FlatSpeedBonus, req.AdditivePercentBonus, req.MultiplicativeModifier))
+        var req = new ModifierRequest { Name = "New", Description = "Desc", FlatBonus = 1, PercentBonus = 2, MultiplicativeBonus = 3, InputMultiplier = 1, OutputMultiplier = 1, Attributes = [] };
+        A.CallTo(() => service.AddModifier("projPuid", req.Name, req.Description, req.FlatBonus, req.PercentBonus, req.MultiplicativeBonus, req.InputMultiplier, req.OutputMultiplier, req.Attributes))
             .Returns(ServiceResult<Modifier>.SuccessResult(modifier, ServiceStatus.Created201));
         var controller = CreateController(service);
 
@@ -150,8 +152,8 @@ public class ModifiersControllerTests
     public async Task AddModifier_ServiceReturnsError_ReturnsErrorStatus()
     {
         var service = A.Fake<IModifierService>();
-        var req = new ModifierRequest { Name = "Bad", Description = "Desc", FlatSpeedBonus = 1, AdditivePercentBonus = 2, MultiplicativeModifier = 3 };
-        A.CallTo(() => service.AddModifier("projPuid", req.Name, req.Description, req.FlatSpeedBonus, req.AdditivePercentBonus, req.MultiplicativeModifier))
+        var req = new ModifierRequest { Name = "Bad", Description = "Desc", FlatBonus = 1, PercentBonus = 2, MultiplicativeBonus = 3, InputMultiplier = 1, OutputMultiplier = 1, Attributes = [] };
+        A.CallTo(() => service.AddModifier("projPuid", req.Name, req.Description, req.FlatBonus, req.PercentBonus, req.MultiplicativeBonus, req.InputMultiplier, req.OutputMultiplier, req.Attributes))
             .Returns(ServiceResult<Modifier>.Fail(ServiceStatus.BadRequest400, "Bad Request"));
         var controller = CreateController(service);
 
@@ -166,8 +168,8 @@ public class ModifiersControllerTests
     {
         var service = A.Fake<IModifierService>();
         var modifier = CreateModifier();
-        var req = new ModifierRequest { Name = "Updated", Description = "Desc", FlatSpeedBonus = 1, AdditivePercentBonus = 2, MultiplicativeModifier = 3 };
-        A.CallTo(() => service.UpdateModifier("projPuid", "modPuid", req.Name, req.Description, req.FlatSpeedBonus, req.AdditivePercentBonus, req.MultiplicativeModifier))
+        var req = new ModifierRequest { Name = "Updated", Description = "Desc", FlatBonus = 1, PercentBonus = 2, MultiplicativeBonus = 3, InputMultiplier = 1, OutputMultiplier = 1, Attributes = [] };
+        A.CallTo(() => service.UpdateModifier("projPuid", "modPuid", req.Name, req.Description, req.FlatBonus, req.PercentBonus, req.MultiplicativeBonus, req.InputMultiplier, req.OutputMultiplier, req.Attributes))
             .Returns(ServiceResult<Modifier>.SuccessResult(modifier, ServiceStatus.Ok200));
         var controller = CreateController(service);
 
@@ -183,8 +185,8 @@ public class ModifiersControllerTests
     public async Task UpdateModifier_ServiceReturnsError_ReturnsErrorStatus()
     {
         var service = A.Fake<IModifierService>();
-        var req = new ModifierRequest { Name = "Bad", Description = "Desc", FlatSpeedBonus = 1, AdditivePercentBonus = 2, MultiplicativeModifier = 3 };
-        A.CallTo(() => service.UpdateModifier("projPuid", "modPuid", req.Name, req.Description, req.FlatSpeedBonus, req.AdditivePercentBonus, req.MultiplicativeModifier))
+        var req = new ModifierRequest { Name = "Bad", Description = "Desc", FlatBonus = 1, PercentBonus = 2, MultiplicativeBonus = 3, InputMultiplier = 1, OutputMultiplier = 1, Attributes = [] };
+        A.CallTo(() => service.UpdateModifier("projPuid", "modPuid", req.Name, req.Description, req.FlatBonus, req.PercentBonus, req.MultiplicativeBonus, req.InputMultiplier, req.OutputMultiplier, req.Attributes))
             .Returns(ServiceResult<Modifier>.Fail(ServiceStatus.Conflict409, "Conflict"));
         var controller = CreateController(service);
 

@@ -64,11 +64,15 @@ public class WorkflowSolverTests
 		return new ProjectObjects
 		{
 			Products = products,
+			Attributes = [],
 			Recipes = recipes,
 			RecipeProducts = recipeProducts,
+			RecipeAttributes = [],
 			Machines = [],
 			MachineRecipes = [],
-			Modifiers = []
+			MachineAttributes = [],
+			Modifiers = [],
+			ModifierAttributes = []
 		};
 	}
 

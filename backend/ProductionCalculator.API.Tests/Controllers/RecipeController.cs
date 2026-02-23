@@ -32,6 +32,7 @@ public class RecipesControllerTests
             BaseCraftingTime = 1.0,
             Inputs = new List<RecipeProductExchange>(),
             Outputs = new List<RecipeProductExchange>(),
+            Attributes = new List<AttributeRateExchange>(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -101,7 +102,7 @@ public class RecipesControllerTests
         var service = A.Fake<IRecipeService>();
         var response = CreateRecipeResponse();
         var req = new RecipeRequest { Name = "New", BaseCraftingTime = 1.0, Inputs = new(), Outputs = new() };
-        A.CallTo(() => service.AddRecipe("projPuid", req.Name, req.Description, req.BaseCraftingTime, req.Inputs, req.Outputs))
+        A.CallTo(() => service.AddRecipe("projPuid", req.Name, req.Description, req.BaseCraftingTime, req.Inputs, req.Outputs, req.Attributes))
             .Returns(ServiceResult<RecipeResponse>.SuccessResult(response, ServiceStatus.Created201));
         var controller = CreateController(service);
 
@@ -116,7 +117,7 @@ public class RecipesControllerTests
     {
         var service = A.Fake<IRecipeService>();
         var req = new RecipeRequest { Name = "Existing", BaseCraftingTime = 1.0, Inputs = new(), Outputs = new() };
-        A.CallTo(() => service.AddRecipe("projPuid", req.Name, req.Description, req.BaseCraftingTime, req.Inputs, req.Outputs))
+        A.CallTo(() => service.AddRecipe("projPuid", req.Name, req.Description, req.BaseCraftingTime, req.Inputs, req.Outputs, req.Attributes))
             .Returns(ServiceResult<RecipeResponse>.Fail(ServiceStatus.Conflict409, "Conflict"));
         var controller = CreateController(service);
 
@@ -132,7 +133,7 @@ public class RecipesControllerTests
         var service = A.Fake<IRecipeService>();
         var response = CreateRecipeResponse(puid: "r1", name: "Updated");
         var req = new RecipeRequest { Name = "Updated", BaseCraftingTime = 2.0, Inputs = new(), Outputs = new() };
-        A.CallTo(() => service.UpdateRecipe("projPuid", "r1", req.Name, req.Description, req.BaseCraftingTime, req.Inputs, req.Outputs))
+        A.CallTo(() => service.UpdateRecipe("projPuid", "r1", req.Name, req.Description, req.BaseCraftingTime, req.Inputs, req.Outputs, req.Attributes))
             .Returns(ServiceResult<RecipeResponse>.SuccessResult(response));
         var controller = CreateController(service);
 
@@ -147,7 +148,7 @@ public class RecipesControllerTests
     {
         var service = A.Fake<IRecipeService>();
         var req = new RecipeRequest { Name = "Updated", BaseCraftingTime = 2.0, Inputs = new(), Outputs = new() };
-        A.CallTo(() => service.UpdateRecipe("projPuid", "r1", req.Name, req.Description, req.BaseCraftingTime, req.Inputs, req.Outputs))
+        A.CallTo(() => service.UpdateRecipe("projPuid", "r1", req.Name, req.Description, req.BaseCraftingTime, req.Inputs, req.Outputs, req.Attributes))
             .Returns(ServiceResult<RecipeResponse>.Fail(ServiceStatus.BadRequest400, "Error"));
         var controller = CreateController(service);
 

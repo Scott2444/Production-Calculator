@@ -20,11 +20,15 @@ namespace ProductionCalculator.Data
             modelBuilder.ApplyConfiguration(new RoleConfiguration());
             modelBuilder.ApplyConfiguration(new ProjectConfiguration());
             modelBuilder.ApplyConfiguration(new ProductConfiguration());
+            modelBuilder.ApplyConfiguration(new AttributeConfiguration());
             modelBuilder.ApplyConfiguration(new RecipeConfiguration());
             modelBuilder.ApplyConfiguration(new RecipeProductConfiguration());
+            modelBuilder.ApplyConfiguration(new RecipeAttributeConfiguration());
             modelBuilder.ApplyConfiguration(new MachineConfiguration());
             modelBuilder.ApplyConfiguration(new MachineRecipeConfiguration());
+            modelBuilder.ApplyConfiguration(new MachineAttributeConfiguration());
             modelBuilder.ApplyConfiguration(new ModifierConfiguration());
+            modelBuilder.ApplyConfiguration(new ModifierAttributeConfiguration());
             modelBuilder.ApplyConfiguration(new WorkflowConfiguration());
             modelBuilder.ApplyConfiguration(new WorkflowNodeConfiguration());
             modelBuilder.ApplyConfiguration(new WorkflowTargetConfiguration());
@@ -32,6 +36,9 @@ namespace ProductionCalculator.Data
             modelBuilder.ApplyConfiguration(new WorkflowEdgeConfiguration());
             modelBuilder.ApplyConfiguration(new WorkflowProductNodeConfiguration());
             modelBuilder.ApplyConfiguration(new WorkflowRecipeConfiguration());
+            modelBuilder.ApplyConfiguration(new WorkflowRecipeAttributeConfiguration());
+            modelBuilder.ApplyConfiguration(new WorkflowMachineAttributeConfiguration());
+            modelBuilder.ApplyConfiguration(new WorkflowModifierAttributeConfiguration());
             modelBuilder.ApplyConfiguration(new RefreshTokenConfiguration());
             modelBuilder.ApplyConfiguration(new VerificationCodeConfiguration());
         }

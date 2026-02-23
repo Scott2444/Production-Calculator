@@ -5,9 +5,12 @@ namespace ProductionCalculator.Business.APIModels
         public required string Puid { get; set; }
         public required string Name { get; set; }
         public string? Description { get; set; }
-        public required double FlatSpeedBonus { get; set; }
-        public required double AdditivePercentBonus { get; set; }
-        public required double MultiplicativeModifier { get; set; }
+        public required double FlatBonus { get; set; }
+        public required double PercentBonus { get; set; }
+        public required double MultiplicativeBonus { get; set; }
+        public required double InputMultiplier { get; set; }
+        public required double OutputMultiplier { get; set; }
+        public required List<ModifierAttributeExchange> Attributes { get; set; }
         public required DateTime CreatedAt { get; set; }
         public required DateTime UpdatedAt { get; set; }
     }
