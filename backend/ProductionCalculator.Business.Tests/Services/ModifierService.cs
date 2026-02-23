@@ -382,4 +382,47 @@ public class ModifierServiceTests
         Assert.Equal(ServiceStatus.NoContent204, result.Status);
         A.CallTo(() => projectRepo.UpdateProject(A<Project>.That.Matches(p => p.Project_Id == 10))).MustHaveHappenedOnceExactly();
     }
+
+        [Theory]
+        [InlineData(0, 1.0)]
+        [InlineData(1.0, 0)]
+        [InlineData(-1.0, 1.0)]
+        [InlineData(1.0, -1.0)]
+        [InlineData(-1.0, -1.0)]
+        public async Task AddModifier_InvalidInputOutputMultiplier_ReturnsBadRequest(double inputMultiplier, double outputMultiplier)
+        {
+            var repo = A.Fake<IModifierRepository>();
+            var projectRepo = A.Fake<IProjectRepository>();
+            var service = CreateService(repo, projectRepo);
+            var project = CreateProject(id: 10, puid: "projPuid");
+            A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+            A.CallTo(() => repo.GetModifiersByProjectId(10)).Returns(new List<Modifier>());
+            A.CallTo(() => repo.PuidExists(A<string>._)).Returns(false);
+
+            var result = await service.AddModifier("projPuid", "NewMod", "desc", 1.0, 2.0, 3.0, inputMultiplier, outputMultiplier);
+
+            Assert.Equal(ServiceStatus.BadRequest400, result.Status);
+        }
+
+        [Theory]
+        [InlineData(0, 1.0)]
+        [InlineData(1.0, 0)]
+        [InlineData(-1.0, 1.0)]
+        [InlineData(1.0, -1.0)]
+        [InlineData(-1.0, -1.0)]
+        public async Task UpdateModifier_InvalidInputOutputMultiplier_ReturnsBadRequest(double inputMultiplier, double outputMultiplier)
+        {
+            var repo = A.Fake<IModifierRepository>();
+            var projectRepo = A.Fake<IProjectRepository>();
+            var service = CreateService(repo, projectRepo);
+            var project = CreateProject(id: 10, puid: "projPuid");
+            A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+            var modifier = CreateModifier(projectId: 10, puid: "modPuid", name: "OldName");
+            A.CallTo(() => repo.GetModifierByPuid("modPuid")).Returns(modifier);
+            A.CallTo(() => repo.GetModifiersByProjectId(10)).Returns(new List<Modifier> { modifier });
+
+            var result = await service.UpdateModifier("projPuid", "modPuid", "NewName", "new desc", 10.0, 20.0, 30.0, inputMultiplier, outputMultiplier);
+
+            Assert.Equal(ServiceStatus.BadRequest400, result.Status);
+        }
 }

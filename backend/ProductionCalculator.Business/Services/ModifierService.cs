@@ -39,6 +39,9 @@ namespace ProductionCalculator.Business.Services
             var existingModifiers = await _repo.GetModifiersByProjectId(project.Project_Id);
             if (existingModifiers.Any(p => p.Name == name)) return ServiceResult<Modifier>.Fail(ServiceStatus.Conflict409, "Modifier name already exists for this project.");
 
+            // Validate inputMultiplier and outputMultiplier
+            if (inputMultiplier <= 0 || outputMultiplier <= 0) return ServiceResult<Modifier>.Fail(ServiceStatus.BadRequest400, "Input and output multipliers must be greater than 0.");
+
             var validatedAttributes = await ValidateAttributes(attributes, project.Project_Id);
             if (validatedAttributes.error != null)
             {
@@ -104,6 +107,9 @@ namespace ProductionCalculator.Business.Services
             // Check if name already exists for this project
             var existingModifiers = await _repo.GetModifiersByProjectId(project.Project_Id);
             if (existingModifiers.Any(p => p.Name == name && p.Puid != puid)) return ServiceResult<Modifier>.Fail(ServiceStatus.Conflict409, "Modifier name already exists for this project.");
+
+            // Validate inputMultiplier and outputMultiplier
+            if (inputMultiplier <= 0 || outputMultiplier <= 0) return ServiceResult<Modifier>.Fail(ServiceStatus.BadRequest400, "Input and output multipliers must be greater than 0.");
 
             var validatedAttributes = await ValidateAttributes(attributes, project.Project_Id);
             if (validatedAttributes.error != null)
