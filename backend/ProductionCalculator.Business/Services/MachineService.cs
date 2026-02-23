@@ -10,25 +10,32 @@ namespace ProductionCalculator.Business.Services
         private readonly ICurrentUserService _currentUser;
         private readonly IMachineRepository _repo;
         private readonly IMachineRecipeRepository _machineRecipeRepo;
+        private readonly IMachineAttributeRepository _machineAttributeRepo;
         private readonly IRecipeRepository _recipeRepo;
+        private readonly IAttributeRepository _attributeRepo;
         private readonly IProjectRepository _projectRepo;
         public MachineService(
             ICurrentUserService currentUser, 
             IMachineRepository repo, 
             IMachineRecipeRepository machineRecipeRepo, 
+            IMachineAttributeRepository machineAttributeRepo,
             IRecipeRepository recipeRepo,
+            IAttributeRepository attributeRepo,
             IProjectRepository projectRepo
             ) 
         { 
             _currentUser = currentUser; 
             _repo = repo;
             _machineRecipeRepo = machineRecipeRepo;
+            _machineAttributeRepo = machineAttributeRepo;
             _recipeRepo = recipeRepo;
+            _attributeRepo = attributeRepo;
             _projectRepo = projectRepo;
         }
 
-        public async Task<ServiceResult<MachineResponse>> AddMachine(string projectPuid, string name, string? description, double baseSpeed, List<string> recipePuids)
+        public async Task<ServiceResult<MachineResponse>> AddMachine(string projectPuid, string name, string? description, double baseSpeed, List<string> recipePuids, List<AttributeRateExchange>? attributes = null)
         {
+            attributes ??= [];
             if (string.IsNullOrWhiteSpace(name)) return ServiceResult<MachineResponse>.Fail(ServiceStatus.BadRequest400, "Machine name is required.");
 
             // Get projectId from projectPuid
@@ -53,6 +60,12 @@ namespace ProductionCalculator.Business.Services
                     return ServiceResult<MachineResponse>.Fail(ServiceStatus.BadRequest400, $"Invalid recipe PUID: {recipePuid}");
                 }
                 validRecipes.Add(recipe);
+            }
+
+            var validatedAttributes = await ValidateAttributes(attributes, project.Project_Id);
+            if (validatedAttributes.error != null)
+            {
+                return ServiceResult<MachineResponse>.Fail(ServiceStatus.BadRequest400, validatedAttributes.error);
             }
 
             // Limit string lengths
@@ -85,6 +98,18 @@ namespace ProductionCalculator.Business.Services
             }).ToList();
             await _machineRecipeRepo.AddMachineRecipes(machineRecipe);
 
+            var machineAttributes = validatedAttributes.attributes.Select(attribute => new MachineAttribute
+            {
+                Machine_Attribute_Id = 0,
+                Machine_Id = machine.Machine_Id,
+                Attribute_Id = attribute.attribute.Attribute_Id,
+                Rate = attribute.rate,
+                Version = 1,
+                Created_At = DateTime.UtcNow,
+                Last_Updated = DateTime.UtcNow
+            }).ToList();
+            await _machineAttributeRepo.AddMachineAttributes(machineAttributes);
+
             await UpdateProjectLastUpdated(project);
 
             // Convert to MachineResponse
@@ -95,14 +120,16 @@ namespace ProductionCalculator.Business.Services
                 Description = machine.Description,
                 BaseSpeed = machine.Base_Speed,
                 RecipePuids = validRecipes.Select(r => r.Puid).ToList(),
+                Attributes = attributes,
                 CreatedAt = machine.Created_At,
                 UpdatedAt = machine.Last_Updated
             };
 
             return ServiceResult<MachineResponse>.SuccessResult(machineResponse, ServiceStatus.Created201);
         }
-        public async Task<ServiceResult<MachineResponse>> UpdateMachine(string projectPuid, string puid, string? name, string? description, double baseSpeed, List<string> recipePuids)
+        public async Task<ServiceResult<MachineResponse>> UpdateMachine(string projectPuid, string puid, string? name, string? description, double baseSpeed, List<string> recipePuids, List<AttributeRateExchange>? attributes = null)
         {
+            attributes ??= [];
             if (string.IsNullOrWhiteSpace(name)) return ServiceResult<MachineResponse>.Fail(ServiceStatus.BadRequest400, "Machine name is required.");
 
             // Get projectId from projectPuid
@@ -131,6 +158,12 @@ namespace ProductionCalculator.Business.Services
                     return ServiceResult<MachineResponse>.Fail(ServiceStatus.BadRequest400, $"Invalid recipe PUID: {recipePuid}");
                 }
                 validRecipes.Add(recipe);
+            }
+
+            var validatedAttributes = await ValidateAttributes(attributes, project.Project_Id);
+            if (validatedAttributes.error != null)
+            {
+                return ServiceResult<MachineResponse>.Fail(ServiceStatus.BadRequest400, validatedAttributes.error);
             }
 
             // Limit string lengths
@@ -164,6 +197,38 @@ namespace ProductionCalculator.Business.Services
             await _machineRecipeRepo.AddMachineRecipes(machineRecipesToAdd);
             await _machineRecipeRepo.DeleteMachineRecipes(machineRecipesToRemove.Select(mr => mr.Machine_Recipe_Id));
 
+            var existingMachineAttributes = (await _machineAttributeRepo.GetByMachineId(machine.Machine_Id)).ToList();
+            var machineAttributesToAdd = validatedAttributes.attributes
+                .Where(a => !existingMachineAttributes.Any(ma => ma.Attribute_Id == a.attribute.Attribute_Id))
+                .Select(a => new MachineAttribute
+                {
+                    Machine_Attribute_Id = 0,
+                    Machine_Id = machine.Machine_Id,
+                    Attribute_Id = a.attribute.Attribute_Id,
+                    Rate = a.rate,
+                    Version = 1,
+                    Created_At = DateTime.UtcNow,
+                    Last_Updated = DateTime.UtcNow
+                })
+                .ToList();
+            var machineAttributesToUpdate = existingMachineAttributes
+                .Where(ma => validatedAttributes.attributes.Any(a => a.attribute.Attribute_Id == ma.Attribute_Id))
+                .ToList();
+            foreach (var machineAttribute in machineAttributesToUpdate)
+            {
+                var incomingAttribute = validatedAttributes.attributes.First(a => a.attribute.Attribute_Id == machineAttribute.Attribute_Id);
+                machineAttribute.Rate = incomingAttribute.rate;
+                machineAttribute.Version += 1;
+                machineAttribute.Last_Updated = DateTime.UtcNow;
+            }
+            var machineAttributesToDelete = existingMachineAttributes
+                .Where(ma => !validatedAttributes.attributes.Any(a => a.attribute.Attribute_Id == ma.Attribute_Id))
+                .ToList();
+
+            await _machineAttributeRepo.AddMachineAttributes(machineAttributesToAdd);
+            await _machineAttributeRepo.UpdateMachineAttributes(machineAttributesToUpdate);
+            await _machineAttributeRepo.DeleteMachineAttributes(machineAttributesToDelete.Select(ma => ma.Machine_Attribute_Id));
+
             await UpdateProjectLastUpdated(project);
 
             // Convert to MachineResponse
@@ -174,6 +239,7 @@ namespace ProductionCalculator.Business.Services
                 Description = machine.Description,
                 BaseSpeed = machine.Base_Speed,
                 RecipePuids = validRecipes.Select(r => r.Puid).ToList(),
+                Attributes = attributes,
                 CreatedAt = machine.Created_At,
                 UpdatedAt = machine.Last_Updated
             };
@@ -191,6 +257,7 @@ namespace ProductionCalculator.Business.Services
 
             // Get machine_recipes
             var machineRecipes = (await _machineRecipeRepo.GetByMachineId(machine.Machine_Id)).ToList();
+            var machineAttributes = (await _machineAttributeRepo.GetByMachineId(machine.Machine_Id)).ToList();
 
             // Get recipes
             var recipes = new List<Recipe>();
@@ -198,6 +265,20 @@ namespace ProductionCalculator.Business.Services
             {
                 var recipe = await _recipeRepo.GetById(mr.Recipe_Id);
                 if (recipe != null) recipes.Add(recipe);
+            }
+
+            var attributes = new List<AttributeRateExchange>();
+            foreach (var machineAttribute in machineAttributes)
+            {
+                var attribute = await _attributeRepo.GetAttributeById(machineAttribute.Attribute_Id);
+                if (attribute != null)
+                {
+                    attributes.Add(new AttributeRateExchange
+                    {
+                        Puid = attribute.Puid,
+                        Rate = machineAttribute.Rate
+                    });
+                }
             }
 
             // Convert to MachineResponse
@@ -208,6 +289,7 @@ namespace ProductionCalculator.Business.Services
                 Description = machine.Description,
                 BaseSpeed = machine.Base_Speed,
                 RecipePuids = recipes.Select(r => r.Puid).ToList(),
+                Attributes = attributes,
                 CreatedAt = machine.Created_At,
                 UpdatedAt = machine.Last_Updated
             };
@@ -225,9 +307,11 @@ namespace ProductionCalculator.Business.Services
 
             // Get machine_recipes
             var machineRecipes = new List<MachineRecipe>();
+            var machineAttributes = new List<MachineAttribute>();
             foreach (var machine in machines)
             {
                 machineRecipes.AddRange(await _machineRecipeRepo.GetByMachineId(machine.Machine_Id));
+                machineAttributes.AddRange(await _machineAttributeRepo.GetByMachineId(machine.Machine_Id));
             }
 
             // Get recipes
@@ -248,6 +332,23 @@ namespace ProductionCalculator.Business.Services
                     .Where(r => r != null)
                     .ToList();
 
+                var associatedAttributes = machineAttributes
+                    .Where(ma => ma.Machine_Id == machine.Machine_Id)
+                    .ToList();
+                var attributeResponses = new List<AttributeRateExchange>();
+                foreach (var associatedAttribute in associatedAttributes)
+                {
+                    var attribute = await _attributeRepo.GetAttributeById(associatedAttribute.Attribute_Id);
+                    if (attribute != null)
+                    {
+                        attributeResponses.Add(new AttributeRateExchange
+                        {
+                            Puid = attribute.Puid,
+                            Rate = associatedAttribute.Rate
+                        });
+                    }
+                }
+
                 var machineResponse = new MachineResponse
                 {
                     Puid = machine.Puid,
@@ -255,6 +356,7 @@ namespace ProductionCalculator.Business.Services
                     Description = machine.Description,
                     BaseSpeed = machine.Base_Speed,
                     RecipePuids = associatedRecipes.Select(r => r!.Puid).ToList(),
+                    Attributes = attributeResponses,
                     CreatedAt = machine.Created_At,
                     UpdatedAt = machine.Last_Updated
                 };
@@ -283,6 +385,38 @@ namespace ProductionCalculator.Business.Services
         {
             project.Last_Updated = DateTime.UtcNow;
             await _projectRepo.UpdateProject(project);
+        }
+
+        private async Task<(List<(ProjectAttribute attribute, double rate)> attributes, string? error)> ValidateAttributes(List<AttributeRateExchange> attributes, int projectId)
+        {
+            var uniqueAttributes = attributes
+                .GroupBy(a => a.Puid)
+                .Select(g => g.First())
+                .ToList();
+
+            if (uniqueAttributes.Count != attributes.Count)
+            {
+                return ([], "Duplicate attribute PUIDs are not allowed.");
+            }
+
+            var validatedAttributes = new List<(ProjectAttribute attribute, double rate)>();
+            foreach (var attributeRelation in uniqueAttributes)
+            {
+                if (attributeRelation.Rate <= 0)
+                {
+                    return ([], $"Attribute rate must be greater than zero for {attributeRelation.Puid}.");
+                }
+
+                var attribute = await _attributeRepo.GetAttributeByPuid(attributeRelation.Puid);
+                if (attribute == null || attribute.Project_Id != projectId)
+                {
+                    return ([], $"Invalid attribute PUID: {attributeRelation.Puid}");
+                }
+
+                validatedAttributes.Add((attribute, attributeRelation.Rate));
+            }
+
+            return (validatedAttributes, null);
         }
     }
 }

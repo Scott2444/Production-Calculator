@@ -33,7 +33,7 @@ namespace ProductionCalculator.API.Controllers
         [HttpPost]
         public async Task<IActionResult> AddMachine(string projectPuid, [FromBody] MachineRequest req)
         {
-            var result = await _service.AddMachine(projectPuid, req.Name, req.Description, req.BaseSpeed, req.RecipePuids);
+            var result = await _service.AddMachine(projectPuid, req.Name, req.Description, req.BaseSpeed, req.RecipePuids, req.Attributes);
             return FromServiceResult(result, (r) => r);
         }
 
@@ -41,7 +41,7 @@ namespace ProductionCalculator.API.Controllers
         [HttpPut("{machinePuid}")]
         public async Task<IActionResult> UpdateMachine(string projectPuid, string machinePuid, [FromBody] MachineRequest req)
         {
-            var result = await _service.UpdateMachine(projectPuid, machinePuid, req.Name, req.Description, req.BaseSpeed, req.RecipePuids);
+            var result = await _service.UpdateMachine(projectPuid, machinePuid, req.Name, req.Description, req.BaseSpeed, req.RecipePuids, req.Attributes);
             return FromServiceResult(result, r => r);
         }
 

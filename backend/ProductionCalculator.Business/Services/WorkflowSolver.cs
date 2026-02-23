@@ -81,6 +81,8 @@ namespace ProductionCalculator.Business.Services
                 // Inputs are negative flow, Outputs are positive flow
                 recipeProductNetQuantities[key] += rp.Quantity * (rp.Is_Input ? -1.0 : 1.0);
             }
+            // Apply yield modifiers from the node chart to adjust the recipe-product quantities
+            recipeProductNetQuantities = ScaleRecipeProductQuantities(recipeProductNetQuantities, projectObjects, nodeChart);
             
             // Fill coefficients by iterating the aggregated net quantities
             foreach (var kvp in recipeProductNetQuantities)
@@ -242,6 +244,8 @@ namespace ProductionCalculator.Business.Services
 
                 recipeProductNetQuantities[key] += rp.Quantity * (rp.Is_Input ? -1.0 : 1.0);
             }
+            // Apply yield modifiers from the node chart to adjust the recipe-product quantities
+            recipeProductNetQuantities = ScaleRecipeProductQuantities(recipeProductNetQuantities, projectObjects, nodeChart);
 
             foreach (var kvp in recipeProductNetQuantities)
             {
@@ -312,6 +316,45 @@ namespace ProductionCalculator.Business.Services
             }
 
             return recipeRates;
+        }
+
+        private Dictionary<(int recipeId, int productId), double> 
+            ScaleRecipeProductQuantities(
+                Dictionary<(int recipeId, int productId), double> recipeProductNetQuantities,
+                ProjectObjects projectObjects,
+                NodeChart nodeChart)
+        {
+            var scaledRecipes = new Dictionary<int, (double inputMultipler, double outputPercent)>();
+            foreach (var node in nodeChart.Nodes)
+            {
+                // Yield multipliers are additive
+                var recipeId = node.Node.Recipe_Id;
+                var inputPercent = 0.0;
+                var outputPercent = 0.0;
+
+                foreach (var workflowModifier in node.Modifiers)
+                {
+                    var modifier = projectObjects.Modifiers.First(m => m.Modifier_Id == workflowModifier.Modifier_Id);
+                    inputPercent += modifier.Input_Percent;
+                    outputPercent += modifier.Output_Percent;
+                }
+
+                scaledRecipes[recipeId] = (inputPercent, outputPercent);
+            }
+            foreach (var key in recipeProductNetQuantities.Keys.ToList())
+            {
+                var recipeId = key.recipeId;
+                var productId = key.productId;
+                if (scaledRecipes.TryGetValue(recipeId, out (double inputPercent, double outputPercent) multipliers))
+                {
+                    var originalQuantity = recipeProductNetQuantities[key];
+                    var scaledQuantity = originalQuantity < 0
+                        ? originalQuantity * (1 + multipliers.inputPercent)
+                        : originalQuantity * (1 + multipliers.outputPercent);
+                    recipeProductNetQuantities[key] = scaledQuantity;
+                }
+            }
+            return recipeProductNetQuantities;
         }
     }
 }

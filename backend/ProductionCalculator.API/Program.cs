@@ -29,6 +29,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IAttributeService, AttributeService>();
 builder.Services.AddScoped<IRecipeService, RecipeService>();
 builder.Services.AddScoped<IMachineService, MachineService>();
 builder.Services.AddScoped<IModifierService, ModifierService>();

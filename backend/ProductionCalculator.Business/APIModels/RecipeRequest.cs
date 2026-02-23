@@ -7,5 +7,6 @@ namespace ProductionCalculator.Business.APIModels
         public required double BaseCraftingTime { get; set; }
         public required List<RecipeProductExchange> Inputs { get; set; }
         public required List<RecipeProductExchange> Outputs { get; set; }
+        public List<AttributeRateExchange> Attributes { get; set; } = [];
     }
 }

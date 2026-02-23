@@ -86,13 +86,13 @@ public class RecipeProductRepositoryTests
     }
 
     [Fact]
-    public async Task UpsertRecipeProducts_NewRecipeProduct_AddsToDatabase()
+    public async Task AddRecipeProducts_NewRecipeProduct_AddsToDatabase()
     {
         await using var db = CreateDbContext();
         var repo = new RecipeProductRepository(db);
         var rp = CreateRecipeProduct(id: 0); // New
 
-        await repo.UpsertRecipeProducts(new List<RecipeProduct> { rp });
+        await repo.AddRecipeProducts(new List<RecipeProduct> { rp });
 
         var saved = await db.Set<RecipeProduct>().ToListAsync();
         Assert.Single(saved);
@@ -100,7 +100,7 @@ public class RecipeProductRepositoryTests
     }
 
     [Fact]
-    public async Task UpsertRecipeProducts_ExistingRecipeProduct_UpdatesDatabaseFields()
+    public async Task UpdateRecipeProducts_ExistingRecipeProduct_UpdatesDatabaseFields()
     {
         await using var db = CreateDbContext();
         var repo = new RecipeProductRepository(db);
@@ -110,7 +110,7 @@ public class RecipeProductRepositoryTests
 
         rp.Quantity = 20.0; // Update existing object
 
-        await repo.UpsertRecipeProducts(new List<RecipeProduct> { rp });
+        await repo.UpdateRecipeProducts(new List<RecipeProduct> { rp });
 
         var saved = await db.Set<RecipeProduct>().FindAsync(111);
         Assert.Equal(20.0, saved!.Quantity);

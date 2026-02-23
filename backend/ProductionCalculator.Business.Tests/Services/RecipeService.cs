@@ -55,11 +55,13 @@ public class RecipeServiceTests
     private static RecipeService CreateService(
         IRecipeRepository repo,
         IProductRepository productRepo,
+        IAttributeRepository attributeRepo,
         IRecipeProductRepository recipeProductRepo,
+        IRecipeAttributeRepository recipeAttributeRepo,
         IProjectRepository projectRepo)
     {
         var currentUser = A.Fake<ICurrentUserService>();
-        return new RecipeService(currentUser, productRepo, repo, recipeProductRepo, projectRepo);
+        return new RecipeService(currentUser, productRepo, attributeRepo, repo, recipeProductRepo, recipeAttributeRepo, projectRepo);
     }
 
     [Fact]
@@ -69,7 +71,7 @@ public class RecipeServiceTests
         var productRepo = A.Fake<IProductRepository>();
         var recipeProductRepo = A.Fake<IRecipeProductRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, productRepo, recipeProductRepo, projectRepo);
+        var service = CreateService(repo, productRepo, A.Fake<IAttributeRepository>(), recipeProductRepo, A.Fake<IRecipeAttributeRepository>(), projectRepo);
 
         var result = await service.AddRecipe("projPuid", "", "desc", 1.0, new(), new());
 
@@ -83,7 +85,7 @@ public class RecipeServiceTests
         var productRepo = A.Fake<IProductRepository>();
         var recipeProductRepo = A.Fake<IRecipeProductRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, productRepo, recipeProductRepo, projectRepo);
+        var service = CreateService(repo, productRepo, A.Fake<IAttributeRepository>(), recipeProductRepo, A.Fake<IRecipeAttributeRepository>(), projectRepo);
         A.CallTo(() => projectRepo.GetProjectByPuid("missing")).Returns(Task.FromResult<Project?>(null));
 
         var result = await service.AddRecipe("missing", "Recipe", "desc", 1.0, new(), new());
@@ -98,7 +100,7 @@ public class RecipeServiceTests
         var productRepo = A.Fake<IProductRepository>();
         var recipeProductRepo = A.Fake<IRecipeProductRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, productRepo, recipeProductRepo, projectRepo);
+        var service = CreateService(repo, productRepo, A.Fake<IAttributeRepository>(), recipeProductRepo, A.Fake<IRecipeAttributeRepository>(), projectRepo);
         var project = CreateProject(id: 10, puid: "projPuid");
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetByProjectId(10)).Returns(new List<Recipe> { CreateRecipe(name: "Existing") });
@@ -115,24 +117,41 @@ public class RecipeServiceTests
         var productRepo = A.Fake<IProductRepository>();
         var recipeProductRepo = A.Fake<IRecipeProductRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, productRepo, recipeProductRepo, projectRepo);
+        var attributeRepo = A.Fake<IAttributeRepository>();
+        var recipeAttributeRepo = A.Fake<IRecipeAttributeRepository>();
+        var service = CreateService(repo, productRepo, attributeRepo, recipeProductRepo, recipeAttributeRepo, projectRepo);
         var project = CreateProject(id: 10, puid: "projPuid");
         var product = CreateProduct(id: 5, projectId: 10, puid: "p1");
+        var attribute = new ProjectAttribute
+        {
+            Attribute_Id = 7,
+            Project_Id = 10,
+            Puid = "a1",
+            Name = "Attr",
+            Description = "desc",
+            Unit = "u",
+            Version = 1,
+            Created_At = DateTime.UtcNow,
+            Last_Updated = DateTime.UtcNow
+        };
 
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetByProjectId(10)).Returns(new List<Recipe>());
         A.CallTo(() => productRepo.GetProductByPuid("p1")).Returns(product);
+        A.CallTo(() => attributeRepo.GetAttributeByPuid("a1")).Returns(attribute);
         A.CallTo(() => repo.PuidExists(A<string>._)).Returns(false);
 
         var inputs = new List<RecipeProductExchange> { new() { Puid = "p1", Quantity = 5 } };
         var outputs = new List<RecipeProductExchange>();
+        var attributes = new List<AttributeRateExchange> { new() { Puid = "a1", Rate = 2 } };
 
-        var result = await service.AddRecipe("projPuid", "NewRecipe", "desc", 2.0, inputs, outputs);
+        var result = await service.AddRecipe("projPuid", "NewRecipe", "desc", 2.0, inputs, outputs, attributes);
 
         Assert.True(result.Success);
         Assert.Equal(ServiceStatus.Created201, result.Status);
         A.CallTo(() => repo.AddRecipe(A<Recipe>.That.Matches(r => r.Name == "NewRecipe" && r.Project_Id == 10))).MustHaveHappenedOnceExactly();
-        A.CallTo(() => recipeProductRepo.UpsertRecipeProducts(A<IEnumerable<RecipeProduct>>.That.Matches(rp => rp.Any(x => x.Product_Id == 5 && x.Is_Input)))).MustHaveHappenedOnceExactly();
+        A.CallTo(() => recipeProductRepo.AddRecipeProducts(A<IEnumerable<RecipeProduct>>.That.Matches(rp => rp.Any(x => x.Product_Id == 5 && x.Is_Input)))).MustHaveHappenedOnceExactly();
+        A.CallTo(() => recipeAttributeRepo.AddRecipeAttributes(A<IEnumerable<RecipeAttribute>>.That.Matches(ra => ra.Any(x => x.Attribute_Id == 7 && x.Rate == 2)))).MustHaveHappenedOnceExactly();
     }
 
     [Fact]
@@ -142,7 +161,7 @@ public class RecipeServiceTests
         var productRepo = A.Fake<IProductRepository>();
         var recipeProductRepo = A.Fake<IRecipeProductRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, productRepo, recipeProductRepo, projectRepo);
+        var service = CreateService(repo, productRepo, A.Fake<IAttributeRepository>(), recipeProductRepo, A.Fake<IRecipeAttributeRepository>(), projectRepo);
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(Task.FromResult<Project?>(null));
 
         var result = await service.GetRecipeByPuid("projPuid", "recipePuid");
@@ -157,7 +176,7 @@ public class RecipeServiceTests
         var productRepo = A.Fake<IProductRepository>();
         var recipeProductRepo = A.Fake<IRecipeProductRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, productRepo, recipeProductRepo, projectRepo);
+        var service = CreateService(repo, productRepo, A.Fake<IAttributeRepository>(), recipeProductRepo, A.Fake<IRecipeAttributeRepository>(), projectRepo);
         var project = CreateProject(id: 10, puid: "projPuid");
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetByPuid("missing")).Returns(Task.FromResult<Recipe?>(null));
@@ -174,7 +193,7 @@ public class RecipeServiceTests
         var productRepo = A.Fake<IProductRepository>();
         var recipeProductRepo = A.Fake<IRecipeProductRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, productRepo, recipeProductRepo, projectRepo);
+        var service = CreateService(repo, productRepo, A.Fake<IAttributeRepository>(), recipeProductRepo, A.Fake<IRecipeAttributeRepository>(), projectRepo);
         var project = CreateProject(id: 10);
         var recipe = CreateRecipe(id: 1, projectId: 10, puid: "r1");
         var product = CreateProduct(id: 5, puid: "p1");
@@ -197,7 +216,7 @@ public class RecipeServiceTests
     public async Task GetRecipesByProjectPuid_ProjectNotFound_ReturnsNotFound()
     {
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(A.Fake<IRecipeRepository>(), A.Fake<IProductRepository>(), A.Fake<IRecipeProductRepository>(), projectRepo);
+        var service = CreateService(A.Fake<IRecipeRepository>(), A.Fake<IProductRepository>(), A.Fake<IAttributeRepository>(), A.Fake<IRecipeProductRepository>(), A.Fake<IRecipeAttributeRepository>(), projectRepo);
         A.CallTo(() => projectRepo.GetProjectByPuid("missing")).Returns(Task.FromResult<Project?>(null));
 
         var result = await service.GetRecipesByProjectPuid("missing");
@@ -210,7 +229,7 @@ public class RecipeServiceTests
     {
         var repo = A.Fake<IRecipeRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, A.Fake<IProductRepository>(), A.Fake<IRecipeProductRepository>(), projectRepo);
+        var service = CreateService(repo, A.Fake<IProductRepository>(), A.Fake<IAttributeRepository>(), A.Fake<IRecipeProductRepository>(), A.Fake<IRecipeAttributeRepository>(), projectRepo);
         var project = CreateProject(id: 10);
         A.CallTo(() => projectRepo.GetProjectByPuid("project123")).Returns(project);
         A.CallTo(() => repo.GetByProjectId(10)).Returns(new List<Recipe> { CreateRecipe(puid: "r1"), CreateRecipe(puid: "r2") });
@@ -224,7 +243,7 @@ public class RecipeServiceTests
     [Fact]
     public async Task UpdateRecipe_EmptyName_ReturnsBadRequest()
     {
-        var service = CreateService(A.Fake<IRecipeRepository>(), A.Fake<IProductRepository>(), A.Fake<IRecipeProductRepository>(), A.Fake<IProjectRepository>());
+        var service = CreateService(A.Fake<IRecipeRepository>(), A.Fake<IProductRepository>(), A.Fake<IAttributeRepository>(), A.Fake<IRecipeProductRepository>(), A.Fake<IRecipeAttributeRepository>(), A.Fake<IProjectRepository>());
 
         var result = await service.UpdateRecipe("proj", "recipe", "", "desc", 1.0, new(), new());
 
@@ -235,7 +254,7 @@ public class RecipeServiceTests
     public async Task UpdateRecipe_ProjectNotFound_ReturnsNotFound()
     {
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(A.Fake<IRecipeRepository>(), A.Fake<IProductRepository>(), A.Fake<IRecipeProductRepository>(), projectRepo);
+        var service = CreateService(A.Fake<IRecipeRepository>(), A.Fake<IProductRepository>(), A.Fake<IAttributeRepository>(), A.Fake<IRecipeProductRepository>(), A.Fake<IRecipeAttributeRepository>(), projectRepo);
         A.CallTo(() => projectRepo.GetProjectByPuid("missing")).Returns(Task.FromResult<Project?>(null));
 
         var result = await service.UpdateRecipe("missing", "recipe", "Name", "desc", 1.0, new(), new());
@@ -248,7 +267,7 @@ public class RecipeServiceTests
     {
         var repo = A.Fake<IRecipeRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, A.Fake<IProductRepository>(), A.Fake<IRecipeProductRepository>(), projectRepo);
+        var service = CreateService(repo, A.Fake<IProductRepository>(), A.Fake<IAttributeRepository>(), A.Fake<IRecipeProductRepository>(), A.Fake<IRecipeAttributeRepository>(), projectRepo);
         var project = CreateProject(id: 10);
         A.CallTo(() => projectRepo.GetProjectByPuid("proj")).Returns(project);
         A.CallTo(() => repo.GetByPuid("missing")).Returns(Task.FromResult<Recipe?>(null));
@@ -263,7 +282,7 @@ public class RecipeServiceTests
     {
         var repo = A.Fake<IRecipeRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, A.Fake<IProductRepository>(), A.Fake<IRecipeProductRepository>(), projectRepo);
+        var service = CreateService(repo, A.Fake<IProductRepository>(), A.Fake<IAttributeRepository>(), A.Fake<IRecipeProductRepository>(), A.Fake<IRecipeAttributeRepository>(), projectRepo);
         var project = CreateProject(id: 10);
         var recipe = CreateRecipe(id: 1, projectId: 10, puid: "r1");
         A.CallTo(() => projectRepo.GetProjectByPuid("proj")).Returns(project);
@@ -281,7 +300,7 @@ public class RecipeServiceTests
         var repo = A.Fake<IRecipeRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
         var recipeProductRepo = A.Fake<IRecipeProductRepository>();
-        var service = CreateService(repo, A.Fake<IProductRepository>(), recipeProductRepo, projectRepo);
+        var service = CreateService(repo, A.Fake<IProductRepository>(), A.Fake<IAttributeRepository>(), recipeProductRepo, A.Fake<IRecipeAttributeRepository>(), projectRepo);
         var project = CreateProject(id: 10);
         var recipe = CreateRecipe(id: 1, projectId: 10, puid: "r1");
 
@@ -300,7 +319,7 @@ public class RecipeServiceTests
     public async Task DeleteRecipe_ProjectNotFound_ReturnsNotFound()
     {
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(A.Fake<IRecipeRepository>(), A.Fake<IProductRepository>(), A.Fake<IRecipeProductRepository>(), projectRepo);
+        var service = CreateService(A.Fake<IRecipeRepository>(), A.Fake<IProductRepository>(), A.Fake<IAttributeRepository>(), A.Fake<IRecipeProductRepository>(), A.Fake<IRecipeAttributeRepository>(), projectRepo);
         A.CallTo(() => projectRepo.GetProjectByPuid("proj")).Returns(Task.FromResult<Project?>(null));
 
         var result = await service.DeleteRecipe("proj", "recipe");
@@ -313,7 +332,7 @@ public class RecipeServiceTests
     {
         var repo = A.Fake<IRecipeRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, A.Fake<IProductRepository>(), A.Fake<IRecipeProductRepository>(), projectRepo);
+        var service = CreateService(repo, A.Fake<IProductRepository>(), A.Fake<IAttributeRepository>(), A.Fake<IRecipeProductRepository>(), A.Fake<IRecipeAttributeRepository>(), projectRepo);
         var project = CreateProject(id: 10);
         A.CallTo(() => projectRepo.GetProjectByPuid("proj")).Returns(project);
         A.CallTo(() => repo.GetByPuid("missing")).Returns(Task.FromResult<Recipe?>(null));
@@ -328,7 +347,7 @@ public class RecipeServiceTests
     {
         var repo = A.Fake<IRecipeRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, A.Fake<IProductRepository>(), A.Fake<IRecipeProductRepository>(), projectRepo);
+        var service = CreateService(repo, A.Fake<IProductRepository>(), A.Fake<IAttributeRepository>(), A.Fake<IRecipeProductRepository>(), A.Fake<IRecipeAttributeRepository>(), projectRepo);
         var project = CreateProject(id: 10);
         var recipe = CreateRecipe(id: 1, projectId: 10, puid: "r1");
         A.CallTo(() => projectRepo.GetProjectByPuid("proj")).Returns(project);
@@ -345,7 +364,7 @@ public class RecipeServiceTests
     {
         var repo = A.Fake<IRecipeRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, A.Fake<IProductRepository>(), A.Fake<IRecipeProductRepository>(), projectRepo);
+        var service = CreateService(repo, A.Fake<IProductRepository>(), A.Fake<IAttributeRepository>(), A.Fake<IRecipeProductRepository>(), A.Fake<IRecipeAttributeRepository>(), projectRepo);
         var project = CreateProject(id: 10);
         var recipe = CreateRecipe(id: 1, projectId: 10, puid: "r1");
         A.CallTo(() => projectRepo.GetProjectByPuid("proj")).Returns(project);

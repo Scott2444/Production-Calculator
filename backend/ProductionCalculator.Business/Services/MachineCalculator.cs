@@ -53,9 +53,9 @@ namespace ProductionCalculator.Business.Services
             double multiplicativeModifier = 1.0;
             foreach (var modifier in modifiers)
             {
-                flatSpeedBonus += modifier.Flat_Speed_Bonus;
-                additivePercentBonus += modifier.Additive_Percent_Bonus;
-                multiplicativeModifier *= modifier.Multiplicative_Modifiers;
+                flatSpeedBonus += modifier.Flat_Bonus;
+                additivePercentBonus += modifier.Percent_Bonus;
+                multiplicativeModifier *= modifier.Multiplicative_Bonus;
             }
 
             // Calculate effective speed
