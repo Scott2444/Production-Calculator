@@ -76,4 +76,69 @@ public class RecipeAttributeRepositoryTests
 
         Assert.Equal(2, result.Count());
     }
+
+    [Fact]
+    public async Task GetById_RecipeAttributeExists_ReturnsRecipeAttribute()
+    {
+        await using var db = CreateDbContext();
+        var repo = new RecipeAttributeRepository(db);
+        db.Set<RecipeAttribute>().Add(CreateRecipeAttribute(id: 5, recipeId: 10, attributeId: 3));
+        await db.SaveChangesAsync();
+
+        var result = await repo.GetById(5);
+
+        Assert.NotNull(result);
+        Assert.Equal(5, result!.Recipe_Attribute_Id);
+    }
+
+    [Fact]
+    public async Task GetById_RecipeAttributeDoesNotExist_ReturnsNull()
+    {
+        await using var db = CreateDbContext();
+        var repo = new RecipeAttributeRepository(db);
+
+        var result = await repo.GetById(999);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task DeleteRecipeAttribute_RecipeAttributeExists_ReturnsTrueAndDeletes()
+    {
+        await using var db = CreateDbContext();
+        var repo = new RecipeAttributeRepository(db);
+        db.Set<RecipeAttribute>().Add(CreateRecipeAttribute(id: 12));
+        await db.SaveChangesAsync();
+
+        var result = await repo.DeleteRecipeAttribute(12);
+
+        Assert.True(result);
+        Assert.Null(await db.Set<RecipeAttribute>().FindAsync(12));
+    }
+
+    [Fact]
+    public async Task DeleteRecipeAttribute_RecipeAttributeDoesNotExist_ReturnsFalse()
+    {
+        await using var db = CreateDbContext();
+        var repo = new RecipeAttributeRepository(db);
+
+        var result = await repo.DeleteRecipeAttribute(999);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task DeleteRecipeAttributes_MixedIds_ReturnsPerIdResultAndDeletesExisting()
+    {
+        await using var db = CreateDbContext();
+        var repo = new RecipeAttributeRepository(db);
+        db.Set<RecipeAttribute>().Add(CreateRecipeAttribute(id: 21));
+        db.Set<RecipeAttribute>().Add(CreateRecipeAttribute(id: 22));
+        await db.SaveChangesAsync();
+
+        var results = await repo.DeleteRecipeAttributes(new List<int> { 21, 999, 22 });
+
+        Assert.Equal(new List<bool> { true, false, true }, results);
+        Assert.Empty(await db.Set<RecipeAttribute>().ToListAsync());
+    }
 }

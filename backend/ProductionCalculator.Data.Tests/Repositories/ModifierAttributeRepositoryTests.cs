@@ -36,6 +36,46 @@ public class ModifierAttributeRepositoryTests
     }
 
     [Fact]
+    public async Task DeleteModifierAttribute_Missing_ReturnsFalse()
+    {
+        await using var db = CreateDbContext();
+        var repo = new ModifierAttributeRepository(db);
+
+        var result = await repo.DeleteModifierAttribute(999);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task DeleteModifierAttribute_Exists_ReturnsTrueAndDeletes()
+    {
+        await using var db = CreateDbContext();
+        var repo = new ModifierAttributeRepository(db);
+        db.Set<ModifierAttribute>().Add(CreateModifierAttribute(id: 12, modifierId: 20, attributeId: 5));
+        await db.SaveChangesAsync();
+
+        var result = await repo.DeleteModifierAttribute(12);
+
+        Assert.True(result);
+        Assert.Null(await db.Set<ModifierAttribute>().FindAsync(12));
+    }
+
+    [Fact]
+    public async Task DeleteModifierAttributes_MixedIds_ReturnsPerIdResultAndDeletesExisting()
+    {
+        await using var db = CreateDbContext();
+        var repo = new ModifierAttributeRepository(db);
+        db.Set<ModifierAttribute>().Add(CreateModifierAttribute(id: 21));
+        db.Set<ModifierAttribute>().Add(CreateModifierAttribute(id: 22));
+        await db.SaveChangesAsync();
+
+        var results = await repo.DeleteModifierAttributes(new List<int> { 21, 999, 22 });
+
+        Assert.Equal(new List<bool> { true, false, true }, results);
+        Assert.Empty(await db.Set<ModifierAttribute>().ToListAsync());
+    }
+
+    [Fact]
     public async Task AddModifierAttributes_New_AddsToDatabase()
     {
         await using var db = CreateDbContext();
