@@ -47,6 +47,18 @@ public class WorkflowServiceTests
         };
     }
 
+    private static WorkflowNodeRequest CreateWorkflowNodeRequest()
+    {
+        return new WorkflowNodeRequest
+        {
+            MachinePuid = "m1",
+            ActualMachineCount = 1,
+            Modifiers = [],
+            RecipeAttributes = [],
+            MachineAttributes = []
+        };
+    }
+
     private static WorkflowService CreateService(IWorkflowRepository repo, IProjectRepository projectRepo, IWorkflowChartService nodeService)
     {
         var currentUser = A.Fake<ICurrentUserService>();
@@ -542,7 +554,7 @@ public class WorkflowServiceTests
         var service = CreateService(repo, projectRepo, nodeService);
         A.CallTo(() => projectRepo.GetProjectByPuid("missing")).Returns(Task.FromResult<Project?>(null));
 
-        var result = await service.UpdateNode("missing", "wfPuid", "nodePuid", new WorkflowNodeRequest());
+        var result = await service.UpdateNode("missing", "wfPuid", "nodePuid", CreateWorkflowNodeRequest());
 
         Assert.Equal(ServiceStatus.NotFound404, result.Status);
     }
@@ -558,7 +570,7 @@ public class WorkflowServiceTests
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetWorkflowByPuid("missing")).Returns(Task.FromResult<Workflow?>(null));
 
-        var result = await service.UpdateNode("projPuid", "missing", "nodePuid", new WorkflowNodeRequest());
+        var result = await service.UpdateNode("projPuid", "missing", "nodePuid", CreateWorkflowNodeRequest());
 
         Assert.Equal(ServiceStatus.NotFound404, result.Status);
     }
@@ -575,7 +587,7 @@ public class WorkflowServiceTests
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
 
-        var result = await service.UpdateNode("projPuid", "wfPuid", "nodePuid", new WorkflowNodeRequest());
+        var result = await service.UpdateNode("projPuid", "wfPuid", "nodePuid", CreateWorkflowNodeRequest());
 
         Assert.Equal(ServiceStatus.NotFound404, result.Status);
     }
@@ -589,7 +601,7 @@ public class WorkflowServiceTests
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(id: 10, puid: "projPuid");
         var workflow = CreateWorkflow(projectId: 10, puid: "wfPuid");
-        var request = new WorkflowNodeRequest();
+        var request = CreateWorkflowNodeRequest();
         var response = CreateWorkflowChartResponse();
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
@@ -610,7 +622,7 @@ public class WorkflowServiceTests
         var service = CreateService(repo, projectRepo, nodeService);
         var project = CreateProject(id: 10, puid: "projPuid");
         var workflow = CreateWorkflow(projectId: 10, puid: "wfPuid");
-        var request = new WorkflowNodeRequest();
+        var request = CreateWorkflowNodeRequest();
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetWorkflowByPuid("wfPuid")).Returns(workflow);
         A.CallTo(() => nodeService.UpdateNode(workflow, "nodePuid", request)).Returns(ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.BadRequest400, "Error"));

@@ -318,6 +318,10 @@ namespace ProductionCalculator.Business.Services
             return recipeRates;
         }
 
+        /// <summary>
+        /// Scales the recipe-product quantities based on the yield modifiers from the node chart.
+        /// Stacking is done additively.
+        /// </summary>
         private Dictionary<(int recipeId, int productId), double> 
             ScaleRecipeProductQuantities(
                 Dictionary<(int recipeId, int productId), double> recipeProductNetQuantities,
@@ -334,7 +338,7 @@ namespace ProductionCalculator.Business.Services
 
                 foreach (var workflowModifier in node.Modifiers)
                 {
-                    var modifier = projectObjects.Modifiers.First(m => m.Modifier_Id == workflowModifier.Modifier_Id);
+                    var modifier = projectObjects.Modifiers.First(m => m.Modifier_Id == workflowModifier.Modifier.Modifier_Id);
                     inputPercent += modifier.Input_Percent;
                     outputPercent += modifier.Output_Percent;
                 }

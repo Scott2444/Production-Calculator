@@ -12,6 +12,17 @@ namespace ProductionCalculator.Business.Services
             _machineCalculator = machineCalculator;
         }
 
+        /// <summary>
+        /// Rebuilds the node chart with updated nodes based on the calculated recipe rates.
+        /// All entities will be reused if possible to preserve user defined data.
+        /// This method may create or delete nodes if necessary to match the calculated recipe rates.
+        /// </summary>
+        /// <param name="currentChart">Previous node chart</param>
+        /// <param name="recipeRates">Demand recipe rates from workflow solver</param>
+        /// <param name="projectObjects">Project entities</param>
+        /// <param name="workflow"></param>
+        /// <param name="puidExistsFunc">PuidExistsFunction to query database of existing node puids</param>
+        /// <returns>New updated node chart</returns>
         public async Task<NodeChart> RebuildChartNodes(NodeChart currentChart, Dictionary<int, double> recipeRates, ProjectObjects projectObjects, Workflow workflow, Func<string, Task<bool>> puidExistsFunc)
         {
             NodeChart updatedChart = new NodeChart
@@ -46,7 +57,9 @@ namespace ProductionCalculator.Business.Services
                     var updatedNode = new FullNode
                     {
                         Node = nodeUsingRecipe.Node,
-                        Modifiers = nodeUsingRecipe.Modifiers
+                        Modifiers = nodeUsingRecipe.Modifiers,
+                        RecipeAttributes = nodeUsingRecipe.RecipeAttributes,
+                        MachineAttributes = nodeUsingRecipe.MachineAttributes
                     };
                     updatedNode.Node.Recipe_Version = recipe.Version;
                     updatedNode.Node.Machine_Id = machine?.Machine_Id;
@@ -79,13 +92,15 @@ namespace ProductionCalculator.Business.Services
                             Calculated_Target_Rate = rate,
                             Calculated_Actual_Rate = null
                         },
-                        Modifiers = new List<WorkflowNodeModifier>()
+                        Modifiers = [],
+                        RecipeAttributes = BuildDefaultRecipeAttributes(recipeId, projectObjects),
+                        MachineAttributes = machine != null ? BuildDefaultMachineAttributes(machine.Machine_Id, projectObjects) : []
                     };
                     updatedChart.Nodes.Add(newNode);
                 }
             }
             // Update product nodes
-            updatedChart.ProductNodes = AssembleProductNodes(updatedChart, recipeRates, projectObjects);
+            updatedChart.ProductNodes = AssembleProductNodes(workflow.Workflow_Id, recipeRates, projectObjects);
             // Keep existing product nodes where possible
             // Always keep nodes flagged as external to avoid user defined data loss
             foreach (var productNode in updatedChart.ProductNodes.ToList()) 
@@ -104,6 +119,16 @@ namespace ProductionCalculator.Business.Services
 
             return updatedChart;
         }
+
+        /// <summary>
+        /// Builds the edges between nodes after the nodes have been updated with RebuildChartNodes. 
+        /// Will reuse edges where possible to reduce IO (and preserve user defined data, although no user defined data is defined in the edges right now).
+        /// The DB must assigned node ids before calling this method since the edges require node ids to be assigned.
+        /// </summary>
+        /// <param name="currentChart"></param>
+        /// <param name="updatedChart"></param>
+        /// <param name="projectObjects"></param>
+        /// <returns>Updated node chart</returns>
         public NodeChart RebuildChartEdges(NodeChart currentChart, NodeChart updatedChart, ProjectObjects projectObjects)
         {
             updatedChart.Edges = AssembleEdges(updatedChart, projectObjects);
@@ -129,6 +154,16 @@ namespace ProductionCalculator.Business.Services
             }
             return updatedChart;
         }
+
+        /// <summary>
+        /// Updates the node chart with calculated recipe rates. This should be used after RebuildChartNodes.
+        /// Updates the Calculated_Actual_Rate and Calculated_Machine_Count for nodes
+        /// Updates Calculated_Flow_Rate for edges and product nodes based on the new recipe rates.
+        /// </summary>
+        /// <param name="chart">Updated node chart</param>
+        /// <param name="recipeRates">Supply recipe rates from workflow solver</param>
+        /// <param name="projectObjects">Project objects</param>
+        /// <returns>Updated node chart</returns>
         public NodeChart UpdateChartRates(NodeChart chart, Dictionary<int, double> recipeRates, ProjectObjects projectObjects)
         {
             // Update nodes
@@ -206,6 +241,7 @@ namespace ProductionCalculator.Business.Services
 
         /// <summary>
         /// Removes persistent components from the node chart that use deleted project objects.
+        /// Does not delete preferred_recipes since they are user defined and persist even if the recipe is deleted.
         /// </summary>
         public NodeChart PruneDeletedComponents(NodeChart chart, ProjectObjects projectObjects)
         {
@@ -264,7 +300,7 @@ namespace ProductionCalculator.Business.Services
         /// Assembles workflow product nodes on the node chart and calculated recipe rates.
         /// The nodes must already be created in the node chart.
         /// </summary>
-        private List<WorkflowProductNode> AssembleProductNodes(NodeChart nodeChart, Dictionary<int, double> recipeRates, ProjectObjects projectObjects)
+        private List<WorkflowProductNode> AssembleProductNodes(int workflowId, Dictionary<int, double> recipeRates, ProjectObjects projectObjects)
         {
             // Get rates of each product from recipes rates
             var productFlowRates = new Dictionary<int, double>();
@@ -283,8 +319,6 @@ namespace ProductionCalculator.Business.Services
                     productFlowRates[rp.Product_Id] += flow;
                 }
             }
-
-            var workflowId = nodeChart.Nodes.First().Node.Workflow_Id;
 
             // Assemble product nodes
             var productNodes = new List<WorkflowProductNode>();
@@ -321,6 +355,67 @@ namespace ProductionCalculator.Business.Services
             }
             var machine = projectObjects.Machines.First(m => m.Machine_Id == machineRecipes.First().Machine_Id);
             return machine;
+        }
+
+        /// <summary>
+        /// Overwrites and builds a new list of recipe attributes for the node based on the request.
+        /// Workflow_Node_Id will be assigned later once the node is saved and has its ID.
+        /// </summary>
+        private static List<WorkflowRecipeAttribute> BuildDefaultRecipeAttributes(int recipeId, ProjectObjects projectObjects)
+        {
+            return projectObjects.RecipeAttributes
+                .Where(a => a.Recipe_Id == recipeId)
+                .Select(a => new WorkflowRecipeAttribute
+                {
+                    Workflow_Recipe_Attribute_Id = 0,
+                    Workflow_Node_Id = 0, // Will be set in WorkflowChartDataService after node is saved and has its ID
+                    Attribute_Id = a.Attribute_Id,
+                    Rate = a.Rate
+                })
+                .ToList();
+        }
+
+        /// <summary>
+        /// Overwrites and builds a new list of machine attributes for the node based on the request.
+        /// Workflow_Node_Id will be assigned later once the node is saved and has its ID.
+        /// </summary>
+        private static List<WorkflowMachineAttribute> BuildDefaultMachineAttributes(int machineId, ProjectObjects projectObjects)
+        {
+            return projectObjects.MachineAttributes
+                .Where(a => a.Machine_Id == machineId)
+                .Select(a => new WorkflowMachineAttribute
+                {
+                    Workflow_Machine_Attribute_Id = 0,
+                    Workflow_Node_Id = 0, // Will be set in WorkflowChartDataService after node is saved and has its ID
+                    Attribute_Id = a.Attribute_Id,
+                    Rate = a.Rate
+                })
+                .ToList();
+        }
+
+        /// <summary>
+        /// Overwrites and builds a new list of modifier attributes for the node based on the request.
+        /// Workflow_Node_Id will be assigned later once the node is saved and has its ID.
+        /// </summary>
+        public static List<WorkflowModifierAttribute> BuildDefaultModifierAttributes(
+            List<WorkflowNodeModifier> workflowNodeModifiers,
+            ProjectObjects projectObjects)
+        {
+            var modifierIds = workflowNodeModifiers.Select(m => m.Modifier_Id).ToHashSet();
+            return projectObjects.ModifierAttributes
+                .Where(a => modifierIds.Contains(a.Modifier_Id))
+                .Select(a => new WorkflowModifierAttribute
+                {
+                    Workflow_Modifier_Attribute_Id = 0,
+                    Workflow_Node_Id = 0, // Will be set in WorkflowChartDataService after node is saved and has its ID
+                    Workflow_Node_Modifier_Id = 0, // Will be set in WorkflowChartDataService after node is saved and has its ID
+                    Modifier_Id = a.Modifier_Id,
+                    Attribute_Id = a.Attribute_Id,
+                    Flat_Bonus = a.Flat_Bonus,
+                    Percent_Bonus = a.Percent_Bonus,
+                    Multiplicative_Bonus = a.Multiplicative_Bonus
+                })
+                .ToList();
         }
     }
 }

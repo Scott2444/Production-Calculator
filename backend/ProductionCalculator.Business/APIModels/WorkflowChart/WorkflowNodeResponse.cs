@@ -9,6 +9,8 @@ namespace ProductionCalculator.Business.APIModels
 		public double? CalculatedMachineCount { get; set; }
 		public double? CalculatedTargetRate { get; set; }
 		public double? CalculatedActualRate { get; set; }
-        public List<string> ModifierPuids { get; set; } = [];
+		public List<WorkflowModifierExchange> Modifiers { get; set; } = [];
+		public List<AttributeRateExchange> RecipeAttributes { get; set; } = [];
+		public List<AttributeRateExchange> MachineAttributes { get; set; } = [];
 	}
 }

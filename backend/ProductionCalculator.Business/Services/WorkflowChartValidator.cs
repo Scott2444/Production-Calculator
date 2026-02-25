@@ -11,6 +11,13 @@ namespace ProductionCalculator.Business.Services
         /// Checks the nodechart against the project objects to ensure all versions are up to date.
         /// This also serves as a check that all referenced objects still exist (e.g. if a recipe was deleted after the node chart was calculated).
         /// </summary>
+        /// <param name="nodeChart">The node chart to check</param>
+        /// <param name="projectObjects">The project objects to check against</param>
+        /// <returns>True if the node chart is up to date, false if any referenced objects are missing or have version mismatches</returns>
+        /// <remarks>
+        /// This checks all recipes, machines, modifiers, and attributes referenced by the node chart to ensure they still exist and that the versions match the latest versions in the project objects.
+        /// Attribute relations (links) are not checked even if the default link changes in Project Data.
+        /// </remarks>
         public bool WorkflowIsUpToDate(NodeChart nodeChart, ProjectObjects projectObjects)
         {
             // Nodes - Check that recipe version and machine? version are up to date with latest project version
@@ -32,8 +39,8 @@ namespace ProductionCalculator.Business.Services
                 // Modifiers - Check that modifier versions are up to date with latest project version
                 foreach (var workflowModifier in fullNode.Modifiers)
                 {
-                    var modifier = projectObjects.Modifiers.FirstOrDefault(m => m.Modifier_Id == workflowModifier.Modifier_Id);
-                    if (modifier == null || workflowModifier.Modifier_Version != modifier.Version)
+                    var modifier = projectObjects.Modifiers.FirstOrDefault(m => m.Modifier_Id == workflowModifier.Modifier.Modifier_Id);
+                    if (modifier == null || workflowModifier.Modifier.Modifier_Version != modifier.Version)
                     {
                         return false;
                     }
@@ -57,6 +64,38 @@ namespace ProductionCalculator.Business.Services
                 if (recipe == null)
                 {
                     return false;
+                }
+            }
+
+            // Attributes - Check that all attributes still exist
+            foreach (var fullNode in nodeChart.Nodes)
+            {
+                foreach (var recipeAttribute in fullNode.RecipeAttributes)
+                {
+                    var attribute = projectObjects.Attributes.FirstOrDefault(a => a.Attribute_Id == recipeAttribute.Attribute_Id);
+                    if (attribute == null)
+                    {
+                        return false;
+                    }
+                }
+                foreach (var machineAttribute in fullNode.MachineAttributes)
+                {
+                    var attribute = projectObjects.Attributes.FirstOrDefault(a => a.Attribute_Id == machineAttribute.Attribute_Id);
+                    if (attribute == null)
+                    {
+                        return false;
+                    }
+                }
+                foreach (var workflowModifier in fullNode.Modifiers)
+                {
+                    foreach (var modifierAttribute in workflowModifier.ModifierAttributes!)
+                    {
+                        var attribute = projectObjects.Attributes.FirstOrDefault(a => a.Attribute_Id == modifierAttribute.Attribute_Id);
+                        if (attribute == null)
+                        {
+                            return false;
+                        }
+                    }
                 }
             }
 

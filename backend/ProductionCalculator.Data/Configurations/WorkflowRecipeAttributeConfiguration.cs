@@ -14,12 +14,8 @@ namespace ProductionCalculator.Data.Configurations
                 .ValueGeneratedOnAdd();
             builder.HasKey(u => u.Workflow_Recipe_Attribute_Id).HasName("workflow_recipe_attributes_pkey");
 
-            builder.Property(u => u.Workflow_Id)
-                .HasColumnName("workflow_id")
-                .IsRequired();
-
-            builder.Property(u => u.Recipe_Id)
-                .HasColumnName("recipe_id")
+            builder.Property(u => u.Workflow_Node_Id)
+                .HasColumnName("workflow_node_id")
                 .IsRequired();
 
             builder.Property(u => u.Attribute_Id)

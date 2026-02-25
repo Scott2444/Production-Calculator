@@ -8,6 +8,9 @@ namespace ProductionCalculator.Business.Services
 		private readonly IWorkflowNodeRepository _nodeRepo;
 		private readonly IWorkflowTargetRepository _targetRepo;
         private readonly IWorkflowNodeModifierRepository _modifierRepo;
+        private readonly IWorkflowRecipeAttributeRepository _recipeAttributeRepo;
+        private readonly IWorkflowMachineAttributeRepository _machineAttributeRepo;
+        private readonly IWorkflowModifierAttributeRepository _workflowModifierAttributeRepo;
         private readonly IWorkflowEdgeRepository _edgeRepo;
         private readonly IWorkflowProductNodeRepository _productNodeRepo;
         private readonly IWorkflowRecipeRepository _recipeRepo;
@@ -16,6 +19,9 @@ namespace ProductionCalculator.Business.Services
             IWorkflowNodeRepository nodeRepo, 
             IWorkflowTargetRepository targetRepo, 
             IWorkflowNodeModifierRepository modifierRepo, 
+            IWorkflowRecipeAttributeRepository recipeAttributeRepo,
+            IWorkflowMachineAttributeRepository machineAttributeRepo,
+            IWorkflowModifierAttributeRepository workflowModifierAttributeRepo,
             IWorkflowEdgeRepository edgeRepo,
             IWorkflowProductNodeRepository productNodeRepo,
             IWorkflowRecipeRepository recipeRepo
@@ -24,20 +30,42 @@ namespace ProductionCalculator.Business.Services
 			_nodeRepo = nodeRepo;
 			_targetRepo = targetRepo;
 			_modifierRepo = modifierRepo;
+            _recipeAttributeRepo = recipeAttributeRepo;
+            _machineAttributeRepo = machineAttributeRepo;
+            _workflowModifierAttributeRepo = workflowModifierAttributeRepo;
             _edgeRepo = edgeRepo;
             _productNodeRepo = productNodeRepo;
             _recipeRepo = recipeRepo;
 		}
+
+        /// <summary>
+        /// Retrieves all nodes, edges, targets, and product nodes for a given workflow, along with their modifiers and attributes.
+        /// </summary>
+        /// <param name="workflowId"></param>
+        /// <param name="isTracked">If true, the returned entities will be tracked by the EF context</param>
+        /// <returns>Assembled NodeChart</returns>
         public async Task<NodeChart> GetByWorkflowId(int workflowId, bool isTracked = false)
         {
             var nodes = new List<FullNode>();
             var workflowNodes = await _nodeRepo.GetByWorkflow(workflowId, isTracked);
             foreach (var workflowNode in workflowNodes)
             {
+                var modifiers = await _modifierRepo.GetByNodeId(workflowNode.Node_Id, isTracked);
+                var modifierAttributes = await _workflowModifierAttributeRepo.GetByNodeId(workflowNode.Node_Id, isTracked);
                 nodes.Add(new FullNode
                 {
                     Node = workflowNode,
-                    Modifiers = await _modifierRepo.GetByNodeId(workflowNode.Node_Id, isTracked),
+                    Modifiers = modifiers
+                        .Select(m => new FullWorkflowModifier
+                        {
+                            Modifier = m,
+                            ModifierAttributes = modifierAttributes
+                                .Where(a => a.Workflow_Node_Modifier_Id == m.Workflow_Node_Modifier_Id)
+                                .ToList()
+                        })
+                        .ToList(),
+                    RecipeAttributes = await _recipeAttributeRepo.GetByNodeId(workflowNode.Node_Id, isTracked),
+                    MachineAttributes = await _machineAttributeRepo.GetByNodeId(workflowNode.Node_Id, isTracked),
                 });
             }
             var edges = await _edgeRepo.GetByWorkflow(workflowId, isTracked);
@@ -58,15 +86,29 @@ namespace ProductionCalculator.Business.Services
         /// Handles the logic of determining which nodes need to be created, updated, or deleted, and performs those operations.
         /// Translates NodeChart to subcomponent and calls respective repos.
         /// Modifies NodeChart to reflect primary keys assigned as it is in the DB.
-        /// Returns updated NodeChart.
+        /// Modifiers and attributes depend on nodes and this will automatically assign those node_ids to the modifiers.
+        /// ModifierAttributes depend on modifiers and nodes, and this will automatically assign those node_ids and modifier_ids to the modifier attributes.
         /// </summary>
+        /// <returns>Updated NodeChart with IDs assigned by the database</returns>
         public async Task<NodeChart> WorkflowUpdate(int workflowId, NodeChart nodeChart)
         {
             var originalChart = await GetByWorkflowId(workflowId, isTracked: false);
             
             await UpdateNodes(nodeChart.Nodes.Select(n => n.Node).ToList(), originalChart.Nodes.Select(n => n.Node).ToList());
             await UpdateTargets(nodeChart.Targets, originalChart.Targets);
-            await UpdateModifiers(nodeChart.Nodes.SelectMany(n => n.Modifiers).ToList(), originalChart.Nodes.SelectMany(n => n.Modifiers).ToList());
+
+            SetNodeIdDependencies(nodeChart); // Solves Node_Id dependency
+            await UpdateModifiers(
+                nodeChart.Nodes.SelectMany(n => n.Modifiers.Select(m => m.Modifier)).ToList(),
+                originalChart.Nodes.SelectMany(n => n.Modifiers.Select(m => m.Modifier)).ToList());
+            NormalizeAttributeReferences(nodeChart);
+            await UpdateRecipeAttributes(nodeChart.Nodes.SelectMany(n => n.RecipeAttributes).ToList(), originalChart.Nodes.SelectMany(n => n.RecipeAttributes).ToList());
+            await UpdateMachineAttributes(nodeChart.Nodes.SelectMany(n => n.MachineAttributes).ToList(), originalChart.Nodes.SelectMany(n => n.MachineAttributes).ToList());
+            
+            SetModifierIdsDependencies(nodeChart); // Solves ModifierAttribute -> Node and Modifier dependencies
+            await UpdateModifierAttributes(
+                nodeChart.Nodes.SelectMany(n => n.Modifiers.SelectMany(m => m.ModifierAttributes)).ToList(),
+                originalChart.Nodes.SelectMany(n => n.Modifiers.SelectMany(m => m.ModifierAttributes)).ToList());
             await UpdateProductNodes(nodeChart.ProductNodes, originalChart.ProductNodes);
             await UpdateRecipes(nodeChart.PreferredRecipes, originalChart.PreferredRecipes);
             return nodeChart;
@@ -182,6 +224,79 @@ namespace ProductionCalculator.Business.Services
         }
 
         /// <summary>
+        /// Ensures that all attributes in the NodeChart have their Workflow_Node_Id set to the Node_Id of the node they belong to
+        /// Ensures ModifierAttributes also have their Workflow_Node_Modifier_Id set to the correct modifier.
+        /// This is required since Workflow_Node_Id and Workflow_Node_Modifier_Id are assigned by the database.
+        /// </summary>
+        private void NormalizeAttributeReferences(NodeChart nodeChart)
+        {
+            foreach (var node in nodeChart.Nodes)
+            {
+                foreach (var recipeAttribute in node.RecipeAttributes)
+                {
+                    recipeAttribute.Workflow_Node_Id = node.Node.Node_Id;
+                }
+
+                foreach (var machineAttribute in node.MachineAttributes)
+                {
+                    machineAttribute.Workflow_Node_Id = node.Node.Node_Id;
+                }
+
+                foreach (var fullModifier in node.Modifiers)
+                {
+                    foreach (var modifierAttribute in fullModifier.ModifierAttributes)
+                    {
+                        modifierAttribute.Workflow_Node_Id = node.Node.Node_Id;
+                        modifierAttribute.Workflow_Node_Modifier_Id = fullModifier.Modifier.Workflow_Node_Modifier_Id;
+                        modifierAttribute.Modifier_Id = fullModifier.Modifier.Modifier_Id;
+                    }
+                }
+            }
+        }
+
+        private async Task UpdateRecipeAttributes(List<WorkflowRecipeAttribute> newAttributes, List<WorkflowRecipeAttribute> originalAttributes)
+        {
+            var originalDict = originalAttributes.ToDictionary(t => t.Workflow_Recipe_Attribute_Id);
+            var newDict = newAttributes.Where(t => t.Workflow_Recipe_Attribute_Id != 0).ToDictionary(t => t.Workflow_Recipe_Attribute_Id);
+
+            var inputsToAdd = newAttributes.Where(nt => !originalDict.ContainsKey(nt.Workflow_Recipe_Attribute_Id)).ToList();
+            var inputsToUpdate = newAttributes.Where(nt => originalDict.TryGetValue(nt.Workflow_Recipe_Attribute_Id, out var ot) && !ot.ValueEquals(nt)).ToList();
+            var inputsToDelete = originalDict.Values.Where(et => !newDict.ContainsKey(et.Workflow_Recipe_Attribute_Id)).ToList();
+
+            if (inputsToAdd.Any()) await _recipeAttributeRepo.AddWorkflowRecipeAttributes(inputsToAdd);
+            if (inputsToUpdate.Any()) await _recipeAttributeRepo.UpdateWorkflowRecipeAttributes(inputsToUpdate);
+            if (inputsToDelete.Any()) await _recipeAttributeRepo.DeleteWorkflowRecipeAttributes(inputsToDelete.Select(i => i.Workflow_Recipe_Attribute_Id).ToList());
+        }
+
+        private async Task UpdateMachineAttributes(List<WorkflowMachineAttribute> newAttributes, List<WorkflowMachineAttribute> originalAttributes)
+        {
+            var originalDict = originalAttributes.ToDictionary(t => t.Workflow_Machine_Attribute_Id);
+            var newDict = newAttributes.Where(t => t.Workflow_Machine_Attribute_Id != 0).ToDictionary(t => t.Workflow_Machine_Attribute_Id);
+
+            var inputsToAdd = newAttributes.Where(nt => !originalDict.ContainsKey(nt.Workflow_Machine_Attribute_Id)).ToList();
+            var inputsToUpdate = newAttributes.Where(nt => originalDict.TryGetValue(nt.Workflow_Machine_Attribute_Id, out var ot) && !ot.ValueEquals(nt)).ToList();
+            var inputsToDelete = originalDict.Values.Where(et => !newDict.ContainsKey(et.Workflow_Machine_Attribute_Id)).ToList();
+
+            if (inputsToAdd.Any()) await _machineAttributeRepo.AddWorkflowMachineAttributes(inputsToAdd);
+            if (inputsToUpdate.Any()) await _machineAttributeRepo.UpdateWorkflowMachineAttributes(inputsToUpdate);
+            if (inputsToDelete.Any()) await _machineAttributeRepo.DeleteWorkflowMachineAttributes(inputsToDelete.Select(i => i.Workflow_Machine_Attribute_Id).ToList());
+        }
+
+        private async Task UpdateModifierAttributes(List<WorkflowModifierAttribute> newAttributes, List<WorkflowModifierAttribute> originalAttributes)
+        {
+            var originalDict = originalAttributes.ToDictionary(t => t.Workflow_Modifier_Attribute_Id);
+            var newDict = newAttributes.Where(t => t.Workflow_Modifier_Attribute_Id != 0).ToDictionary(t => t.Workflow_Modifier_Attribute_Id);
+
+            var inputsToAdd = newAttributes.Where(nt => !originalDict.ContainsKey(nt.Workflow_Modifier_Attribute_Id)).ToList();
+            var inputsToUpdate = newAttributes.Where(nt => originalDict.TryGetValue(nt.Workflow_Modifier_Attribute_Id, out var ot) && !ot.ValueEquals(nt)).ToList();
+            var inputsToDelete = originalDict.Values.Where(et => !newDict.ContainsKey(et.Workflow_Modifier_Attribute_Id)).ToList();
+
+            if (inputsToAdd.Any()) await _workflowModifierAttributeRepo.AddWorkflowModifierAttributes(inputsToAdd);
+            if (inputsToUpdate.Any()) await _workflowModifierAttributeRepo.UpdateWorkflowModifierAttributes(inputsToUpdate);
+            if (inputsToDelete.Any()) await _workflowModifierAttributeRepo.DeleteWorkflowModifierAttributes(inputsToDelete.Select(i => i.Workflow_Modifier_Attribute_Id).ToList());
+        }
+
+        /// <summary>
         /// Handles the logic of determining which recipes need to be created, updated, or deleted, and performs those operations.
         /// Calls repos to perform DB operations.
         /// </summary>
@@ -262,5 +377,47 @@ namespace ProductionCalculator.Business.Services
             // Delete removed
             if (inputsToDelete.Any()) await _productNodeRepo.DeleteWorkflowProductNodes(inputsToDelete.Select(i => i.Workflow_Product_Node_Id).ToList());
         }
-	}
+
+        /// <summary>
+        /// Modifiers depend on nodes being assigned an ID by the database.
+        /// Assigns the correct Workflow_Node_Id to each modifier based on the node it belongs to.
+        /// </summary>
+        private void SetNodeIdDependencies(NodeChart nodeChart)
+        {
+            foreach (var node in nodeChart.Nodes)
+            {
+                foreach (var recipeAttribute in node.RecipeAttributes)
+                {
+                    recipeAttribute.Workflow_Node_Id = node.Node.Node_Id;
+                }
+                foreach (var machineAttribute in node.MachineAttributes)
+                {
+                    machineAttribute.Workflow_Node_Id = node.Node.Node_Id;
+                }
+                foreach (var modifier in node.Modifiers)
+                {
+                    modifier.Modifier.Workflow_Node_Id = node.Node.Node_Id;
+                }
+            }
+        }
+
+        /// <summary>
+        /// ModifiersAttributes depend on nodes and modifiers being assigned an ID by the database.
+        /// Assigns the correct Workflow_Node_Id and Workflow_Node_Modifier_Id to each modifier attribute based on the modifier it belongs to.
+        /// </summary>
+        private void SetModifierIdsDependencies(NodeChart nodeChart)
+        {
+            foreach (var node in nodeChart.Nodes)
+            {
+                foreach (var modifier in node.Modifiers)
+                {
+                    foreach (var modifierAttribute in modifier.ModifierAttributes)
+                    {
+                        modifierAttribute.Workflow_Node_Id = node.Node.Node_Id;
+                        modifierAttribute.Workflow_Node_Modifier_Id = modifier.Modifier.Workflow_Node_Modifier_Id;
+                    }
+                }
+            }
+        }
+    }
 }
