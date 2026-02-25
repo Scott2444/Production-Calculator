@@ -82,4 +82,41 @@ public class AttributesControllerTests
         var obj = Assert.IsType<StatusCodeResult>(result);
         Assert.Equal(204, obj.StatusCode);
     }
+
+    [Fact]
+    public async Task GetAttributesByProjectPuid_ValidRequest_Returns200AndList()
+    {
+        var service = A.Fake<IAttributeService>();
+        var attributes = new List<ProjectAttribute> { CreateAttribute("attrPuid1", "Attr1"), CreateAttribute("attrPuid2", "Attr2") };
+        A.CallTo(() => service.GetAttributesByProjectPuid("projPuid")).Returns(ServiceResult<List<ProjectAttribute>>.SuccessResult(attributes));
+        var controller = CreateController(service);
+
+        var result = await controller.GetAttributesByProjectPuid("projPuid");
+
+        var obj = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(200, obj.StatusCode);
+        var list = Assert.IsType<List<AttributeResponse>>(obj.Value);
+        Assert.Equal(2, list.Count);
+        Assert.Equal("attrPuid1", list[0].Puid);
+        Assert.Equal("attrPuid2", list[1].Puid);
+    }
+
+    [Fact]
+    public async Task UpdateAttribute_ValidRequest_Returns200()
+    {
+        var service = A.Fake<IAttributeService>();
+        var attribute = CreateAttribute("attrPuid", "UpdatedAttr");
+        var req = new AttributeRequest { Name = "UpdatedAttr", Description = "desc", Unit = "u" };
+        A.CallTo(() => service.UpdateAttribute("projPuid", "attrPuid", req.Name, req.Description, req.Unit)).Returns(ServiceResult<ProjectAttribute>.SuccessResult(attribute));
+        var controller = CreateController(service);
+
+        var result = await controller.UpdateAttribute("projPuid", "attrPuid", req);
+
+        var obj = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(200, obj.StatusCode);
+        Assert.IsType<AttributeResponse>(obj.Value);
+        var response = (AttributeResponse)obj.Value;
+        Assert.Equal("attrPuid", response.Puid);
+        Assert.Equal("UpdatedAttr", response.Name);
+    }
 }

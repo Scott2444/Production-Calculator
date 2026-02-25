@@ -213,4 +213,164 @@ public class WorkflowsControllerTests
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(400, obj.StatusCode);
     }
+
+    [Fact]
+    public async Task GetWorkflowChart_ValidRequest_Returns200Ok()
+    {
+        var service = A.Fake<IWorkflowService>();
+        var chart = new WorkflowChartResponse { Nodes = [], Edges = [], Targets = [], ProductNodes = [], PreferredRecipes = [] };
+        A.CallTo(() => service.GetWorkflowChartById("projPuid", "wfPuid")).Returns(ServiceResult<WorkflowChartResponse>.SuccessResult(chart));
+        var controller = CreateController(service);
+
+        var result = await controller.GetWorkflowChart("projPuid", "wfPuid");
+
+        var obj = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(200, obj.StatusCode);
+        Assert.IsType<WorkflowChartResponse>(obj.Value);
+    }
+
+    [Fact]
+    public async Task GetWorkflowChart_ServiceReturnsError_ReturnsErrorStatus()
+    {
+        var service = A.Fake<IWorkflowService>();
+        A.CallTo(() => service.GetWorkflowChartById("projPuid", "wfPuid")).Returns(ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Not Found"));
+        var controller = CreateController(service);
+
+        var result = await controller.GetWorkflowChart("projPuid", "wfPuid");
+
+        var obj = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(404, obj.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateWorkflowPatch_ValidRequest_Returns200Ok()
+    {
+        var service = A.Fake<IWorkflowService>();
+        var chart = new WorkflowChartResponse { Nodes = [], Edges = [], Targets = [], ProductNodes = [], PreferredRecipes = [] };
+        A.CallTo(() => service.UpgradeWorkflowChart("projPuid", "wfPuid")).Returns(ServiceResult<WorkflowChartResponse>.SuccessResult(chart));
+        var controller = CreateController(service);
+
+        var result = await controller.UpdateWorkflow("projPuid", "wfPuid");
+
+        var obj = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(200, obj.StatusCode);
+        Assert.IsType<WorkflowChartResponse>(obj.Value);
+    }
+
+    [Fact]
+    public async Task UpdateWorkflowPatch_ServiceReturnsError_ReturnsErrorStatus()
+    {
+        var service = A.Fake<IWorkflowService>();
+        A.CallTo(() => service.UpgradeWorkflowChart("projPuid", "wfPuid")).Returns(ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.BadRequest400, "Error"));
+        var controller = CreateController(service);
+
+        var result = await controller.UpdateWorkflow("projPuid", "wfPuid");
+
+        var obj = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(400, obj.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateNode_ValidRequest_Returns200Ok()
+    {
+        var service = A.Fake<IWorkflowService>();
+        var req = new WorkflowNodeRequest
+        {
+            MachinePuid = "m1",
+            ActualMachineCount = 1,
+            Modifiers = new List<WorkflowModifierExchange>(),
+            RecipeAttributes = new List<AttributeRateExchange>(),
+            MachineAttributes = new List<AttributeRateExchange>()
+        };
+        var chart = new WorkflowChartResponse { Nodes = [], Edges = [], Targets = [], ProductNodes = [], PreferredRecipes = [] };
+        A.CallTo(() => service.UpdateNode("projPuid", "wfPuid", "nodePuid", req)).Returns(ServiceResult<WorkflowChartResponse>.SuccessResult(chart));
+        var controller = CreateController(service);
+
+        var result = await controller.UpdateNode("projPuid", "wfPuid", "nodePuid", req);
+
+        var obj = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(200, obj.StatusCode);
+        Assert.IsType<WorkflowChartResponse>(obj.Value);
+    }
+
+    [Fact]
+    public async Task UpdateNode_ServiceReturnsError_ReturnsErrorStatus()
+    {
+        var service = A.Fake<IWorkflowService>();
+        var req = new WorkflowNodeRequest
+        {
+            MachinePuid = "m1",
+            ActualMachineCount = 1,
+            Modifiers = new List<WorkflowModifierExchange>(),
+            RecipeAttributes = new List<AttributeRateExchange>(),
+            MachineAttributes = new List<AttributeRateExchange>()
+        };
+        A.CallTo(() => service.UpdateNode("projPuid", "wfPuid", "nodePuid", req)).Returns(ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Node Not Found"));
+        var controller = CreateController(service);
+
+        var result = await controller.UpdateNode("projPuid", "wfPuid", "nodePuid", req);
+
+        var obj = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(404, obj.StatusCode);
+    }
+
+    [Fact]
+    public async Task SetRecipes_ValidRequest_Returns200Ok()
+    {
+        var service = A.Fake<IWorkflowService>();
+        var req = new WorkflowRecipeRequest { RecipePuids = ["r1"] };
+        var chart = new WorkflowChartResponse { Nodes = [], Edges = [], Targets = [], ProductNodes = [], PreferredRecipes = [] };
+        A.CallTo(() => service.SetRecipes("projPuid", "wfPuid", req.RecipePuids)).Returns(ServiceResult<WorkflowChartResponse>.SuccessResult(chart));
+        var controller = CreateController(service);
+
+        var result = await controller.SetRecipes("projPuid", "wfPuid", req);
+
+        var obj = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(200, obj.StatusCode);
+        Assert.IsType<WorkflowChartResponse>(obj.Value);
+    }
+
+    [Fact]
+    public async Task SetRecipes_ServiceReturnsError_ReturnsErrorStatus()
+    {
+        var service = A.Fake<IWorkflowService>();
+        var req = new WorkflowRecipeRequest { RecipePuids = ["r1"] };
+        A.CallTo(() => service.SetRecipes("projPuid", "wfPuid", req.RecipePuids)).Returns(ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.BadRequest400, "Invalid Recipes"));
+        var controller = CreateController(service);
+
+        var result = await controller.SetRecipes("projPuid", "wfPuid", req);
+
+        var obj = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(400, obj.StatusCode);
+    }
+
+    [Fact]
+    public async Task SetExternal_ValidRequest_Returns200Ok()
+    {
+        var service = A.Fake<IWorkflowService>();
+        var req = new WorkflowExternalRequest { IsExternal = true, ExternalRate = 10.0 };
+        var chart = new WorkflowChartResponse { Nodes = [], Edges = [], Targets = [], ProductNodes = [], PreferredRecipes = [] };
+        A.CallTo(() => service.SetExternal("projPuid", "wfPuid", "prodPuid", req.IsExternal, req.ExternalRate)).Returns(ServiceResult<WorkflowChartResponse>.SuccessResult(chart));
+        var controller = CreateController(service);
+
+        var result = await controller.SetExternal("projPuid", "wfPuid", "prodPuid", req);
+
+        var obj = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(200, obj.StatusCode);
+        Assert.IsType<WorkflowChartResponse>(obj.Value);
+    }
+
+    [Fact]
+    public async Task SetExternal_ServiceReturnsError_ReturnsErrorStatus()
+    {
+        var service = A.Fake<IWorkflowService>();
+        var req = new WorkflowExternalRequest { IsExternal = true, ExternalRate = 10.0 };
+        A.CallTo(() => service.SetExternal("projPuid", "wfPuid", "prodPuid", req.IsExternal, req.ExternalRate)).Returns(ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Product Not Found"));
+        var controller = CreateController(service);
+
+        var result = await controller.SetExternal("projPuid", "wfPuid", "prodPuid", req);
+
+        var obj = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(404, obj.StatusCode);
+    }
 }
