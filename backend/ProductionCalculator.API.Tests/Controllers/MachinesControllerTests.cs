@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using FakeItEasy;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +9,7 @@ using ProductionCalculator.Business.Models;
 
 namespace ProductionCalculator.API.Tests;
 
+[ExcludeFromCodeCoverage]
 public class MachineControllerTests
 {
     private static MachinesController CreateController(IMachineService service)

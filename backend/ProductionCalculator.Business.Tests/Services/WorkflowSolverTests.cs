@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Services;
 
 namespace ProductionCalculator.Business.Tests;
 
+[ExcludeFromCodeCoverage]
 public class WorkflowSolverTests
 {
 	private static readonly DateTime StaticNow = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);

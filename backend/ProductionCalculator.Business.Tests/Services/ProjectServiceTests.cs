@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using FakeItEasy;
 using Microsoft.Extensions.Logging;
 using ProductionCalculator.Business.Helpers;
@@ -7,6 +8,7 @@ using ProductionCalculator.Business.Services;
 
 namespace ProductionCalculator.Business.Tests;
 
+[ExcludeFromCodeCoverage]
 public class ProjectServiceTests
 {
     private static User CreateUser(int id = 1, string puid = "userPuid")

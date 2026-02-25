@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Services;
 
 namespace ProductionCalculator.Business.Tests.Services
 {
+    [ExcludeFromCodeCoverage]
     public class WorkflowChartValidatorTests
     {
         private readonly WorkflowChartValidator _validator;

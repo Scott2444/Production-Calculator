@@ -1,4 +1,5 @@
-﻿using FakeItEasy;
+﻿using System.Diagnostics.CodeAnalysis;
+using FakeItEasy;
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Services;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace ProductionCalculator.Business.Tests;
 
+[ExcludeFromCodeCoverage]
 public class UserServiceTests
 {
     private readonly IUserRepository _repo;

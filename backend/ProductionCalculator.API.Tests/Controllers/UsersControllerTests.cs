@@ -1,4 +1,5 @@
-﻿using FakeItEasy;
+﻿using System.Diagnostics.CodeAnalysis;
+using FakeItEasy;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using ProductionCalculator.API.Controllers;
@@ -8,6 +9,7 @@ using ProductionCalculator.Business.Models;
 
 namespace ProductionCalculator.API.Tests;
 
+[ExcludeFromCodeCoverage]
 public class UsersControllerTests
 {
     private static UsersController CreateController(IUserService service)

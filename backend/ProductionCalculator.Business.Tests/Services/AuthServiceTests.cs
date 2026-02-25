@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using FakeItEasy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,7 @@ using FakeItEasy.Sdk;
 
 namespace ProductionCalculator.Business.Tests.Services;
 
+[ExcludeFromCodeCoverage]
 public class AuthServiceTests
 {
     private readonly ICurrentUserService _currentUserService;

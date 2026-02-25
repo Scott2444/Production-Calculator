@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Services;
 
 namespace ProductionCalculator.Business.Tests;
 
+[ExcludeFromCodeCoverage]
 public class WorkflowMapperTests
 {
     [Fact]

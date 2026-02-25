@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using FakeItEasy;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace ProductionCalculator.API.Tests.Controllers;
 
+[ExcludeFromCodeCoverage]
 public class AuthControllerTests
 {
     private readonly IAuthService _authService;

@@ -1,9 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Data.Repositories;
 
 namespace ProductionCalculator.Data.Tests.Repositories;
 
+[ExcludeFromCodeCoverage]
 public class VerificationCodeRepositoryTests
 {
     private static ProductionCalculatorDbContext CreateDbContext()

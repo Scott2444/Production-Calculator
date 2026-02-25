@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using FakeItEasy;
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
@@ -10,6 +11,7 @@ using Xunit;
 
 namespace ProductionCalculator.Business.Tests.Services
 {
+    [ExcludeFromCodeCoverage]
     public class WorkflowChartAssemblerTests
     {
         private readonly IMachineCalculator _machineCalculator;

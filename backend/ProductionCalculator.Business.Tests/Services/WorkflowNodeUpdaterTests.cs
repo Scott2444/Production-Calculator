@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Services;
@@ -6,6 +7,7 @@ using Xunit;
 
 namespace ProductionCalculator.Business.Tests.Services
 {
+    [ExcludeFromCodeCoverage]
     public class WorkflowNodeUpdaterTests
     {
         private readonly WorkflowNodeUpdater _updater;

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using FakeItEasy;
 using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Models;
@@ -8,6 +9,7 @@ using ProductionCalculator.Business.Helpers;
 
 namespace ProductionCalculator.Business.Tests;
 
+[ExcludeFromCodeCoverage]
 public class WorkflowChartServiceTests
 {
     private readonly IWorkflowChartDataService _chartDataService;

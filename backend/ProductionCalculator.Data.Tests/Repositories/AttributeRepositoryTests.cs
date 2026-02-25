@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Data.Repositories;
+using System.Diagnostics.CodeAnalysis;
 
 namespace ProductionCalculator.Data.Tests;
 
+[ExcludeFromCodeCoverage]
 public class AttributeRepositoryTests
 {
     private static ProductionCalculatorDbContext CreateDbContext()
@@ -44,6 +46,94 @@ public class AttributeRepositoryTests
 
         var saved = await db.Set<ProjectAttribute>().FirstOrDefaultAsync(a => a.Puid == attribute.Puid);
         Assert.NotNull(saved);
+    }
+
+    [Fact]
+    public async Task GetAttributeById_AttributeExists_ReturnsAttribute()
+    {
+        await using var db = CreateDbContext();
+        var repo = new AttributeRepository(db);
+        var attribute = CreateAttribute(id: 5);
+        db.Set<ProjectAttribute>().Add(attribute);
+        await db.SaveChangesAsync();
+
+        var result = await repo.GetAttributeById(5);
+
+        Assert.NotNull(result);
+        Assert.Equal(5, result!.Attribute_Id);
+    }
+
+    [Fact]
+    public async Task GetAttributeByPuid_AttributeExists_ReturnsAttribute()
+    {
+        await using var db = CreateDbContext();
+        var repo = new AttributeRepository(db);
+        var attribute = CreateAttribute(puid: "uniquePuid");
+        db.Set<ProjectAttribute>().Add(attribute);
+        await db.SaveChangesAsync();
+
+        var result = await repo.GetAttributeByPuid("uniquePuid");
+
+        Assert.NotNull(result);
+        Assert.Equal("uniquePuid", result!.Puid);
+    }
+
+    [Fact]
+    public async Task UpdateAttribute_ValidAttribute_UpdatesAttribute()
+    {
+        await using var db = CreateDbContext();
+        var repo = new AttributeRepository(db);
+        var attribute = CreateAttribute(id: 7, name: "OldName");
+        db.Set<ProjectAttribute>().Add(attribute);
+        await db.SaveChangesAsync();
+
+        attribute.Name = "NewName";
+        var updated = await repo.UpdateAttribute(attribute);
+
+        Assert.Equal("NewName", updated.Name);
+        var fromDb = await db.Set<ProjectAttribute>().FindAsync(7);
+        Assert.Equal("NewName", fromDb!.Name);
+    }
+
+    [Fact]
+    public async Task DeleteAttribute_AttributeExists_ReturnsTrueAndDeletes()
+    {
+        await using var db = CreateDbContext();
+        var repo = new AttributeRepository(db);
+        var attribute = CreateAttribute(id: 8);
+        db.Set<ProjectAttribute>().Add(attribute);
+        await db.SaveChangesAsync();
+
+        var result = await repo.DeleteAttribute(8);
+
+        Assert.True(result);
+        var fromDb = await db.Set<ProjectAttribute>().FindAsync(8);
+        Assert.Null(fromDb);
+    }
+
+    [Fact]
+    public async Task PuidExists_AttributeExists_ReturnsTrue()
+    {
+        await using var db = CreateDbContext();
+        var repo = new AttributeRepository(db);
+        var attribute = CreateAttribute(puid: "existsPuid");
+        db.Set<ProjectAttribute>().Add(attribute);
+        await db.SaveChangesAsync();
+
+        var result = await repo.PuidExists("existsPuid");
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task PuidExists_AttributeDoesNotExist_ReturnsFalse()
+    {
+        await using var db = CreateDbContext();
+        var repo = new AttributeRepository(db);
+
+        var result = await repo.PuidExists("missingPuid");
+
+        Assert.False(result);
     }
 
     [Fact]

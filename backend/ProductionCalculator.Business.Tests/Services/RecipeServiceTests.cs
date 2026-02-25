@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using FakeItEasy;
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
@@ -6,6 +7,7 @@ using ProductionCalculator.Business.APIModels;
 
 namespace ProductionCalculator.Business.Tests;
 
+[ExcludeFromCodeCoverage]
 public class RecipeServiceTests
 {
     private static Project CreateProject(int id = 1, string puid = "project123", string? aliasPuid = null)

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using FakeItEasy;
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
@@ -5,6 +6,7 @@ using ProductionCalculator.Business.Services;
 
 namespace ProductionCalculator.Business.Tests.Services
 {
+    [ExcludeFromCodeCoverage]
     public class WorkflowChartDataServiceTests
     {
         private readonly IWorkflowNodeRepository _nodeRepo;

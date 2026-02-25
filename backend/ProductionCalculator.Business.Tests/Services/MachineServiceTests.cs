@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using FakeItEasy;
 using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Interfaces;
@@ -6,6 +7,7 @@ using ProductionCalculator.Business.Services;
 
 namespace ProductionCalculator.Business.Tests;
 
+[ExcludeFromCodeCoverage]
 public class MachineServiceTests
 {
     private static Project CreateProject(int id = 1, string puid = "project123")
