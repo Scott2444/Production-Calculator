@@ -105,7 +105,7 @@ jobs:
                   apiToken: ${{ secrets.CF_API_TOKEN }}
                   accountId: ${{ secrets.CF_ACCOUNT_ID }}
                   workingDirectory: ./frontend
-                  command: pages deploy ./frontend/.vercel/output/static --project-name production-calculator-dev --branch ${{ github.ref_name }}
+                  command: pages deploy .vercel/output/static --project-name production-calculator-dev --branch ${{ github.ref_name }}
 
     deploy_staging:
         if: github.ref == 'refs/heads/main'
@@ -163,7 +163,7 @@ jobs:
                   apiToken: ${{ secrets.CF_API_TOKEN }}
                   accountId: ${{ secrets.CF_ACCOUNT_ID }}
                   workingDirectory: ./frontend
-                  command: pages deploy ./frontend/.vercel/output/static --project-name production-calculator-staging --branch main
+                  command: pages deploy .vercel/output/static --project-name production-calculator-staging --branch main
 
     deploy_production:
         if: github.ref == 'refs/heads/main'
@@ -221,4 +221,4 @@ jobs:
                   apiToken: ${{ secrets.CF_API_TOKEN }}
                   accountId: ${{ secrets.CF_ACCOUNT_ID }}
                   workingDirectory: ./frontend
-                  command: pages deploy ./frontend/.vercel/output/static --project-name production-calculator-prod --branch main
+                  command: pages deploy .vercel/output/static --project-name production-calculator-prod --branch main
