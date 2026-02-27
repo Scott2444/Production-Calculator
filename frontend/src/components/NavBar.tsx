@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useProtectedApi } from "@/lib/api";
@@ -42,32 +43,16 @@ export default function NavBar({
     const pathname = usePathname();
     const derivedCurrentPage = currentPage ?? getCurrentNavSection(pathname);
     const { loggedIn } = useAuth();
-    const [accountLogoUrl, setAccountLogoUrl] = useState<string>(
-        "/Default_Avatar.svg",
-    );
+    const accountLogoUrl = "/Default_Avatar.svg";
+
     const { userId } = useAuth();
     const protectedApi = useProtectedApi();
-    const {
-        data: user,
-        isLoading,
-        error,
-    } = useQuery({
+    const { data: user } = useQuery({
         queryKey: ["user", userId],
         queryFn: () => fetchUser(userId!, protectedApi),
         staleTime: 5 * 60 * 1000, // 5 minutes
         enabled: Boolean(userId),
     });
-
-    useEffect(() => {
-        // Example: fetch account logo from API or context
-        // Replace with your actual logic
-        const fetchLogo = async () => {
-            // Simulate async fetch
-            // setAccountLogoUrl(await getLogoUrl());
-            // For now, keep default
-        };
-        fetchLogo();
-    }, []);
 
     const navItems = [
         { name: "Home", href: "/" },
@@ -80,7 +65,12 @@ export default function NavBar({
         <nav className="flex items-center justify-between py-5 px-8 border-b-2 border-black bg-slate-900/80">
             <div className="flex items-center gap-14 text-xl">
                 <Link href="/">
-                    <img src="/Medium_Logo.svg" alt="Logo" className="h-8" />
+                    <Image
+                        src="/Medium_Logo.svg"
+                        alt="Logo"
+                        width={128}
+                        height={32}
+                    />
                 </Link>
                 {/* Navigation buttons */}
                 {navItems.map((item) => (
@@ -162,10 +152,12 @@ function AccountDropdown({
                 onClick={() => setMenuOpen((open) => !open)}
                 className="flex items-center focus:outline-none"
             >
-                <img
+                <Image
                     src={accountLogoUrl}
                     alt="Account"
-                    className="w-9 h-9 rounded-full object-cover border border-gray-300 transition-transform duration-200 hover:scale-105 hover:border-purple-400"
+                    width={36}
+                    height={36}
+                    className="rounded-full object-cover border border-gray-300 transition-transform duration-200 hover:scale-105 hover:border-purple-400"
                 />
             </button>
             {menuOpen && (
@@ -175,10 +167,13 @@ function AccountDropdown({
                 >
                     {/* User info section */}
                     <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
-                        <img
+                        <Image
                             src={user?.profilePictureUrl || accountLogoUrl}
                             alt="Profile"
-                            className="w-10 h-10 rounded-full object-cover border border-gray-300"
+                            width={40}
+                            height={40}
+                            className="rounded-full object-cover border border-gray-300"
+                            unoptimized={Boolean(user?.profilePictureUrl)}
                         />
                         <div className="flex flex-col min-w-0">
                             <span className="font-medium text-gray-900 truncate">

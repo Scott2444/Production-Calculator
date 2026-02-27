@@ -3,6 +3,7 @@
 import Navbar from "@/components/NavBar";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import Link from "next/link";
+import Image from "next/image";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -41,7 +42,10 @@ export default function Login() {
             setUsername(data.username);
             router.push("/");
         } catch (err) {
-            setError("An unexpected error occurred");
+            setError(
+                "An unexpected error occurred: " +
+                    (err instanceof Error ? err.message : String(err)),
+            );
             setLoading(false);
         }
     }
@@ -106,10 +110,11 @@ export default function Login() {
                             className="w-full py-3 bg-white text-slate-900 rounded-md font-semibold border border-slate-300 flex items-center justify-center gap-2 cursor-not-allowed hover:bg-slate-100 transition-colors"
                             disabled
                         >
-                            <img
+                            <Image
                                 src="/google-logo.svg"
-                                alt="Google"
-                                className="h-5 w-5"
+                                alt=""
+                                height={20}
+                                width={20}
                             />
                             Continue with Google
                         </button>

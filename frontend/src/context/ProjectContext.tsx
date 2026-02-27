@@ -51,7 +51,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         ? safeDecodeURIComponent(params.project_name)
         : "";
 
-    const { userId, username, loggedIn } = useAuth();
+    const { username, loggedIn } = useAuth();
     const protectedApi = useProtectedApi();
     const [projectId, setProjectId] = React.useState<string>("");
 
@@ -71,7 +71,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
             }
         };
         getProjectPuid();
-    }, [routeUsername, routeProjectName]);
+    }, [routeUsername, routeProjectName, protectedApi]);
 
     const projectQuery = useQuery({
         queryKey: ["project", projectId],
@@ -83,7 +83,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     const currentProject = useMemo(() => {
         const project = projectQuery.data as Project | undefined;
         return project ?? null;
-    }, [projectQuery.data, routeProjectName]);
+    }, [projectQuery.data]);
 
     const canEdit =
         routeUsername === username &&

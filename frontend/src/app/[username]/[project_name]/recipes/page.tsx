@@ -7,7 +7,6 @@ import Popup from "@/components/Popup";
 import ItemCard from "@/components/ItemCard";
 import SearchBar from "@/components/SearchBar";
 import ErrorDisplay from "@/components/ErrorDisplay";
-import { useAuth } from "@/context/AuthContext";
 import { useProject } from "@/context/ProjectContext";
 import { useProtectedApi } from "@/lib/api";
 import { fetchProducts } from "@/lib/products";
@@ -116,7 +115,6 @@ function pickDefaultProductPuid(
 }
 
 export default function Recipes() {
-    const { loggedIn } = useAuth();
     const { routeUsername, routeProjectName, projectId, canEdit } =
         useProject();
     const protectedApi = useProtectedApi();

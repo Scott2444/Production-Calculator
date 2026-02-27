@@ -9,27 +9,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-function maskEmail(email: string) {
-    const [local, domain] = email.split("@");
-    if (!local || !domain) return email;
-    const maskedLocal =
-        local.length <= 2
-            ? `${local[0] ?? ""}*`
-            : `${local.slice(0, 2)}***${local.slice(-1)}`;
-    const domainParts = domain.split(".");
-    const tld =
-        domainParts.length > 1 ? domainParts[domainParts.length - 1] : "";
-    const domainName = domainParts[0] ?? domain;
-    const maskedDomainName =
-        domainName.length <= 2
-            ? `${domainName[0] ?? ""}*`
-            : `${domainName.slice(0, 2)}***${domainName.slice(-1)}`;
-    const rest =
-        domainParts.length > 2 ? `.${domainParts.slice(1, -1).join(".")}` : "";
-    const suffix = tld ? `.${tld}` : "";
-    return `${maskedLocal}@${maskedDomainName}${rest}${suffix}`;
-}
-
 function isDigit(value: string) {
     return /^[0-9]$/.test(value);
 }

@@ -54,7 +54,7 @@ export default function ProjectPage() {
     const router = useRouter();
     const queryClient = useQueryClient();
 
-    const { userId, loggedIn } = useAuth();
+    const { userId } = useAuth();
     const protectedApi = useProtectedApi();
 
     const projectId = currentProject?.puid ?? "";
