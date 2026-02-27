@@ -7,6 +7,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
+import { getApiUrl } from "@/lib/apiUrl";
 
 export default function SignUp() {
     const [step, setStep] = useState(1);
@@ -38,7 +39,7 @@ export default function SignUp() {
         setLoading(true);
         let isValid = false;
         try {
-            const res = await fetch("/api/users/validate", {
+            const res = await fetch(getApiUrl("/users/validate"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, email }),
@@ -81,7 +82,7 @@ export default function SignUp() {
         setLoading(true);
         try {
             // Register user
-            const registerRes = await fetch("/api/users/register", {
+            const registerRes = await fetch(getApiUrl("/users/register"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, email, password }),
@@ -105,7 +106,7 @@ export default function SignUp() {
     async function Login() {
         setError("");
         try {
-            const res = await fetch("/api/auth/login", {
+            const res = await fetch(getApiUrl("/auth/login"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",

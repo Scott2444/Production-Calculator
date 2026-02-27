@@ -13,7 +13,10 @@ namespace ProductionCalculator.API.Helpers
                                 policy =>
                                 {
                                     policy.WithOrigins("http://localhost:3000",
-                                                        "https://www.production-calculator.com")
+                                                       "https://dev.production-calculator.com",
+                                                       "https://staging.production-calculator.com",
+                                                       "https://production-calculator.com",
+                                                       "https://www.production-calculator.com")
                                             .AllowAnyHeader()
                                             .AllowAnyMethod()
                                             .AllowCredentials();

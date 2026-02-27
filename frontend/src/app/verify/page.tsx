@@ -3,6 +3,7 @@
 import NavBar from "@/components/NavBar";
 import { useAuth } from "@/context/AuthContext";
 import { useProtectedApi } from "@/lib/api";
+import { getApiUrl } from "@/lib/apiUrl";
 import { fetchUser } from "@/lib/user";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -72,7 +73,7 @@ export default function Verify() {
         setStatus("");
         setRequestLoading(true);
         try {
-            const res = await protectedApi("/api/auth/request-code", {
+            const res = await protectedApi("/auth/request-code", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
             });
@@ -110,7 +111,7 @@ export default function Verify() {
 
         setVerifyLoading(true);
         try {
-            const res = await protectedApi("/api/auth/verify-code", {
+            const res = await protectedApi("/auth/verify-code", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ code: trimmed }),
@@ -129,7 +130,10 @@ export default function Verify() {
 
             setStatus("Verified successfully. Redirecting...");
             // Refresh access token so the JWT role updates post-verification.
-            await fetch("/api/auth/refresh", { method: "POST" });
+            await fetch(getApiUrl("/auth/refresh"), {
+                method: "POST",
+                credentials: "include",
+            });
             router.push("/");
         } catch {
             setError("An unexpected error occurred.");

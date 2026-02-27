@@ -2,7 +2,7 @@ export async function fetchModifiers(
     project: string,
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
 ) {
-    const res = await protectedApi(`/api/projects/${project}/modifiers`, {
+    const res = await protectedApi(`/projects/${project}/modifiers`, {
         method: "GET",
     });
     if (!res.ok) throw new Error("Failed to load modifiers");
@@ -22,7 +22,7 @@ export async function postNewModifier(
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
     payload: NewModifierPayload,
 ) {
-    const res = await protectedApi(`/api/projects/${project}/modifiers`, {
+    const res = await protectedApi(`/projects/${project}/modifiers`, {
         method: "POST",
         body: JSON.stringify(payload),
         headers: {
@@ -49,7 +49,7 @@ export async function updateModifier(
     payload: NewModifierPayload,
 ) {
     const res = await protectedApi(
-        `/api/projects/${project}/modifiers/${modifier}`,
+        `/projects/${project}/modifiers/${modifier}`,
         {
             method: "PUT",
             body: JSON.stringify(payload),
@@ -77,7 +77,7 @@ export async function deleteModifier(
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
 ) {
     const res = await protectedApi(
-        `/api/projects/${project}/modifiers/${modifier}`,
+        `/projects/${project}/modifiers/${modifier}`,
         {
             method: "DELETE",
         },

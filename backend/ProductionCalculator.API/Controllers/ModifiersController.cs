@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace ProductionCalculator.API.Controllers
 {
-    [Route("api/projects/{projectPuid}/[controller]")]
+    [Route("projects/{projectPuid}/[controller]")]
     public class ModifiersController : ApiControllerBase
     {
         private readonly IModifierService _service;

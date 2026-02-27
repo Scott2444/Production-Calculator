@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace ProductionCalculator.API.Controllers
 {
-    [Route("api/users")]
+    [Route("users")]
     public class UsersController : ApiControllerBase
     {
         private readonly IUserService _service;

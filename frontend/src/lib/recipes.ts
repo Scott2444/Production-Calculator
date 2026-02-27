@@ -2,7 +2,7 @@ export async function fetchRecipes(
     project: string,
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
 ) {
-    const res = await protectedApi(`/api/projects/${project}/recipes`, {
+    const res = await protectedApi(`/projects/${project}/recipes`, {
         method: "GET",
     });
     if (!res.ok) throw new Error("Failed to load recipes");
@@ -22,7 +22,7 @@ export async function postNewRecipe(
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
     payload: NewRecipePayload,
 ) {
-    const res = await protectedApi(`/api/projects/${project}/recipes`, {
+    const res = await protectedApi(`/projects/${project}/recipes`, {
         method: "POST",
         body: JSON.stringify(payload),
         headers: {
@@ -48,16 +48,13 @@ export async function updateRecipe(
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
     payload: NewRecipePayload,
 ) {
-    const res = await protectedApi(
-        `/api/projects/${project}/recipes/${recipe}`,
-        {
-            method: "PUT",
-            body: JSON.stringify(payload),
-            headers: {
-                "Content-Type": "application/json",
-            },
+    const res = await protectedApi(`/projects/${project}/recipes/${recipe}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+        headers: {
+            "Content-Type": "application/json",
         },
-    );
+    });
     if (!res.ok) {
         let message = "Failed to update recipe.";
         try {
@@ -76,12 +73,9 @@ export async function deleteRecipe(
     recipe: string,
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
 ) {
-    const res = await protectedApi(
-        `/api/projects/${project}/recipes/${recipe}`,
-        {
-            method: "DELETE",
-        },
-    );
+    const res = await protectedApi(`/projects/${project}/recipes/${recipe}`, {
+        method: "DELETE",
+    });
     if (!res.ok) {
         const message = "Failed to delete recipe.";
         throw new Error(message);

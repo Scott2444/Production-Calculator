@@ -1,5 +1,6 @@
 // Abstract API function to handle protected requests with automatic token refresh
 import { useAuth } from "../context/AuthContext";
+import { getApiUrl } from "./apiUrl";
 
 /**
  * Makes a protected API request using the access_token cookie
@@ -17,17 +18,24 @@ export function useProtectedApi() {
         input: RequestInfo,
         init: RequestInit = {},
     ) {
+        const resolvedInput =
+            typeof input === "string" ? getApiUrl(input) : input;
+
         const fetchWithCookies = (
             url: RequestInfo,
             options: RequestInit = {},
-        ) => fetch(url, { ...options });
+        ) =>
+            fetch(url, {
+                credentials: "include",
+                ...options,
+            });
 
-        let response = await fetchWithCookies(input, init);
+        let response = await fetchWithCookies(resolvedInput, init);
 
         if (response.status === 401) {
             // Try to refresh the access token
             const refreshResponse = await fetchWithCookies(
-                "/api/auth/refresh",
+                getApiUrl("/auth/refresh"),
                 { method: "POST" },
             );
             if (refreshResponse.status === 401) {
@@ -36,7 +44,7 @@ export function useProtectedApi() {
                 return refreshResponse;
             }
             // Retry original request after refresh
-            response = await fetchWithCookies(input, init);
+            response = await fetchWithCookies(resolvedInput, init);
             if (response.status === 401) {
                 // Still unauthorized, log out
                 setLoggedIn(false);

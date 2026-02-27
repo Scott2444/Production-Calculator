@@ -73,7 +73,7 @@ public class AttributeServiceTests
         var result = await service.GetAttributeByPuid("alias", "attrPuid");
 
         Assert.Equal(ServiceStatus.SeeOther303, result.Status);
-        Assert.Equal("/api/projects/canonical/attributes/attrPuid", result.Location);
+        Assert.Equal("/projects/canonical/attributes/attrPuid", result.Location);
     }
 
     [Fact]

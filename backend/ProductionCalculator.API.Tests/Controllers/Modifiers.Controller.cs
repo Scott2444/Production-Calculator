@@ -76,14 +76,14 @@ public class ModifiersControllerTests
     {
         var service = A.Fake<IModifierService>();
         A.CallTo(() => service.GetModifierByPuid("alias", "modPuid"))
-            .Returns(ServiceResult<Modifier>.Redirection(ServiceStatus.SeeOther303, "/api/projects/canonical/modifiers/modPuid"));
+            .Returns(ServiceResult<Modifier>.Redirection(ServiceStatus.SeeOther303, "/projects/canonical/modifiers/modPuid"));
         var controller = CreateController(service);
 
         var result = await controller.GetModifierByPuid("alias", "modPuid");
 
         var obj = Assert.IsType<StatusCodeResult>(result);
         Assert.Equal(303, obj.StatusCode);
-        Assert.Equal("/api/projects/canonical/modifiers/modPuid", controller.Response.Headers["Location"]);
+        Assert.Equal("/projects/canonical/modifiers/modPuid", controller.Response.Headers["Location"]);
     }
 
     [Fact]
@@ -120,14 +120,14 @@ public class ModifiersControllerTests
     {
         var service = A.Fake<IModifierService>();
         A.CallTo(() => service.GetModifiersByProjectPuid("alias"))
-            .Returns(ServiceResult<List<Modifier>>.Redirection(ServiceStatus.SeeOther303, "/api/projects/canonical/modifiers"));
+            .Returns(ServiceResult<List<Modifier>>.Redirection(ServiceStatus.SeeOther303, "/projects/canonical/modifiers"));
         var controller = CreateController(service);
 
         var result = await controller.GetModifiersByProjectPuid("alias");
 
         var obj = Assert.IsType<StatusCodeResult>(result);
         Assert.Equal(303, obj.StatusCode);
-        Assert.Equal("/api/projects/canonical/modifiers", controller.Response.Headers["Location"]);
+        Assert.Equal("/projects/canonical/modifiers", controller.Response.Headers["Location"]);
     }
 
     [Fact]

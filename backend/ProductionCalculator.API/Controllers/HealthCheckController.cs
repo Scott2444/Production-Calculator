@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ProductionCalculator.API.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     public class HealthCheckController : ApiControllerBase
     {
         [HttpGet]

@@ -7,6 +7,7 @@ import Image from "next/image";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { getApiUrl } from "@/lib/apiUrl";
 
 export default function Login() {
     const [usernameEntry, setUsernameEntry] = useState("");
@@ -22,7 +23,7 @@ export default function Login() {
         setError("");
         setLoading(true);
         try {
-            const res = await fetch("/api/auth/login", {
+            const res = await fetch(getApiUrl("/auth/login"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",

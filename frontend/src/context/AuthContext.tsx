@@ -7,6 +7,7 @@ import React, {
     useEffect,
     ReactNode,
 } from "react";
+import { getApiUrl } from "@/lib/apiUrl";
 
 interface AuthContextType {
     loggedIn: boolean;
@@ -32,8 +33,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (hasToken) {
                 setLoggedIn(hasToken);
                 // Grab new access token
-                const response = await fetch("/api/auth/refresh", {
+                const response = await fetch(getApiUrl("/auth/refresh"), {
                     method: "POST",
+                    credentials: "include",
                 });
                 if (response.ok) {
                     const data = await response.json();
