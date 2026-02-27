@@ -1,4 +1,5 @@
 "use client";
+export const runtime = "edge";
 
 import CreateProject from "@/components/CreateProject";
 import Link from "next/link";

@@ -1,4 +1,5 @@
 "use client";
+export const runtime = "edge";
 
 import ProjectPageLayout from "@/components/ProjectPageLayout";
 import ProjectStatusGate from "@/components/ProjectStatusGate";
