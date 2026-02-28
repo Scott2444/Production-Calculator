@@ -93,9 +93,9 @@ jobs:
               working-directory: ./frontend
               run: npm ci
 
-            - name: Build Next.js App for Cloudflare
+            - name: Build Next.js App
               working-directory: ./frontend
-              run: npx @cloudflare/next-on-pages@1
+              run: npm run build
               env:
                   NEXT_PUBLIC_ENV: development
                   NEXT_PUBLIC_API_BASE_URL: https://dev-api.production-calculator.com
@@ -152,9 +152,9 @@ jobs:
               working-directory: ./frontend
               run: npm ci
 
-            - name: Build Next.js App for Cloudflare
+            - name: Build Next.js App
               working-directory: ./frontend
-              run: npx @cloudflare/next-on-pages@1
+              run: npm run build
               env:
                   NEXT_PUBLIC_ENV: staging
                   NEXT_PUBLIC_API_BASE_URL: https://staging-api.production-calculator.com
@@ -211,9 +211,9 @@ jobs:
               working-directory: ./frontend
               run: npm ci
 
-            - name: Build Next.js App for Cloudflare
+            - name: Build Next.js App
               working-directory: ./frontend
-              run: npx @cloudflare/next-on-pages@1
+              run: npm run build
               env:
                   NEXT_PUBLIC_ENV: production
                   NEXT_PUBLIC_API_BASE_URL: https://api.production-calculator.com
