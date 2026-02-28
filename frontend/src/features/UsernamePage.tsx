@@ -1,16 +1,14 @@
 "use client";
-export const runtime = "edge";
 
 import CreateProject from "@/components/CreateProject";
 import Link from "next/link";
 import ProjectPageLayout from "@/components/ProjectPageLayout";
-import { useParams } from "next/navigation";
+import { useRouteParams } from "@/hooks/useRouteParams";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function ProjectHomePage() {
-    const params = useParams<{ username: string }>();
-    const username = params?.username ?? "";
+    const { username } = useRouteParams();
     const [createOpen, setCreateOpen] = useState(false);
     const router = useRouter();
 

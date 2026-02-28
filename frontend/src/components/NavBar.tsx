@@ -42,7 +42,7 @@ export default function NavBar({
 }: NavBarProps): React.ReactElement {
     const pathname = usePathname();
     const derivedCurrentPage = currentPage ?? getCurrentNavSection(pathname);
-    const { loggedIn } = useAuth();
+    const { loggedIn, isHydrated } = useAuth();
     const accountLogoUrl = "/Default_Avatar.svg";
 
     const { userId } = useAuth();
@@ -81,7 +81,7 @@ export default function NavBar({
                         className={`mr-4 no-underline transition-colors duration-200 ${
                             derivedCurrentPage === item.name
                                 ? "text-slate-200 font-medium"
-                                : "text-slate-200 font-light hover:text-purple-400 hover:scale-105"
+                                : "text-slate-300 font-medium hover:text-purple-400 hover:scale-105"
                         } `}
                     >
                         {item.name}
@@ -89,8 +89,13 @@ export default function NavBar({
                 ))}
             </div>
             {/* Drop down menu */}
-            <div>
-                {loggedIn ? (
+            <div className="w-28 flex justify-end">
+                {!isHydrated ? (
+                    <div
+                        aria-hidden="true"
+                        className="h-10 w-24 rounded-md bg-slate-700/60"
+                    />
+                ) : loggedIn ? (
                     <AccountDropdown
                         accountLogoUrl={accountLogoUrl}
                         user={user}
@@ -163,7 +168,7 @@ function AccountDropdown({
             {menuOpen && (
                 <div
                     id="account-dropdown"
-                    className="absolute right-0 mt-2 mr-4 w-70 bg-slate-50 rounded-md shadow-lg border border-gray-200 z-50 animate-fade-in"
+                    className="absolute right-0 top-15 mt-2 mr-4 w-70 bg-slate-50 rounded-md shadow-lg border border-gray-200 z-50 animate-fade-in"
                 >
                     {/* User info section */}
                     <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">

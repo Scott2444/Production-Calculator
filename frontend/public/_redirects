@@ -1,0 +1,6 @@
+/:username/:project/:subpage/ /_/index.html 200
+/:username/:project/:subpage /_/index.html 200
+/:username/:project/ /_/index.html 200
+/:username/:project /_/index.html 200
+/:username/ /_/index.html 200
+/:username /_/index.html 200

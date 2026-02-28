@@ -2,7 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useRouteParams } from "@/hooks/useRouteParams";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { useProtectedApi } from "@/lib/api";
@@ -40,11 +41,7 @@ const navItems = [
 export default function ProjectSidebar() {
     const pathname = usePathname();
     const router = useRouter();
-    const params = useParams<{ username?: string; project_name?: string }>();
-    const username = params?.username ?? "";
-    const routeProjectName = params?.project_name
-        ? decodeURIComponent(params.project_name)
-        : "";
+    const { username, projectName: routeProjectName } = useRouteParams();
 
     const { userId, loggedIn } = useAuth();
     const protectedApi = useProtectedApi();

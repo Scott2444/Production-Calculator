@@ -1,4 +1,5 @@
 // Abstract API function to handle protected requests with automatic token refresh
+import { useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getApiUrl } from "./apiUrl";
 
@@ -12,44 +13,51 @@ import { getApiUrl } from "./apiUrl";
  */
 
 export function useProtectedApi() {
-    const { setLoggedIn } = useAuth();
+    const { setLoggedIn, setUserId, setUsername } = useAuth();
 
-    return async function protectedApi(
-        input: RequestInfo,
-        init: RequestInit = {},
-    ) {
-        const resolvedInput =
-            typeof input === "string" ? getApiUrl(input) : input;
+    return useCallback(
+        async function protectedApi(
+            input: RequestInfo,
+            init: RequestInit = {},
+        ) {
+            const resolvedInput =
+                typeof input === "string" ? getApiUrl(input) : input;
 
-        const fetchWithCookies = (
-            url: RequestInfo,
-            options: RequestInit = {},
-        ) =>
-            fetch(url, {
-                credentials: "include",
-                ...options,
-            });
+            const fetchWithCookies = (
+                url: RequestInfo,
+                options: RequestInit = {},
+            ) =>
+                fetch(url, {
+                    credentials: "include",
+                    ...options,
+                });
 
-        let response = await fetchWithCookies(resolvedInput, init);
+            let response = await fetchWithCookies(resolvedInput, init);
 
-        if (response.status === 401) {
-            // Try to refresh the access token
-            const refreshResponse = await fetchWithCookies(
-                getApiUrl("/auth/refresh"),
-                { method: "POST" },
-            );
-            if (refreshResponse.status === 401) {
-                // Refresh failed, log out
-                setLoggedIn(false);
-                return refreshResponse;
-            }
-            // Retry original request after refresh
-            response = await fetchWithCookies(resolvedInput, init);
             if (response.status === 401) {
-                // Still unauthorized, log out
-                setLoggedIn(false);
+                // Try to refresh the access token
+                const refreshResponse = await fetchWithCookies(
+                    getApiUrl("/auth/refresh"),
+                    { method: "POST" },
+                );
+                if (refreshResponse.status === 401) {
+                    // Refresh failed, log out
+                    setLoggedIn(false);
+                    setUserId(undefined);
+                    setUsername(undefined);
+                    return refreshResponse;
+                }
+                // Retry original request after refresh
+                response = await fetchWithCookies(resolvedInput, init);
+                if (response.status === 401) {
+                    // Still unauthorized, log out
+                    setLoggedIn(false);
+                    setUserId(undefined);
+                    setUsername(undefined);
+                }
             }
-        }
-        return response;
-    };
+            return response;
+        },
+        [setLoggedIn, setUserId, setUsername],
+    );
 }

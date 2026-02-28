@@ -1,0 +1,16 @@
+{
+    "rewrites": [
+        {
+            "source": "/:username/:project/:subpage",
+            "destination": "/_/index.html"
+        },
+        {
+            "source": "/:username/:project",
+            "destination": "/_/index.html"
+        },
+        {
+            "source": "/:username",
+            "destination": "/_/index.html"
+        }
+    ]
+}
