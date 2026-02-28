@@ -1,6 +1,26 @@
 {
     "rewrites": [
         {
+            "source": "/login",
+            "destination": "/login/index.html"
+        },
+        {
+            "source": "/signup",
+            "destination": "/signup/index.html"
+        },
+        {
+            "source": "/verify",
+            "destination": "/verify/index.html"
+        },
+        {
+            "source": "/docs",
+            "destination": "/docs/index.html"
+        },
+        {
+            "source": "/explore",
+            "destination": "/explore/index.html"
+        },
+        {
             "source": "/:username/:project/:subpage",
             "destination": "/_/index.html"
         },
