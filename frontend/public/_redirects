@@ -1,8 +1,13 @@
-/login /login/ 301
-/signup /signup/ 301
-/verify /verify/ 301
-/docs /docs/ 301
-/explore /explore/ 301
+/login /login/index.html 200
+/login/ /login/index.html 200
+/signup /signup/index.html 200
+/signup/ /signup/index.html 200
+/verify /verify/index.html 200
+/verify/ /verify/index.html 200
+/docs /docs/index.html 200
+/docs/ /docs/index.html 200
+/explore /explore/index.html 200
+/explore/ /explore/index.html 200
 
 /:username/:project/:subpage/ /_/index.html 200
 /:username/:project/:subpage /_/index.html 200

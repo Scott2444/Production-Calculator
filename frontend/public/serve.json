@@ -5,7 +5,15 @@
             "destination": "/login/index.html"
         },
         {
+            "source": "/login/",
+            "destination": "/login/index.html"
+        },
+        {
             "source": "/signup",
+            "destination": "/signup/index.html"
+        },
+        {
+            "source": "/signup/",
             "destination": "/signup/index.html"
         },
         {
@@ -13,11 +21,23 @@
             "destination": "/verify/index.html"
         },
         {
+            "source": "/verify/",
+            "destination": "/verify/index.html"
+        },
+        {
             "source": "/docs",
             "destination": "/docs/index.html"
         },
         {
+            "source": "/docs/",
+            "destination": "/docs/index.html"
+        },
+        {
             "source": "/explore",
+            "destination": "/explore/index.html"
+        },
+        {
+            "source": "/explore/",
             "destination": "/explore/index.html"
         },
         {
