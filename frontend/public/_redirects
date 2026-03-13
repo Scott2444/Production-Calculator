@@ -1,3 +1,9 @@
+/_next/* /_next/:splat 200
+/assets/* /assets/:splat 200
+/Medium_Logo.svg /assets/Medium_Logo.svg 301
+/Small_Logo.svg /assets/Small_Logo.svg 301
+/Default_Avatar.svg /assets/Default_Avatar.svg 301
+
 /login /login/index.html 200
 /signup /signup/index.html 200
 /verify /verify/index.html 200
@@ -5,15 +11,4 @@
 /explore /explore/index.html 200
 /settings /settings/index.html 200
 
-/:username / 200
-/:username/ / 200
-/:username/:project / 200
-/:username/:project/ / 200
-/:username/:project/products / 200
-/:username/:project/products/ / 200
-/:username/:project/recipes / 200
-/:username/:project/recipes/ / 200
-/:username/:project/machines / 200
-/:username/:project/machines/ / 200
-/:username/:project/modifiers / 200
-/:username/:project/modifiers/ / 200
+/* / 200

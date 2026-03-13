@@ -44,7 +44,7 @@ export default function NavBar({
     });
     const derivedCurrentPage = currentPage ?? getCurrentNavSection(pathname);
     const { loggedIn, isHydrated } = useAuth();
-    const accountLogoUrl = "/Default_Avatar.svg";
+    const accountLogoUrl = "/assets/Default_Avatar.svg";
 
     const { userId } = useAuth();
     const protectedApi = useProtectedApi();
@@ -67,7 +67,7 @@ export default function NavBar({
             <div className="flex items-center gap-14 text-xl">
                 <Link to="/">
                     <Image
-                        src="/Medium_Logo.svg"
+                        src="/assets/Medium_Logo.svg"
                         alt="Logo"
                         width={128}
                         height={32}
