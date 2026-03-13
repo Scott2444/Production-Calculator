@@ -1,6 +1,4 @@
 "use client";
-
-import { useMemo } from "react";
 import {
     Outlet,
     RouterProvider,
@@ -8,6 +6,7 @@ import {
     createRoute,
     createRouter,
 } from "@tanstack/react-router";
+import { createBrowserHistory, createMemoryHistory } from "@tanstack/history";
 import { ProjectProvider } from "@/context/ProjectContext";
 import UsernamePage from "@/features/UsernamePage";
 import ProjectOverview from "@/features/ProjectOverview";
@@ -47,49 +46,49 @@ const homeRoute = createRoute({
 
 const loginRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "login",
+    path: "/login",
     component: LoginRoute,
 });
 
 const signUpRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "signup",
+    path: "/signup",
     component: SignUpRoute,
 });
 
 const verifyRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "verify",
+    path: "/verify",
     component: VerifyRoute,
 });
 
 const exploreRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "explore",
+    path: "/explore",
     component: ExploreRoute,
 });
 
 const docsRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "docs",
+    path: "/docs",
     component: DocsRoute,
 });
 
 const settingsRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "settings",
+    path: "/settings",
     component: SettingsRoute,
 });
 
 const usernameRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "$username",
+    path: "/$username",
     component: UsernamePage,
 });
 
 const projectLayoutRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "$username/$projectName",
+    path: "/$username/$projectName",
     component: ProjectRouteLayout,
 });
 
@@ -141,24 +140,19 @@ const routeTree = rootRoute.addChildren([
     ]),
 ]);
 
-let appRouter: ReturnType<typeof createRouter> | null = null;
+const history =
+    typeof window === "undefined"
+        ? createMemoryHistory({ initialEntries: ["/"] })
+        : createBrowserHistory();
 
-function getRouter() {
-    if (!appRouter) {
-        appRouter = createRouter({ routeTree });
-    }
-
-    return appRouter;
-}
+const router = createRouter({ routeTree, history });
 
 declare module "@tanstack/react-router" {
     interface Register {
-        router: ReturnType<typeof createRouter>;
+        router: typeof router;
     }
 }
 
-export default function ClientRouterApp() {
-    const router = useMemo(() => getRouter(), []);
-
+export default function ClientApp() {
     return <RouterProvider router={router} />;
 }
