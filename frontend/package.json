@@ -5,7 +5,7 @@
     "scripts": {
         "dev": "next dev --turbopack",
         "build": "next build --turbopack",
-        "start": "npx serve@latest out",
+        "start": "npx wrangler pages dev out --ip localhost --port 3000",
         "lint": "eslint"
     },
     "dependencies": {
