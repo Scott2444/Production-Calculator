@@ -6,7 +6,7 @@ import ErrorDisplay from "@/components/ErrorDisplay";
 import { useProject } from "@/context/ProjectContext";
 import Popup from "@/components/Popup";
 import { IconEdit, IconTrash } from "@tabler/icons-react";
-import { useRouter } from "next/navigation";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/context/AuthContext";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -51,7 +51,7 @@ function getCount(value: unknown): number | null {
 export default function ProjectPage() {
     const { routeUsername, routeProjectName, currentProject, canEdit } =
         useProject();
-    const router = useRouter();
+    const navigate = useNavigate();
     const queryClient = useQueryClient();
 
     const { userId } = useAuth();
@@ -136,9 +136,10 @@ export default function ProjectPage() {
                 updated?.name &&
                 updated.name !== routeProjectName
             ) {
-                router.replace(
-                    `/${encodeURIComponent(routeUsername)}/${encodeURIComponent(updated.name)}/`,
-                );
+                void navigate({
+                    to: `/${encodeURIComponent(routeUsername)}/${encodeURIComponent(updated.name)}/`,
+                    replace: true,
+                });
             }
         },
         onError: (err) => {
@@ -176,9 +177,9 @@ export default function ProjectPage() {
                 queryKey: ["projects", userId],
             });
             if (routeUsername) {
-                router.push(`/${encodeURIComponent(routeUsername)}/`);
+                void navigate({ to: `/${encodeURIComponent(routeUsername)}/` });
             } else {
-                router.push("/");
+                void navigate({ to: "/" });
             }
         },
         onError: (err) => {
@@ -322,13 +323,13 @@ export default function ProjectPage() {
                             );
 
                             return href ? (
-                                <a
+                                <Link
                                     key={item.label}
-                                    href={href}
+                                    to={href}
                                     className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-4 transition-colors hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 block"
                                 >
                                     {cardContent}
-                                </a>
+                                </Link>
                             ) : (
                                 <div
                                     key={item.label}

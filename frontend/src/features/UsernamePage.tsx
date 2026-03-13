@@ -1,16 +1,15 @@
 "use client";
 
 import CreateProject from "@/components/CreateProject";
-import Link from "next/link";
+import { Link, useNavigate } from "@tanstack/react-router";
 import ProjectPageLayout from "@/components/ProjectPageLayout";
 import { useRouteParams } from "@/hooks/useRouteParams";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function ProjectHomePage() {
     const { username } = useRouteParams();
     const [createOpen, setCreateOpen] = useState(false);
-    const router = useRouter();
+    const navigate = useNavigate();
 
     return (
         <ProjectPageLayout>
@@ -28,7 +27,7 @@ export default function ProjectHomePage() {
                             Create a Project
                         </button>
                         <Link
-                            href="/explore"
+                            to="/explore"
                             className="rounded-lg bg-slate-900/60 px-6 py-3 text-base font-medium text-slate-200 border border-slate-700 transition-colors hover:bg-slate-800/60 hover:text-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
                         >
                             Search for Existing Projects
@@ -40,9 +39,9 @@ export default function ProjectHomePage() {
                         username={username}
                         onCreated={(project) => {
                             if (username) {
-                                router.push(
-                                    `/${encodeURIComponent(username)}/${encodeURIComponent(project.name)}/`,
-                                );
+                                void navigate({
+                                    to: `/${encodeURIComponent(username)}/${encodeURIComponent(project.name)}/`,
+                                });
                             }
                         }}
                     />

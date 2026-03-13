@@ -1,11 +1,7 @@
 "use client";
 
-import NavBar from "@/components/NavBar";
+import ClientRouterApp from "@/router/ClientRouterApp";
 
 export default function Home() {
-    return (
-        <>
-            <NavBar />
-        </>
-    );
+    return <ClientRouterApp />;
 }

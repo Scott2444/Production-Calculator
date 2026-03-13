@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useRouterState } from "@tanstack/react-router";
 import { useMemo } from "react";
 
 function safeDecodeURIComponent(value: string): string {
@@ -12,7 +12,9 @@ function safeDecodeURIComponent(value: string): string {
 }
 
 export function useRouteParams() {
-    const pathname = usePathname();
+    const pathname = useRouterState({
+        select: (state) => state.location.pathname,
+    });
     return useMemo(() => {
         const segments = pathname.split("/").filter(Boolean);
         return {

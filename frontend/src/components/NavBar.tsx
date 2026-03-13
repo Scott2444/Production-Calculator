@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/context/AuthContext";
 import { useProtectedApi } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
@@ -40,7 +39,9 @@ type NavBarProps = {
 export default function NavBar({
     currentPage,
 }: NavBarProps): React.ReactElement {
-    const pathname = usePathname();
+    const pathname = useRouterState({
+        select: (state) => state.location.pathname,
+    });
     const derivedCurrentPage = currentPage ?? getCurrentNavSection(pathname);
     const { loggedIn, isHydrated } = useAuth();
     const accountLogoUrl = "/Default_Avatar.svg";
@@ -64,7 +65,7 @@ export default function NavBar({
     return (
         <nav className="flex items-center justify-between py-5 px-8 border-b-2 border-black bg-slate-900/80">
             <div className="flex items-center gap-14 text-xl">
-                <Link href="/">
+                <Link to="/">
                     <Image
                         src="/Medium_Logo.svg"
                         alt="Logo"
@@ -77,7 +78,7 @@ export default function NavBar({
                     // Determine active state from the first slug in the route hierarchy.
                     <Link
                         key={item.name}
-                        href={item.href}
+                        to={item.href}
                         className={`mr-4 no-underline transition-colors duration-200 ${
                             derivedCurrentPage === item.name
                                 ? "text-slate-200 font-medium"
@@ -102,7 +103,7 @@ export default function NavBar({
                     />
                 ) : (
                     <Link
-                        href="/login"
+                        to="/login"
                         className="px-6 py-2 bg-purple-700 text-white rounded-md no-underline font-medium transition-colors duration-200 hover:bg-purple-600 hover:scale-105 shadow-md hover:shadow-lg"
                     >
                         Login
@@ -193,7 +194,7 @@ function AccountDropdown({
                     <div className="flex flex-col gap-1 px-2 py-2">
                         {user && !user.isVerified && (
                             <Link
-                                href="/verify"
+                                to="/verify"
                                 className="px-4 py-2 text-gray-800 no-underline transition-all duration-150 rounded-xl hover:bg-purple-100 hover:text-purple-700 flex items-center gap-2"
                                 onClick={() => setMenuOpen(false)}
                             >
@@ -204,7 +205,7 @@ function AccountDropdown({
                             </Link>
                         )}
                         <Link
-                            href="/settings"
+                            to="/settings"
                             className="px-4 py-2 text-gray-800 no-underline transition-all duration-150 rounded-xl hover:bg-purple-100 hover:text-purple-700 flex items-center gap-2"
                             onClick={() => setMenuOpen(false)}
                         >

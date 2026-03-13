@@ -1,9 +1,9 @@
-import SlugRouter from "./SlugRouter";
+import ClientRouterApp from "@/router/ClientRouterApp";
 
 export async function generateStaticParams() {
     return [{ slug: ["_"] }];
 }
 
 export default function Page() {
-    return <SlugRouter />;
+    return <ClientRouterApp />;
 }

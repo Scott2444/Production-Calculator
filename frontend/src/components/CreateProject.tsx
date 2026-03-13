@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import Popup from "@/components/Popup";
 import { useAuth } from "@/context/AuthContext";
 import { useProtectedApi } from "@/lib/api";
@@ -31,7 +31,7 @@ export default function CreateProject({
     username,
     onCreated,
 }: CreateProjectProps): React.ReactElement {
-    const router = useRouter();
+    const navigate = useNavigate();
     const queryClient = useQueryClient();
     const { userId } = useAuth();
     const protectedApi = useProtectedApi();
@@ -65,9 +65,9 @@ export default function CreateProject({
 
             // Default behavior if no callback is supplied: navigate to the new project.
             if (username) {
-                router.push(
-                    `/${encodeURIComponent(username)}/${encodeURIComponent(project.name)}/`,
-                );
+                void navigate({
+                    to: `/${encodeURIComponent(username)}/${encodeURIComponent(project.name)}/`,
+                });
             }
         },
         onError: (err) => {

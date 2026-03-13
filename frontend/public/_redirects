@@ -8,6 +8,8 @@
 /docs/ /docs/index.html 200
 /explore /explore/index.html 200
 /explore/ /explore/index.html 200
+/settings /settings/index.html 200
+/settings/ /settings/index.html 200
 
 /:username/:project/:subpage/ /_/index.html 200
 /:username/:project/:subpage /_/index.html 200
