@@ -2,6 +2,7 @@ namespace ProductionCalculator.API.Helpers
 {
     public class CookieOptionsHelper
     {
+        // isDevelopment is determined if it is running in a container, i.e. local development
         private readonly bool _isDevelopment;
         private readonly int accessTokenExpiryMinutes;
         private readonly int refreshTokenExpiryDays;
@@ -10,7 +11,7 @@ namespace ProductionCalculator.API.Helpers
 
         public CookieOptionsHelper(IConfiguration configuration)
         {
-            _isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+            _isDevelopment = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
 
             int.TryParse(configuration["Jwt:ExpireMinutes"], out accessTokenExpiryMinutes);
             int.TryParse(configuration["RefreshToken:ExpireDays"], out refreshTokenExpiryDays);
@@ -23,13 +24,8 @@ namespace ProductionCalculator.API.Helpers
                 _ => SameSiteMode.Strict
             };
 
-            _cookieDomain = configuration["Cookie:Domain"];
-
-            var isDocker = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
-            if (!isDocker)
-            {
-                _cookieDomain = "localhost";
-            }
+            _cookieDomain = _isDevelopment ? "localhost" : configuration["Cookie:Domain"];
+            _sameSiteMode = _isDevelopment ? SameSiteMode.Strict : _sameSiteMode;
         }
 
         private CookieOptions BuildCookieOptions(bool httpOnly, DateTimeOffset expires)
