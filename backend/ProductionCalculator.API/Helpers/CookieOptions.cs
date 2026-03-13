@@ -15,8 +15,6 @@ namespace ProductionCalculator.API.Helpers
             int.TryParse(configuration["Jwt:ExpireMinutes"], out accessTokenExpiryMinutes);
             int.TryParse(configuration["RefreshToken:ExpireDays"], out refreshTokenExpiryDays);
 
-            _cookieDomain = configuration["Cookie:Domain"];
-
             var sameSiteConfig = configuration["Cookie:SameSite"];
             _sameSiteMode = sameSiteConfig?.ToLowerInvariant() switch
             {
@@ -24,6 +22,14 @@ namespace ProductionCalculator.API.Helpers
                 "lax" => SameSiteMode.Lax,
                 _ => SameSiteMode.Strict
             };
+
+            _cookieDomain = configuration["Cookie:Domain"];
+
+            var isDocker = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+            if (!isDocker)
+            {
+                _cookieDomain = "localhost";
+            }
         }
 
         private CookieOptions BuildCookieOptions(bool httpOnly, DateTimeOffset expires)
