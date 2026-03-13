@@ -11,7 +11,7 @@ namespace ProductionCalculator.API.Helpers
 
         public CookieOptionsHelper(IConfiguration configuration)
         {
-            _isDevelopment = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+            _isDevelopment = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") != "true";
 
             int.TryParse(configuration["Jwt:ExpireMinutes"], out accessTokenExpiryMinutes);
             int.TryParse(configuration["RefreshToken:ExpireDays"], out refreshTokenExpiryDays);
