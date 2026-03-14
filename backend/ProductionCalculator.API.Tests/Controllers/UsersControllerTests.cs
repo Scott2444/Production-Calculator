@@ -180,10 +180,14 @@ public class UsersControllerTests
         var userService = A.Fake<IUserService>();
         var controller = CreateController(userService);
         var projectService = A.Fake<IProjectService>();
-        var projects = new List<Project> { CreateProject("proj123456"), CreateProject("proj234567") };
+        var projects = new List<ProjectResponse> 
+        { 
+            new ProjectResponse { Puid = "proj123456", Name = "P1", OwnerUsername = "u", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+            new ProjectResponse { Puid = "proj234567", Name = "P2", OwnerUsername = "u", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
+        };
 
         A.CallTo(() => projectService.GetProjectsByUserPuid("user123456"))
-            .Returns(ServiceResult<List<Project>>.SuccessResult(projects, ServiceStatus.Ok200));
+            .Returns(ServiceResult<List<ProjectResponse>>.SuccessResult(projects, ServiceStatus.Ok200));
 
         var result = await controller.GetProjectsByUserPuid("user123456", projectService);
 
@@ -201,7 +205,7 @@ public class UsersControllerTests
         var projectService = A.Fake<IProjectService>();
 
         A.CallTo(() => projectService.GetProjectsByUserPuid("user123456"))
-            .Returns(ServiceResult<List<Project>>.Fail(ServiceStatus.NotFound404, "no"));
+            .Returns(ServiceResult<List<ProjectResponse>>.Fail(ServiceStatus.NotFound404, "no"));
 
         var result = await controller.GetProjectsByUserPuid("user123456", projectService);
 
@@ -217,7 +221,7 @@ public class UsersControllerTests
         var projectService = A.Fake<IProjectService>();
 
         A.CallTo(() => projectService.GetProjectsByUserPuid(A<string>._))
-            .Returns(ServiceResult<List<Project>>.Fail(ServiceStatus.BadRequest400, "bad"));
+            .Returns(ServiceResult<List<ProjectResponse>>.Fail(ServiceStatus.BadRequest400, "bad"));
 
         var result = await controller.GetProjectsByUserPuid("user123456", projectService);
 

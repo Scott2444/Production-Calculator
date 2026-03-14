@@ -4,6 +4,7 @@ namespace ProductionCalculator.Business.APIModels
     {
         public required string Puid { get; set; }
         public required string Name { get; set; }
+        public required string OwnerUsername { get; set; }
         public string? Description { get; set; }
         public bool IsPublic { get; set; }
         public string? AliasProjectPuid { get; set; }

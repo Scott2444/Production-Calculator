@@ -24,18 +24,17 @@ public class ProjectsControllerTests
         return controller;
     }
 
-    private static Project CreateProject(string puid = "projPuid", string name = "Project")
+    private static ProjectResponse CreateProjectResponse(string puid = "projPuid", string name = "Project")
     {
-        return new Project
+        return new ProjectResponse
         {
-            Project_Id = 1,
-            User_Id = 1,
             Puid = puid,
             Name = name,
+            OwnerUsername = "testuser",
             Description = "desc",
-            Is_Public = false,
-            Created_At = DateTime.UtcNow,
-            Last_Updated = DateTime.UtcNow
+            IsPublic = false,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
     }
 
@@ -43,9 +42,9 @@ public class ProjectsControllerTests
     public async Task AddProject_ValidRequest_ReturnsCreated()
     {
         var service = A.Fake<IProjectService>();
-        var project = CreateProject();
+        var project = CreateProjectResponse();
         A.CallTo(() => service.AddProject(A<string>._, A<string>._, A<bool?>._, A<string>._))
-            .Returns(ServiceResult<Project>.SuccessResult(project, ServiceStatus.Created201));
+            .Returns(ServiceResult<ProjectResponse>.SuccessResult(project, ServiceStatus.Created201));
         var controller = CreateController(service);
         var request = new ProjectRequest { Name = "Project" };
 
@@ -61,7 +60,7 @@ public class ProjectsControllerTests
     {
         var service = A.Fake<IProjectService>();
         A.CallTo(() => service.AddProject(A<string>._, A<string>._, A<bool?>._, A<string>._))
-            .Returns(ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Error"));
+            .Returns(ServiceResult<ProjectResponse>.Fail(ServiceStatus.BadRequest400, "Error"));
         var controller = CreateController(service);
         var request = new ProjectRequest { Name = "" };
 
@@ -75,9 +74,9 @@ public class ProjectsControllerTests
     public async Task UpdateProject_ValidRequest_ReturnsOk()
     {
         var service = A.Fake<IProjectService>();
-        var project = CreateProject();
+        var project = CreateProjectResponse();
         A.CallTo(() => service.UpdateProject(A<string>._, A<string>._, A<string>._, A<bool?>._, A<string>._))
-            .Returns(ServiceResult<Project>.SuccessResult(project, ServiceStatus.Ok200));
+            .Returns(ServiceResult<ProjectResponse>.SuccessResult(project, ServiceStatus.Ok200));
         var controller = CreateController(service);
         var request = new ProjectRequest { Name = "Updated" };
 
@@ -93,7 +92,7 @@ public class ProjectsControllerTests
     {
         var service = A.Fake<IProjectService>();
         A.CallTo(() => service.UpdateProject(A<string>._, A<string>._, A<string>._, A<bool?>._, A<string>._))
-            .Returns(ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Error"));
+            .Returns(ServiceResult<ProjectResponse>.Fail(ServiceStatus.BadRequest400, "Error"));
         var controller = CreateController(service);
         var request = new ProjectRequest { Name = "" };
 
@@ -108,7 +107,7 @@ public class ProjectsControllerTests
     {
         var service = A.Fake<IProjectService>();
         A.CallTo(() => service.UpdateProject(A<string>._, A<string>._, A<string>._, A<bool?>._, A<string>._))
-            .Returns(ServiceResult<Project>.Fail(ServiceStatus.NotFound404, "Not Found"));
+            .Returns(ServiceResult<ProjectResponse>.Fail(ServiceStatus.NotFound404, "Not Found"));
         var controller = CreateController(service);
         var request = new ProjectRequest { Name = "Name" };
 
@@ -122,9 +121,9 @@ public class ProjectsControllerTests
     public async Task GetProjectByPuid_ValidRequest_ReturnsOk()
     {
         var service = A.Fake<IProjectService>();
-        var project = CreateProject();
+        var project = CreateProjectResponse();
         A.CallTo(() => service.GetProjectByPuid("projPuid"))
-            .Returns(ServiceResult<Project>.SuccessResult(project, ServiceStatus.Ok200));
+            .Returns(ServiceResult<ProjectResponse>.SuccessResult(project, ServiceStatus.Ok200));
         var controller = CreateController(service);
 
         var result = await controller.GetProjectByPuid("projPuid");
@@ -139,7 +138,7 @@ public class ProjectsControllerTests
     {
         var service = A.Fake<IProjectService>();
         A.CallTo(() => service.GetProjectByPuid("projPuid"))
-            .Returns(ServiceResult<Project>.Fail(ServiceStatus.NotFound404, "Not Found"));
+            .Returns(ServiceResult<ProjectResponse>.Fail(ServiceStatus.NotFound404, "Not Found"));
         var controller = CreateController(service);
 
         var result = await controller.GetProjectByPuid("projPuid");

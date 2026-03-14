@@ -24,18 +24,17 @@ public class ResolveControllerTests
 		return controller;
 	}
 
-    private static Project CreateProject(string puid = "projPuid", string name = "Project")
+    private static ProjectResponse CreateProjectResponse(string puid = "projPuid", string name = "Project")
     {
-        return new Project
+        return new ProjectResponse
         {
-            Project_Id = 1,
-            User_Id = 1,
             Puid = puid,
             Name = name,
+            OwnerUsername = "user",
             Description = "desc",
-            Is_Public = false,
-            Created_At = DateTime.UtcNow,
-            Last_Updated = DateTime.UtcNow
+            IsPublic = false,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
     }
 
@@ -43,9 +42,9 @@ public class ResolveControllerTests
 	public async Task ResolveProject_ValidRequest_ReturnsOk()
 	{
 		var service = A.Fake<IProjectService>();
-		var project = CreateProject("projPuid");
+		var project = CreateProjectResponse("projPuid");
 		A.CallTo(() => service.ResolveProject("user", "project"))
-			.Returns(ServiceResult<List<Project>>.SuccessResult(new List<Project> { project }, ServiceStatus.Ok200));
+			.Returns(ServiceResult<List<ProjectResponse>>.SuccessResult(new List<ProjectResponse> { project }, ServiceStatus.Ok200));
 		var controller = CreateController(service);
 
 		var result = await controller.ResolveProject("user", "project");
@@ -61,7 +60,7 @@ public class ResolveControllerTests
 	{
 		var service = A.Fake<IProjectService>();
 		A.CallTo(() => service.ResolveProject("user", "project"))
-			.Returns(ServiceResult<List<Project>>.Fail(ServiceStatus.NotFound404, "Not Found"));
+			.Returns(ServiceResult<List<ProjectResponse>>.Fail(ServiceStatus.NotFound404, "Not Found"));
 		var controller = CreateController(service);
 
 		var result = await controller.ResolveProject("user", "project");
@@ -75,7 +74,7 @@ public class ResolveControllerTests
 	{
 		var service = A.Fake<IProjectService>();
 		A.CallTo(() => service.ResolveProject("user", "project"))
-			.Returns(ServiceResult<List<Project>>.Fail(ServiceStatus.BadRequest400, "Bad Request"));
+			.Returns(ServiceResult<List<ProjectResponse>>.Fail(ServiceStatus.BadRequest400, "Bad Request"));
 		var controller = CreateController(service);
 
 		var result = await controller.ResolveProject("user", "project");

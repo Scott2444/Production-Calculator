@@ -5,6 +5,7 @@ using ProductionCalculator.Business.Helpers;
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Services;
+using ProductionCalculator.Business.APIModels;
 
 namespace ProductionCalculator.Business.Tests;
 
@@ -230,15 +231,19 @@ public class ProjectServiceTests
     [Fact]
     public async Task GetProjectByPuid_Valid_ReturnsProject()
     {
-        var project = CreateProject(puid: "puid");
+        var user = CreateUser(id: 1, puid: "uPuid");
+        var project = CreateProject(puid: "puid", userId: 1);
         var repo = A.Fake<IProjectRepository>();
+        var userRepo = A.Fake<IUserRepository>();
         A.CallTo(() => repo.GetProjectByPuid("puid")).Returns(project);
-        var service = CreateService(A.Fake<ICurrentUserService>(), repo, A.Fake<IUserRepository>());
+        A.CallTo(() => userRepo.GetById(1)).Returns(user);
+        var service = CreateService(A.Fake<ICurrentUserService>(), repo, userRepo);
 
         var result = await service.GetProjectByPuid("puid");
 
         Assert.Equal(ServiceStatus.Ok200, result.Status);
-        Assert.Equal(project, result.Data);
+        Assert.Equal(project.Puid, result.Data!.Puid);
+        Assert.Equal(user.Username, result.Data!.OwnerUsername);
     }
 
     // GetProjectsByUserPuid Tests
@@ -278,7 +283,9 @@ public class ProjectServiceTests
         var result = await service.GetProjectsByUserPuid(user.Puid);
 
         Assert.Equal(ServiceStatus.Ok200, result.Status);
-        Assert.Equal(projects, result.Data);
+        Assert.Single(result.Data!);
+        Assert.Equal(projects[0].Puid, result.Data![0].Puid);
+        Assert.Equal(user.Username, result.Data![0].OwnerUsername);
     }
 
     // DeleteProject Tests
@@ -384,7 +391,8 @@ public class ProjectServiceTests
         var result = await service.ResolveProject("user", "project");
 
         Assert.Equal(ServiceStatus.Ok200, result.Status);
-        Assert.Equal(project, result.Data!.FirstOrDefault());
+        Assert.Equal(project.Puid, result.Data!.First().Puid);
+        Assert.Equal(user.Username, result.Data!.First().OwnerUsername);
     }
 
     [Fact]

@@ -21,7 +21,7 @@ namespace ProductionCalculator.API.Controllers
         {
             var result = await _service.AddProject(req.Name, req.Description, req.IsPublic, req.AliasProjectPuid);
 
-            return FromServiceResult(result, (p) => new ProjectResponse { Puid = p.Puid, Name = p.Name, Description = p.Description, IsPublic = p.Is_Public, AliasProjectPuid = p.Alias_Project_Puid, CreatedAt = p.Created_At, UpdatedAt = p.Last_Updated });
+            return FromServiceResult(result);
         }
 
         [Authorize(Policy = "IsOwnerOrAdmin")]
@@ -30,7 +30,7 @@ namespace ProductionCalculator.API.Controllers
         {
             var result = await _service.UpdateProject(projectPuid, req.Name, req.Description, req.IsPublic, req.AliasProjectPuid);
 
-            return FromServiceResult(result, (p) => new ProjectResponse { Puid = p.Puid, Name = p.Name, Description = p.Description, IsPublic = p.Is_Public, AliasProjectPuid = p.Alias_Project_Puid, CreatedAt = p.Created_At, UpdatedAt = p.Last_Updated });
+            return FromServiceResult(result);
         }
 
         [Authorize(Policy = "IsPublic")]
@@ -38,7 +38,7 @@ namespace ProductionCalculator.API.Controllers
         public async Task<IActionResult> GetProjectByPuid(string projectPuid)
         {
             var result = await _service.GetProjectByPuid(projectPuid);
-            return FromServiceResult(result, p => new ProjectResponse { Puid = p.Puid, Name = p.Name, Description = p.Description, IsPublic = p.Is_Public, AliasProjectPuid = p.Alias_Project_Puid, CreatedAt = p.Created_At, UpdatedAt = p.Last_Updated });
+            return FromServiceResult(result);
         }
 
         [Authorize(Policy = "IsOwnerOrAdmin")]
