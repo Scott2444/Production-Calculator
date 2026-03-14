@@ -2,7 +2,7 @@ export async function fetchProducts(
     project: string,
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
 ) {
-    const res = await protectedApi(`/api/projects/${project}/products`, {
+    const res = await protectedApi(`/projects/${project}/products`, {
         method: "GET",
     });
     if (!res.ok) throw new Error("Failed to load products");
@@ -19,7 +19,7 @@ export async function postNewProduct(
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
     payload: NewProductPayload,
 ) {
-    const res = await protectedApi(`/api/projects/${project}/products`, {
+    const res = await protectedApi(`/projects/${project}/products`, {
         method: "POST",
         body: JSON.stringify(payload),
         headers: {
@@ -45,16 +45,13 @@ export async function updateProduct(
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
     payload: NewProductPayload,
 ) {
-    const res = await protectedApi(
-        `/api/projects/${project}/products/${product}`,
-        {
-            method: "PUT",
-            body: JSON.stringify(payload),
-            headers: {
-                "Content-Type": "application/json",
-            },
+    const res = await protectedApi(`/projects/${project}/products/${product}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+        headers: {
+            "Content-Type": "application/json",
         },
-    );
+    });
     if (!res.ok) {
         let message = "Failed to update product.";
         try {
@@ -73,12 +70,9 @@ export async function deleteProduct(
     product: string,
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
 ) {
-    const res = await protectedApi(
-        `/api/projects/${project}/products/${product}`,
-        {
-            method: "DELETE",
-        },
-    );
+    const res = await protectedApi(`/projects/${project}/products/${product}`, {
+        method: "DELETE",
+    });
     if (!res.ok) {
         const message = "Failed to delete product.";
         throw new Error(message);

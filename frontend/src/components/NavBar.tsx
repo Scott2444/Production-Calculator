@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Image from "next/image";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/context/AuthContext";
 import { useProtectedApi } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
@@ -39,35 +39,21 @@ type NavBarProps = {
 export default function NavBar({
     currentPage,
 }: NavBarProps): React.ReactElement {
-    const pathname = usePathname();
+    const pathname = useRouterState({
+        select: (state) => state.location.pathname,
+    });
     const derivedCurrentPage = currentPage ?? getCurrentNavSection(pathname);
-    const { loggedIn } = useAuth();
-    const [accountLogoUrl, setAccountLogoUrl] = useState<string>(
-        "/Default_Avatar.svg",
-    );
+    const { loggedIn, isHydrated } = useAuth();
+    const accountLogoUrl = "/assets/Default_Avatar.svg";
+
     const { userId } = useAuth();
     const protectedApi = useProtectedApi();
-    const {
-        data: user,
-        isLoading,
-        error,
-    } = useQuery({
+    const { data: user } = useQuery({
         queryKey: ["user", userId],
         queryFn: () => fetchUser(userId!, protectedApi),
         staleTime: 5 * 60 * 1000, // 5 minutes
         enabled: Boolean(userId),
     });
-
-    useEffect(() => {
-        // Example: fetch account logo from API or context
-        // Replace with your actual logic
-        const fetchLogo = async () => {
-            // Simulate async fetch
-            // setAccountLogoUrl(await getLogoUrl());
-            // For now, keep default
-        };
-        fetchLogo();
-    }, []);
 
     const navItems = [
         { name: "Home", href: "/" },
@@ -79,19 +65,24 @@ export default function NavBar({
     return (
         <nav className="flex items-center justify-between py-5 px-8 border-b-2 border-black bg-slate-900/80">
             <div className="flex items-center gap-14 text-xl">
-                <Link href="/">
-                    <img src="/Medium_Logo.svg" alt="Logo" className="h-8" />
+                <Link to="/">
+                    <Image
+                        src="/assets/Medium_Logo.svg"
+                        alt="Logo"
+                        width={128}
+                        height={32}
+                    />
                 </Link>
                 {/* Navigation buttons */}
                 {navItems.map((item) => (
                     // Determine active state from the first slug in the route hierarchy.
                     <Link
                         key={item.name}
-                        href={item.href}
+                        to={item.href}
                         className={`mr-4 no-underline transition-colors duration-200 ${
                             derivedCurrentPage === item.name
                                 ? "text-slate-200 font-medium"
-                                : "text-slate-200 font-light hover:text-purple-400 hover:scale-105"
+                                : "text-slate-300 font-medium hover:text-purple-400 hover:scale-105"
                         } `}
                     >
                         {item.name}
@@ -99,15 +90,20 @@ export default function NavBar({
                 ))}
             </div>
             {/* Drop down menu */}
-            <div>
-                {loggedIn ? (
+            <div className="w-28 flex justify-end">
+                {!isHydrated ? (
+                    <div
+                        aria-hidden="true"
+                        className="h-10 w-24 rounded-md bg-slate-700/60"
+                    />
+                ) : loggedIn ? (
                     <AccountDropdown
                         accountLogoUrl={accountLogoUrl}
                         user={user}
                     />
                 ) : (
                     <Link
-                        href="/login"
+                        to="/login"
                         className="px-6 py-2 bg-purple-700 text-white rounded-md no-underline font-medium transition-colors duration-200 hover:bg-purple-600 hover:scale-105 shadow-md hover:shadow-lg"
                     >
                         Login
@@ -162,23 +158,28 @@ function AccountDropdown({
                 onClick={() => setMenuOpen((open) => !open)}
                 className="flex items-center focus:outline-none"
             >
-                <img
+                <Image
                     src={accountLogoUrl}
                     alt="Account"
-                    className="w-9 h-9 rounded-full object-cover border border-gray-300 transition-transform duration-200 hover:scale-105 hover:border-purple-400"
+                    width={36}
+                    height={36}
+                    className="rounded-full object-cover border border-gray-300 transition-transform duration-200 hover:scale-105 hover:border-purple-400"
                 />
             </button>
             {menuOpen && (
                 <div
                     id="account-dropdown"
-                    className="absolute right-0 mt-2 mr-4 w-70 bg-slate-50 rounded-md shadow-lg border border-gray-200 z-50 animate-fade-in"
+                    className="absolute right-0 top-15 mt-2 mr-4 w-70 bg-slate-50 rounded-md shadow-lg border border-gray-200 z-50 animate-fade-in"
                 >
                     {/* User info section */}
                     <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
-                        <img
+                        <Image
                             src={user?.profilePictureUrl || accountLogoUrl}
                             alt="Profile"
-                            className="w-10 h-10 rounded-full object-cover border border-gray-300"
+                            width={40}
+                            height={40}
+                            className="rounded-full object-cover border border-gray-300"
+                            unoptimized={Boolean(user?.profilePictureUrl)}
                         />
                         <div className="flex flex-col min-w-0">
                             <span className="font-medium text-gray-900 truncate">
@@ -193,7 +194,7 @@ function AccountDropdown({
                     <div className="flex flex-col gap-1 px-2 py-2">
                         {user && !user.isVerified && (
                             <Link
-                                href="/verify"
+                                to="/verify"
                                 className="px-4 py-2 text-gray-800 no-underline transition-all duration-150 rounded-xl hover:bg-purple-100 hover:text-purple-700 flex items-center gap-2"
                                 onClick={() => setMenuOpen(false)}
                             >
@@ -204,7 +205,7 @@ function AccountDropdown({
                             </Link>
                         )}
                         <Link
-                            href="/settings"
+                            to="/settings"
                             className="px-4 py-2 text-gray-800 no-underline transition-all duration-150 rounded-xl hover:bg-purple-100 hover:text-purple-700 flex items-center gap-2"
                             onClick={() => setMenuOpen(false)}
                         >

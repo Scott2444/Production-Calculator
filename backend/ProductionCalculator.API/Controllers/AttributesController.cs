@@ -5,7 +5,7 @@ using ProductionCalculator.Business.Interfaces;
 
 namespace ProductionCalculator.API.Controllers
 {
-    [Route("api/projects/{projectPuid}/[controller]")]
+    [Route("projects/{projectPuid}/[controller]")]
     public class AttributesController : ApiControllerBase
     {
         private readonly IAttributeService _service;

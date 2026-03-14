@@ -62,7 +62,7 @@ namespace ProductionCalculator.Business.Services
             // Redirect aliased project to canonical project PUID
             if (!string.IsNullOrWhiteSpace(project.Alias_Project_Puid))
             {
-                return ServiceResult<Product>.Redirection(ServiceStatus.SeeOther303, $"/api/projects/{project.Alias_Project_Puid}/products/{puid}");
+                return ServiceResult<Product>.Redirection(ServiceStatus.SeeOther303, $"/projects/{project.Alias_Project_Puid}/products/{puid}");
             }
 
             // Check if product exists and belongs to project (IMPORTANT FOR AUTHORIZATION!)
@@ -81,7 +81,7 @@ namespace ProductionCalculator.Business.Services
             // Redirect aliased project to canonical project PUID
             if (!string.IsNullOrWhiteSpace(project.Alias_Project_Puid))
             {
-                return ServiceResult<List<Product>>.Redirection(ServiceStatus.SeeOther303, $"/api/projects/{project.Alias_Project_Puid}/products");
+                return ServiceResult<List<Product>>.Redirection(ServiceStatus.SeeOther303, $"/projects/{project.Alias_Project_Puid}/products");
             }
 
             var products = await _repo.GetProductsByProjectId(project.Project_Id);

@@ -125,7 +125,7 @@ public class ProductServiceTests
         var result = await service.GetProductByPuid("alias", "prodPuid");
 
         Assert.Equal(ServiceStatus.SeeOther303, result.Status);
-        Assert.Equal("/api/projects/canonical/products/prodPuid", result.Location);
+        Assert.Equal("/projects/canonical/products/prodPuid", result.Location);
     }
 
     [Fact]
@@ -201,7 +201,7 @@ public class ProductServiceTests
         var result = await service.GetProductsByProjectPuid("alias");
 
         Assert.Equal(ServiceStatus.SeeOther303, result.Status);
-        Assert.Equal("/api/projects/canonical/products", result.Location);
+        Assert.Equal("/projects/canonical/products", result.Location);
     }
 
     [Fact]

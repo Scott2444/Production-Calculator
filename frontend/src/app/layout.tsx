@@ -14,8 +14,8 @@ export const metadata: Metadata = {
     title: "Production Calculator",
     description: "Logistics planning tool for automation games",
     icons: {
-        icon: [{ url: "/Small_Logo.svg", type: "image/svg+xml" }],
-        shortcut: ["/Small_Logo.svg"],
+        icon: [{ url: "/assets/Small_Logo.svg", type: "image/svg+xml" }],
+        shortcut: ["/assets/Small_Logo.svg"],
     },
 };
 

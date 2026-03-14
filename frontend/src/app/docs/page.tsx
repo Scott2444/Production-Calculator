@@ -1,16 +1,7 @@
 "use client";
 
-import NavBar from "@/components/NavBar";
+import ClientRouterApp from "@/router/ClientRouterApp";
 
 export default function Docs() {
-    return (
-        <>
-            <NavBar />
-            <div className="flex">
-                <div>
-                    <div>Docs Page</div>
-                </div>
-            </div>
-        </>
-    );
+    return <ClientRouterApp />;
 }

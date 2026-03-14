@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { usePathname, useRouter, useParams } from "next/navigation";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useRouteParams } from "@/hooks/useRouteParams";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { useProtectedApi } from "@/lib/api";
@@ -38,13 +38,11 @@ const navItems = [
 ] as const;
 
 export default function ProjectSidebar() {
-    const pathname = usePathname();
-    const router = useRouter();
-    const params = useParams<{ username?: string; project_name?: string }>();
-    const username = params?.username ?? "";
-    const routeProjectName = params?.project_name
-        ? decodeURIComponent(params.project_name)
-        : "";
+    const pathname = useRouterState({
+        select: (state) => state.location.pathname,
+    });
+    const navigate = useNavigate();
+    const { username, projectName: routeProjectName } = useRouteParams();
 
     const { userId, loggedIn } = useAuth();
     const protectedApi = useProtectedApi();
@@ -88,12 +86,12 @@ export default function ProjectSidebar() {
         close?.();
         if (!username) return;
         if (!project) {
-            router.push(userHomeHref);
+            void navigate({ to: userHomeHref });
             return;
         }
-        router.push(
-            `/${encodeURIComponent(username)}/${encodeURIComponent(project.name)}/`,
-        );
+        void navigate({
+            to: `/${encodeURIComponent(username)}/${encodeURIComponent(project.name)}/`,
+        });
     };
 
     const linksDisabled = !currentProject;
@@ -232,7 +230,7 @@ export default function ProjectSidebar() {
 
                 {/* Quick link */}
                 <Link
-                    href={projectHomeHref}
+                    to={projectHomeHref}
                     className={`rounded-xl border px-4 py-3 text-sm transition-all ${
                         currentProject
                             ? "border-slate-700 bg-slate-900/60 hover:border-purple-500/60 hover:bg-slate-800/60"
@@ -283,7 +281,7 @@ export default function ProjectSidebar() {
                         return (
                             <Link
                                 key={item.slug}
-                                href={href}
+                                to={href}
                                 className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all ${
                                     active
                                         ? "bg-purple-600/20 text-slate-100"
@@ -319,9 +317,9 @@ export default function ProjectSidebar() {
                     onCreated={(project) => {
                         setCurrentProject(project);
                         if (username) {
-                            router.push(
-                                `/${encodeURIComponent(username)}/${encodeURIComponent(project.name)}/`,
-                            );
+                            void navigate({
+                                to: `/${encodeURIComponent(username)}/${encodeURIComponent(project.name)}/`,
+                            });
                         }
                     }}
                 />

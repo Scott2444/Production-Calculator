@@ -180,7 +180,7 @@ namespace ProductionCalculator.Business.Services
             // Redirect aliased project to canonical project PUID
             if (!string.IsNullOrWhiteSpace(project.Alias_Project_Puid))
             {
-                return ServiceResult<Modifier>.Redirection(ServiceStatus.SeeOther303, $"/api/projects/{project.Alias_Project_Puid}/modifiers/{puid}");
+                return ServiceResult<Modifier>.Redirection(ServiceStatus.SeeOther303, $"/projects/{project.Alias_Project_Puid}/modifiers/{puid}");
             }
 
             // Check if modifier exists and belongs to project (IMPORTANT FOR AUTHORIZATION!)
@@ -199,7 +199,7 @@ namespace ProductionCalculator.Business.Services
             // Redirect aliased project to canonical project PUID
             if (!string.IsNullOrWhiteSpace(project.Alias_Project_Puid))
             {
-                return ServiceResult<List<Modifier>>.Redirection(ServiceStatus.SeeOther303, $"/api/projects/{project.Alias_Project_Puid}/modifiers");
+                return ServiceResult<List<Modifier>>.Redirection(ServiceStatus.SeeOther303, $"/projects/{project.Alias_Project_Puid}/modifiers");
             }
 
             var modifiers = await _repo.GetModifiersByProjectId(project.Project_Id);

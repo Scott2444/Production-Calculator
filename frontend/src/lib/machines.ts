@@ -2,7 +2,7 @@ export async function fetchMachines(
     project: string,
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
 ) {
-    const res = await protectedApi(`/api/projects/${project}/machines`, {
+    const res = await protectedApi(`/projects/${project}/machines`, {
         method: "GET",
     });
     if (!res.ok) throw new Error("Failed to load machines");
@@ -21,7 +21,7 @@ export async function postNewMachine(
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
     payload: NewMachinePayload,
 ) {
-    const res = await protectedApi(`/api/projects/${project}/machines`, {
+    const res = await protectedApi(`/projects/${project}/machines`, {
         method: "POST",
         body: JSON.stringify(payload),
         headers: {
@@ -47,16 +47,13 @@ export async function updateMachine(
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
     payload: NewMachinePayload,
 ) {
-    const res = await protectedApi(
-        `/api/projects/${project}/machines/${machine}`,
-        {
-            method: "PUT",
-            body: JSON.stringify(payload),
-            headers: {
-                "Content-Type": "application/json",
-            },
+    const res = await protectedApi(`/projects/${project}/machines/${machine}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+        headers: {
+            "Content-Type": "application/json",
         },
-    );
+    });
     if (!res.ok) {
         let message = "Failed to update machine.";
         try {
@@ -75,12 +72,9 @@ export async function deleteMachine(
     machine: string,
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
 ) {
-    const res = await protectedApi(
-        `/api/projects/${project}/machines/${machine}`,
-        {
-            method: "DELETE",
-        },
-    );
+    const res = await protectedApi(`/projects/${project}/machines/${machine}`, {
+        method: "DELETE",
+    });
     if (!res.ok) {
         const message = "Failed to delete machine.";
         throw new Error(message);
