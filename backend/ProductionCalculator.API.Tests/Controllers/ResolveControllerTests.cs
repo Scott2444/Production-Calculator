@@ -45,15 +45,15 @@ public class ResolveControllerTests
 		var service = A.Fake<IProjectService>();
 		var project = CreateProject("projPuid");
 		A.CallTo(() => service.ResolveProject("user", "project"))
-			.Returns(ServiceResult<Project>.SuccessResult(project, ServiceStatus.Ok200));
+			.Returns(ServiceResult<List<Project>>.SuccessResult(new List<Project> { project }, ServiceStatus.Ok200));
 		var controller = CreateController(service);
 
 		var result = await controller.ResolveProject("user", "project");
 
 		var obj = Assert.IsType<ObjectResult>(result);
 		Assert.Equal(200, obj.StatusCode);
-		var response = Assert.IsType<ProjectResolveResponse>(obj.Value);
-		Assert.Equal("projPuid", response.ProjectPuid);
+		var response = Assert.IsType<List<ProjectResolveResponse>>(obj.Value);
+		Assert.Equal("projPuid", response[0].ProjectPuid);
 	}
 
 	[Fact]
@@ -61,7 +61,7 @@ public class ResolveControllerTests
 	{
 		var service = A.Fake<IProjectService>();
 		A.CallTo(() => service.ResolveProject("user", "project"))
-			.Returns(ServiceResult<Project>.Fail(ServiceStatus.NotFound404, "Not Found"));
+			.Returns(ServiceResult<List<Project>>.Fail(ServiceStatus.NotFound404, "Not Found"));
 		var controller = CreateController(service);
 
 		var result = await controller.ResolveProject("user", "project");
@@ -75,7 +75,7 @@ public class ResolveControllerTests
 	{
 		var service = A.Fake<IProjectService>();
 		A.CallTo(() => service.ResolveProject("user", "project"))
-			.Returns(ServiceResult<Project>.Fail(ServiceStatus.BadRequest400, "Bad Request"));
+			.Returns(ServiceResult<List<Project>>.Fail(ServiceStatus.BadRequest400, "Bad Request"));
 		var controller = CreateController(service);
 
 		var result = await controller.ResolveProject("user", "project");

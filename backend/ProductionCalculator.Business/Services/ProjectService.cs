@@ -140,37 +140,42 @@ namespace ProductionCalculator.Business.Services
             _logger.LogInformation("Project state change: Project '{ProjectName}' (PUID: {ProjectPuid}) deleted.", project.Name, project.Puid);
             return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
         }
-        public async Task<ServiceResult<Project>> ResolveProject(string username, string projectName)
+        public async Task<ServiceResult<List<Project>>> ResolveProject(string username, string? projectName)
         {
-            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(projectName))
-                return ServiceResult<Project>.Fail(ServiceStatus.BadRequest400);
+            if (string.IsNullOrWhiteSpace(username))
+                return ServiceResult<List<Project>>.Fail(ServiceStatus.BadRequest400);
 
             var user = await _userRepo.GetByUsername(username);
             if (user == null)
-                return ServiceResult<Project>.Fail(ServiceStatus.NotFound404, $"Project or user not found.");
+                return ServiceResult<List<Project>>.Fail(ServiceStatus.NotFound404, $"Project or user not found.");
 
             var userProjects = await _repo.GetProjectsByUserId(user.User_Id);
-            var project = userProjects.FirstOrDefault(p => p.Name == projectName);
 
-            if (project == null)
-                return ServiceResult<Project>.Fail(ServiceStatus.NotFound404, "Project or user not found.");
-
-            // Custom authorization logic
-            if (project.Is_Public)
-                return ServiceResult<Project>.SuccessResult(project, ServiceStatus.Ok200);
-
-            if (_currentUser.IsAdmin)
-                return ServiceResult<Project>.SuccessResult(project, ServiceStatus.Ok200);
-
-            if (!string.IsNullOrWhiteSpace(_currentUser.UserPuid) &&
-                _currentUser.UserPuid.Equals(user.Puid, StringComparison.Ordinal))
+            // Custom auth logic
+            // Filter by public if not owner or admin
+            var isOwnerOrAdmin = !string.IsNullOrWhiteSpace(_currentUser.UserPuid) &&
+                _currentUser.UserPuid.Equals(user.Puid, StringComparison.Ordinal) || _currentUser.IsAdmin;
+            if (!isOwnerOrAdmin)
             {
-                return ServiceResult<Project>.SuccessResult(project, ServiceStatus.Ok200);
+                userProjects = userProjects.Where(p => p.Is_Public).ToList();
             }
 
-            return ServiceResult<Project>.Fail(ServiceStatus.NotFound404, "Project or user not found.");
+            List<Project> projects;
 
-            
+            if (string.IsNullOrWhiteSpace(projectName))
+            {
+                projects = userProjects;
+            }
+            else
+            {
+                var project = userProjects.FirstOrDefault(p => p.Name == projectName);
+                projects = project != null ? new List<Project> { project } : new List<Project>();
+            }
+
+            if (!projects.Any())
+                return ServiceResult<List<Project>>.Fail(ServiceStatus.NotFound404, "Project or user not found.");
+
+            return ServiceResult<List<Project>>.SuccessResult(projects, ServiceStatus.Ok200);
         }
 
         /// <summary>

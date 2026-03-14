@@ -37,8 +37,18 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
     const projectResolveQuery = useQuery({
         queryKey: ["resolve-project", routeUsername, routeProjectName],
-        queryFn: () =>
-            resolveProject(routeUsername, routeProjectName, protectedApi),
+        queryFn: async () => {
+            const results = await resolveProject(
+                routeUsername,
+                routeProjectName,
+                protectedApi,
+            );
+            return results.find(
+                (p) =>
+                    p.projectName.toLowerCase() ===
+                    routeProjectName.toLowerCase(),
+            );
+        },
         staleTime: 5 * 60 * 1000,
         enabled: Boolean(routeUsername && routeProjectName),
     });

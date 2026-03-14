@@ -1,4 +1,3 @@
-using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Models;
 
 namespace ProductionCalculator.Business.Interfaces
@@ -10,6 +9,6 @@ namespace ProductionCalculator.Business.Interfaces
         Task<ServiceResult<Project>> GetProjectByPuid(string puid);
         Task<ServiceResult<List<Project>>> GetProjectsByUserPuid(string userPuid);
         Task<ServiceResult> DeleteProject(string puid);
-        Task<ServiceResult<Project>> ResolveProject(string username, string projectName);
+        Task<ServiceResult<List<Project>>> ResolveProject(string username, string? projectName);
     }
 }

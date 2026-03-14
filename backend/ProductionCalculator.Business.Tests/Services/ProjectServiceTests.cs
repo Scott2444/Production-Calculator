@@ -334,14 +334,11 @@ public class ProjectServiceTests
 
     // ResolveProject Tests
     [Fact]
-    public async Task ResolveProject_EmptyUsernameOrProject_ReturnsBadRequest()
+    public async Task ResolveProject_EmptyUsername_ReturnsBadRequest()
     {
         var service = CreateService(A.Fake<ICurrentUserService>(), A.Fake<IProjectRepository>(), A.Fake<IUserRepository>());
 
         var result = await service.ResolveProject("", "proj");
-        Assert.Equal(ServiceStatus.BadRequest400, result.Status);
-
-        result = await service.ResolveProject("user", "");
         Assert.Equal(ServiceStatus.BadRequest400, result.Status);
     }
 
@@ -387,7 +384,7 @@ public class ProjectServiceTests
         var result = await service.ResolveProject("user", "project");
 
         Assert.Equal(ServiceStatus.Ok200, result.Status);
-        Assert.Equal(project, result.Data);
+        Assert.Equal(project, result.Data!.FirstOrDefault());
     }
 
     [Fact]
@@ -446,5 +443,69 @@ public class ProjectServiceTests
         var result = await service.ResolveProject("owner", "project");
 
         Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task ResolveProject_UsernameHasNoPublicProjects_ReturnsNotFound()
+    {
+        var user = CreateUser(id: 1, puid: "ownerPuid");
+        var userRepo = A.Fake<IUserRepository>();
+        A.CallTo(() => userRepo.GetByUsername("owner")).Returns(user);
+        var project = CreateProject(userId: 1, name: "privateProject");
+        project.Is_Public = false;
+        var repo = A.Fake<IProjectRepository>();
+        A.CallTo(() => repo.GetProjectsByUserId(1)).Returns(new List<Project> { project });
+        var currentUser = A.Fake<ICurrentUserService>();
+        A.CallTo(() => currentUser.UserPuid).Returns("otherUserPuid");
+        A.CallTo(() => currentUser.IsAdmin).Returns(false);
+        var service = CreateService(currentUser, repo, userRepo);
+
+        var result = await service.ResolveProject("owner", null);
+
+        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task ResolveProject_PublicProjectsOnly_ReturnsProjects()
+    {
+        var user = CreateUser(id: 1, puid: "ownerPuid");
+        var userRepo = A.Fake<IUserRepository>();
+        A.CallTo(() => userRepo.GetByUsername("owner")).Returns(user);
+        var publicProject = CreateProject(id: 1, userId: 1, name: "publicProject");
+        publicProject.Is_Public = true;
+        var privateProject = CreateProject(id: 2, userId: 1, name: "privateProject");
+        privateProject.Is_Public = false;
+        var repo = A.Fake<IProjectRepository>();
+        A.CallTo(() => repo.GetProjectsByUserId(1)).Returns(new List<Project> { publicProject, privateProject });
+        var currentUser = A.Fake<ICurrentUserService>();
+        A.CallTo(() => currentUser.UserPuid).Returns("otherUserPuid");
+        A.CallTo(() => currentUser.IsAdmin).Returns(false);
+        var service = CreateService(currentUser, repo, userRepo);
+
+        var result = await service.ResolveProject("owner", null);
+
+        Assert.Equal(ServiceStatus.Ok200, result.Status);
+        Assert.Single(result.Data!);
+        Assert.Equal("publicProject", result.Data![0].Name);
+    }
+
+    [Fact]
+    public async Task ResolveProject_OwnerUser_ReturnsProjects()
+    {
+        var user = CreateUser(id: 1, puid: "ownerPuid");
+        var userRepo = A.Fake<IUserRepository>();
+        A.CallTo(() => userRepo.GetByUsername("owner")).Returns(user);
+        var project1 = CreateProject(id: 1, userId: 1, name: "project1");
+        var project2 = CreateProject(id: 2, userId: 1, name: "project2");
+        var repo = A.Fake<IProjectRepository>();
+        A.CallTo(() => repo.GetProjectsByUserId(1)).Returns(new List<Project> { project1, project2 });
+        var currentUser = A.Fake<ICurrentUserService>();
+        A.CallTo(() => currentUser.UserPuid).Returns("ownerPuid");
+        var service = CreateService(currentUser, repo, userRepo);
+
+        var result = await service.ResolveProject("owner", null);
+
+        Assert.Equal(ServiceStatus.Ok200, result.Status);
+        Assert.Equal(2, result.Data!.Count);
     }
 }
