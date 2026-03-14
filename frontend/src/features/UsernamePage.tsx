@@ -5,7 +5,6 @@ import ErrorDisplay from "@/components/ErrorDisplay";
 import ProjectPageLayout from "@/components/ProjectPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useRouteParams } from "@/hooks/useRouteParams";
-import { useDeleteConfirmation } from "@/hooks/DeleteConfirmation";
 import { useProtectedApi } from "@/lib/api";
 import { fetchProject, resolveProject } from "@/lib/projects";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
