@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUsername(existingUser.username);
         }
 
-        return queryClient.getQueryCache().subscribe((event) => {
+        const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
             const queryKey = event.query.queryKey;
             if (
                 Array.isArray(queryKey) &&
@@ -89,10 +89,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     | CachedUser
                     | undefined;
                 if (updatedUser?.username) {
-                    setUsername(updatedUser.username);
+                    queueMicrotask(() => setUsername(updatedUser.username));
                 }
             }
         });
+        return unsubscribe;
     }, [queryClient, userId]);
 
     return (
