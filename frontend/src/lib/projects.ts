@@ -2,7 +2,7 @@ export async function fetchProjects(
     userId: string,
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
 ) {
-    const res = await protectedApi(`/api/users/${userId}/projects`, {
+    const res = await protectedApi(`/users/${userId}/projects`, {
         method: "GET",
     });
     if (!res.ok) throw new Error("Failed to load projects");
@@ -13,7 +13,7 @@ export async function fetchProject(
     projectPuid: string,
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
 ) {
-    const res = await protectedApi(`/api/projects/${projectPuid}`, {
+    const res = await protectedApi(`/projects/${projectPuid}`, {
         method: "GET",
     });
     if (!res.ok) throw new Error("Failed to load project");
@@ -26,7 +26,7 @@ export async function resolveProject(
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
 ) {
     const res = await protectedApi(
-        `/api/resolve/projects?username=${encodeURIComponent(username)}&project=${encodeURIComponent(projectName)}`,
+        `/resolve/projects?username=${encodeURIComponent(username)}&project=${encodeURIComponent(projectName)}`,
         {
             method: "GET",
         },
@@ -46,7 +46,7 @@ export async function postNewProject(
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
     payload: UpsertProjectPayload,
 ) {
-    const res = await protectedApi(`/api/projects`, {
+    const res = await protectedApi(`/projects`, {
         method: "POST",
         body: JSON.stringify(payload),
         headers: {
@@ -71,7 +71,7 @@ export async function updateProject(
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
     payload: UpsertProjectPayload,
 ) {
-    const res = await protectedApi(`/api/projects/${project}`, {
+    const res = await protectedApi(`/projects/${project}`, {
         method: "PUT",
         body: JSON.stringify(payload),
         headers: {
@@ -95,7 +95,7 @@ export async function deleteProject(
     project: string,
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
 ) {
-    const res = await protectedApi(`/api/projects/${project}`, {
+    const res = await protectedApi(`/projects/${project}`, {
         method: "DELETE",
     });
     if (!res.ok) {

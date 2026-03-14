@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace ProductionCalculator.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     public class ResolveController : ApiControllerBase
     {
         private readonly IProjectService _service;

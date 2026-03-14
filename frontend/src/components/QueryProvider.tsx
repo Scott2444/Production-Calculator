@@ -1,6 +1,9 @@
 "use client";
 
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import {
+    PersistQueryClientProvider,
+    Persister,
+} from "@tanstack/react-query-persist-client";
 import { QueryClient, useQueryClient } from "@tanstack/react-query";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { ReactNode, useEffect, useState, useRef } from "react";
@@ -21,7 +24,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
             }),
     );
 
-    const persisterRef = useRef<any>(null);
+    const persisterRef = useRef<Persister | null>(null);
 
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -39,7 +42,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
         <PersistQueryClientProvider
             client={queryClient}
             persistOptions={{
-                persister: persisterRef.current,
+                persister: persisterRef.current!,
                 maxAge: 1000 * 60 * 60 * 24,
                 buster: process.env.NEXT_PUBLIC_QUERY_CACHE_BUSTER ?? "v1",
                 dehydrateOptions: {

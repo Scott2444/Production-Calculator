@@ -1,17 +1,13 @@
 import type { NextConfig } from "next";
 
+const isProd = process.env.NODE_ENV === "production";
+
 const nextConfig: NextConfig = {
-  async rewrites() {
-    if (process.env.NODE_ENV === "development") {
-      return [
-        {
-          source: "/api/:path*",
-          destination: "http://localhost:5076/api/:path*", // Proxy to backend
-        },
-      ];
-    }
-    return [];
-  },
+    ...(isProd && { output: "export" }),
+    trailingSlash: true,
+    images: {
+        unoptimized: true,
+    },
 };
 
 export default nextConfig;

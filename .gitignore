@@ -3,6 +3,8 @@
 # local info
 project_info.md
 
+/website-test/
+
 # backend secrets
 backend/secrets/
 
@@ -10,6 +12,10 @@ backend/secrets/
 /secrets/
 
 /backend/UnitTestsToImplement.md
+
+.wrangler/
+
+.prettierignore
 
 # ------------------------
 # Node.js

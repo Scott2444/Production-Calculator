@@ -133,7 +133,7 @@ public class ModifierServiceTests
         var result = await service.GetModifierByPuid("alias", "modPuid");
 
         Assert.Equal(ServiceStatus.SeeOther303, result.Status);
-        Assert.Equal("/api/projects/canonical/modifiers/modPuid", result.Location);
+        Assert.Equal("/projects/canonical/modifiers/modPuid", result.Location);
     }
 
     [Fact]
@@ -209,7 +209,7 @@ public class ModifierServiceTests
         var result = await service.GetModifiersByProjectPuid("alias");
 
         Assert.Equal(ServiceStatus.SeeOther303, result.Status);
-        Assert.Equal("/api/projects/canonical/modifiers", result.Location);
+        Assert.Equal("/projects/canonical/modifiers", result.Location);
     }
 
     [Fact]

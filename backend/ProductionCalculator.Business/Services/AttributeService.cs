@@ -58,7 +58,7 @@ namespace ProductionCalculator.Business.Services
 
             if (!string.IsNullOrWhiteSpace(project.Alias_Project_Puid))
             {
-                return ServiceResult<ProjectAttribute>.Redirection(ServiceStatus.SeeOther303, $"/api/projects/{project.Alias_Project_Puid}/attributes/{puid}");
+                return ServiceResult<ProjectAttribute>.Redirection(ServiceStatus.SeeOther303, $"/projects/{project.Alias_Project_Puid}/attributes/{puid}");
             }
 
             var attribute = await _repo.GetAttributeByPuid(puid);
@@ -74,7 +74,7 @@ namespace ProductionCalculator.Business.Services
 
             if (!string.IsNullOrWhiteSpace(project.Alias_Project_Puid))
             {
-                return ServiceResult<List<ProjectAttribute>>.Redirection(ServiceStatus.SeeOther303, $"/api/projects/{project.Alias_Project_Puid}/attributes");
+                return ServiceResult<List<ProjectAttribute>>.Redirection(ServiceStatus.SeeOther303, $"/projects/{project.Alias_Project_Puid}/attributes");
             }
 
             var attributes = await _repo.GetAttributesByProjectId(project.Project_Id);

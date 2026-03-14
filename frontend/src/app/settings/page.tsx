@@ -2,6 +2,6 @@
 
 import ClientRouterApp from "@/router/ClientRouterApp";
 
-export default function Explore() {
+export default function Settings() {
     return <ClientRouterApp />;
 }

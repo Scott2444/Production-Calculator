@@ -189,7 +189,7 @@ namespace ProductionCalculator.Business.Services
             // Redirect aliased project to canonical project PUID
             if (!string.IsNullOrWhiteSpace(project.Alias_Project_Puid))
             {
-                return ServiceResult<RecipeResponse>.Redirection(ServiceStatus.SeeOther303, $"/api/projects/{project.Alias_Project_Puid}/recipes/{puid}");
+                return ServiceResult<RecipeResponse>.Redirection(ServiceStatus.SeeOther303, $"/projects/{project.Alias_Project_Puid}/recipes/{puid}");
             }
 
             // Check if recipe exists and belongs to project (IMPORTANT FOR AUTHORIZATION!)
@@ -221,7 +221,7 @@ namespace ProductionCalculator.Business.Services
             // Redirect aliased project to canonical project PUID
             if (!string.IsNullOrWhiteSpace(project.Alias_Project_Puid))
             {
-                return ServiceResult<List<RecipeResponse>>.Redirection(ServiceStatus.SeeOther303, $"/api/projects/{project.Alias_Project_Puid}/recipes");
+                return ServiceResult<List<RecipeResponse>>.Redirection(ServiceStatus.SeeOther303, $"/projects/{project.Alias_Project_Puid}/recipes");
             }
 
             // Get all recipes for the project

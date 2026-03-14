@@ -72,14 +72,14 @@ public class ProductsControllerTests
     {
         var service = A.Fake<IProductService>();
         A.CallTo(() => service.GetProductByPuid("alias", "prodPuid"))
-            .Returns(ServiceResult<Product>.Redirection(ServiceStatus.SeeOther303, "/api/projects/canonical/products/prodPuid"));
+            .Returns(ServiceResult<Product>.Redirection(ServiceStatus.SeeOther303, "/projects/canonical/products/prodPuid"));
         var controller = CreateController(service);
 
         var result = await controller.GetProductByPuid("alias", "prodPuid");
 
         var obj = Assert.IsType<StatusCodeResult>(result);
         Assert.Equal(303, obj.StatusCode);
-        Assert.Equal("/api/projects/canonical/products/prodPuid", controller.Response.Headers["Location"]);
+        Assert.Equal("/projects/canonical/products/prodPuid", controller.Response.Headers["Location"]);
     }
 
     [Fact]
@@ -116,14 +116,14 @@ public class ProductsControllerTests
     {
         var service = A.Fake<IProductService>();
         A.CallTo(() => service.GetProductsByProjectPuid("alias"))
-            .Returns(ServiceResult<List<Product>>.Redirection(ServiceStatus.SeeOther303, "/api/projects/canonical/products"));
+            .Returns(ServiceResult<List<Product>>.Redirection(ServiceStatus.SeeOther303, "/projects/canonical/products"));
         var controller = CreateController(service);
 
         var result = await controller.GetProductsByProjectPuid("alias");
 
         var obj = Assert.IsType<StatusCodeResult>(result);
         Assert.Equal(303, obj.StatusCode);
-        Assert.Equal("/api/projects/canonical/products", controller.Response.Headers["Location"]);
+        Assert.Equal("/projects/canonical/products", controller.Response.Headers["Location"]);
     }
 
     [Fact]
