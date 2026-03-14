@@ -55,14 +55,14 @@ namespace ProductionCalculator.Business.Services
                         })
                         .ToList(),
                     RecipeAttributes = fullNode.RecipeAttributes
-                        .Select(a => new AttributeRateExchange
+                        .Select(a => new AttributeRateRequest
                         {
                             Puid = projectObjects.Attributes.FirstOrDefault(attr => attr.Attribute_Id == a.Attribute_Id)?.Puid ?? throw new ArgumentException($"Attribute with id {a.Attribute_Id} not found in project objects"),
                             Rate = a.Rate
                         })
                         .ToList(),
                     MachineAttributes = fullNode.MachineAttributes
-                        .Select(a => new AttributeRateExchange
+                        .Select(a => new AttributeRateRequest
                         {
                             Puid = projectObjects.Attributes.FirstOrDefault(attr => attr.Attribute_Id == a.Attribute_Id)?.Puid ?? throw new ArgumentException($"Attribute with id {a.Attribute_Id} not found in project objects"),
                             Rate = a.Rate

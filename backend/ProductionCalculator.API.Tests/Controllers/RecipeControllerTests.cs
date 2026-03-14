@@ -34,7 +34,14 @@ public class RecipesControllerTests
             BaseCraftingTime = 1.0,
             Inputs = new List<RecipeProductExchange>(),
             Outputs = new List<RecipeProductExchange>(),
-            Attributes = new List<AttributeRateExchange>(),
+            Attributes = new List<AttributeRateResponse>
+            {
+                new()
+                {
+                    Puid = "attr1",
+                    Rate = 1.25
+                }
+            },
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -54,6 +61,8 @@ public class RecipesControllerTests
         Assert.Equal(200, obj.StatusCode);
         var val = Assert.IsType<RecipeResponse>(obj.Value);
         Assert.Equal("recipePuid", val.Puid);
+        Assert.Single(val.Attributes);
+        Assert.Equal("attr1", val.Attributes[0].Puid);
     }
 
     [Fact]

@@ -185,7 +185,7 @@ public class MachineServiceTests
         A.CallTo(() => recipeRepo.GetByPuid("recPuid")).Returns(recipe);
         A.CallTo(() => attributeRepo.GetAttributeByPuid("a1")).Returns(attribute);
 
-        var result = await service.AddMachine("projPuid", "NewMach", "desc", 10.0, new List<string> { "recPuid" }, [new AttributeRateExchange { Puid = "a1", Rate = 2 }]);
+        var result = await service.AddMachine("projPuid", "NewMach", "desc", 10.0, new List<string> { "recPuid" }, [new AttributeRateRequest { Puid = "a1", Rate = 2 }]);
 
         Assert.True(result.Success);
         Assert.Equal(ServiceStatus.Created201, result.Status);

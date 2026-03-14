@@ -145,7 +145,7 @@ public class RecipeServiceTests
 
         var inputs = new List<RecipeProductExchange> { new() { Puid = "p1", Quantity = 5 } };
         var outputs = new List<RecipeProductExchange>();
-        var attributes = new List<AttributeRateExchange> { new() { Puid = "a1", Rate = 2 } };
+        var attributes = new List<AttributeRateRequest> { new() { Puid = "a1", Rate = 2 } };
 
         var result = await service.AddRecipe("projPuid", "NewRecipe", "desc", 2.0, inputs, outputs, attributes);
 

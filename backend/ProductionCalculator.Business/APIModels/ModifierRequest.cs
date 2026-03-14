@@ -9,6 +9,6 @@ namespace ProductionCalculator.Business.APIModels
         public required double MultiplicativeBonus { get; set; }
         public double InputPercent { get; set; } = 1.0;
         public double OutputPercent { get; set; } = 1.0;
-        public List<ModifierAttributeExchange> Attributes { get; set; } = [];
+        public List<ModifierAttributeRequest> Attributes { get; set; } = [];
     }
 }

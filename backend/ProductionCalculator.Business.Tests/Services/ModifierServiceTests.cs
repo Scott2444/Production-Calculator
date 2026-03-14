@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using FakeItEasy;
+using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Services;
@@ -47,6 +48,12 @@ public class ModifierServiceTests
     {
         var currentUser = A.Fake<ICurrentUserService>();
         return new ModifierService(currentUser, projectRepo, repo, A.Fake<IModifierAttributeRepository>(), A.Fake<IAttributeRepository>());
+    }
+
+    private static ModifierService CreateService(IModifierRepository repo, IProjectRepository projectRepo, IModifierAttributeRepository modifierAttributeRepo, IAttributeRepository attributeRepo)
+    {
+        var currentUser = A.Fake<ICurrentUserService>();
+        return new ModifierService(currentUser, projectRepo, repo, modifierAttributeRepo, attributeRepo);
     }
 
     [Fact]
@@ -172,16 +179,47 @@ public class ModifierServiceTests
     {
         var repo = A.Fake<IModifierRepository>();
         var projectRepo = A.Fake<IProjectRepository>();
-        var service = CreateService(repo, projectRepo);
+        var modifierAttributeRepo = A.Fake<IModifierAttributeRepository>();
+        var attributeRepo = A.Fake<IAttributeRepository>();
+        var service = CreateService(repo, projectRepo, modifierAttributeRepo, attributeRepo);
         var project = CreateProject(id: 10, puid: "projPuid");
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         var modifier = CreateModifier(projectId: 10, puid: "modPuid");
         A.CallTo(() => repo.GetModifierByPuid("modPuid")).Returns(modifier);
+        var modifierAttribute = new ModifierAttribute
+        {
+            Modifier_Attribute_Id = 1,
+            Modifier_Id = modifier.Modifier_Id,
+            Attribute_Id = 33,
+            Flat_Bonus = 1.0,
+            Percent_Bonus = 2.0,
+            Multiplicative_Bonus = 3.0,
+            Version = 1,
+            Created_At = DateTime.UtcNow,
+            Last_Updated = DateTime.UtcNow
+        };
+        var attribute = new ProjectAttribute
+        {
+            Attribute_Id = 33,
+            Project_Id = project.Project_Id,
+            Puid = "attrPuid",
+            Name = "Attr",
+            Description = "desc",
+            Unit = "u",
+            Version = 1,
+            Created_At = DateTime.UtcNow,
+            Last_Updated = DateTime.UtcNow
+        };
+        A.CallTo(() => modifierAttributeRepo.GetByModifierId(modifier.Modifier_Id)).Returns(new List<ModifierAttribute> { modifierAttribute });
+        A.CallTo(() => attributeRepo.GetAttributeById(33)).Returns(attribute);
 
         var result = await service.GetModifierByPuid("projPuid", "modPuid");
 
         Assert.True(result.Success);
-        Assert.Equal(modifier, result.Data);
+        Assert.NotNull(result.Data);
+        Assert.Equal(modifier.Puid, result.Data!.Puid);
+        Assert.Single(result.Data.Attributes);
+        Assert.Equal("attrPuid", result.Data.Attributes[0].Puid);
     }
 
     [Fact]
@@ -226,7 +264,9 @@ public class ModifierServiceTests
         var result = await service.GetModifiersByProjectPuid("projPuid");
 
         Assert.True(result.Success);
-        Assert.Equal(modifiers, result.Data);
+        Assert.NotNull(result.Data);
+        Assert.Single(result.Data!);
+        Assert.Equal(modifiers[0].Puid, result.Data[0].Puid);
     }
 
     [Fact]

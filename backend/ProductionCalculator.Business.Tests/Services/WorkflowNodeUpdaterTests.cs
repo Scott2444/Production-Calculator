@@ -266,7 +266,7 @@ namespace ProductionCalculator.Business.Tests.Services
                 MachinePuid = m1.Puid,
                 ActualMachineCount = 1,
                 Modifiers = [],
-                RecipeAttributes = [new AttributeRateExchange { Puid = "a1", Rate = 100 }],
+                RecipeAttributes = [new AttributeRateRequest { Puid = "a1", Rate = 100 }],
                 MachineAttributes = []
             };
 

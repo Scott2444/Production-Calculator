@@ -24,23 +24,32 @@ public class ModifiersControllerTests
         return controller;
     }
 
-    private static Modifier CreateModifier(string puid = "modPuid", string name = "Modifier")
+    private static ModifierResponse CreateModifierResponse(string puid = "modPuid", string name = "Modifier")
     {
-        return new Modifier
+        return new ModifierResponse
         {
-            Modifier_Id = 1,
-            Project_Id = 1,
             Puid = puid,
             Name = name,
             Description = "desc",
-            Flat_Bonus = 1.0,
-            Percent_Bonus = 2.0,
-            Multiplicative_Bonus = 3.0,
-            Input_Percent = 1.0,
-            Output_Percent = 1.0,
-            Version = 1,
-            Created_At = DateTime.UtcNow,
-            Last_Updated = DateTime.UtcNow
+            FlatBonus = 1.0,
+            PercentBonus = 2.0,
+            MultiplicativeBonus = 3.0,
+            InputPercent = 1.0,
+            OutputPercent = 1.0,
+            Attributes =
+            [
+                new ModifierAttributeResponse
+                {
+                    Puid = "attr1",
+                    FlatBonus = 4.0,
+                    PercentBonus = 5.0,
+                    MultiplicativeBonus = 6.0,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                }
+            ],
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
     }
 
@@ -48,8 +57,8 @@ public class ModifiersControllerTests
     public async Task GetModifierByPuid_ValidRequest_Returns200OkWithResponse()
     {
         var service = A.Fake<IModifierService>();
-        var modifier = CreateModifier();
-        A.CallTo(() => service.GetModifierByPuid("projPuid", "modPuid")).Returns(ServiceResult<Modifier>.SuccessResult(modifier));
+        var modifier = CreateModifierResponse();
+        A.CallTo(() => service.GetModifierByPuid("projPuid", "modPuid")).Returns(ServiceResult<ModifierResponse>.SuccessResult(modifier));
         var controller = CreateController(service);
 
         var result = await controller.GetModifierByPuid("projPuid", "modPuid");
@@ -58,13 +67,15 @@ public class ModifiersControllerTests
         Assert.Equal(200, obj.StatusCode);
         var response = Assert.IsType<ModifierResponse>(obj.Value);
         Assert.Equal("modPuid", response.Puid);
+        Assert.Single(response.Attributes);
+        Assert.Equal("attr1", response.Attributes[0].Puid);
     }
 
     [Fact]
     public async Task GetModifierByPuid_ModifierNotFound_Returns404NotFound()
     {
         var service = A.Fake<IModifierService>();
-        A.CallTo(() => service.GetModifierByPuid("projPuid", "missing")).Returns(ServiceResult<Modifier>.Fail(ServiceStatus.NotFound404, "Not Found"));
+        A.CallTo(() => service.GetModifierByPuid("projPuid", "missing")).Returns(ServiceResult<ModifierResponse>.Fail(ServiceStatus.NotFound404, "Not Found"));
         var controller = CreateController(service);
 
         var result = await controller.GetModifierByPuid("projPuid", "missing");
@@ -78,7 +89,7 @@ public class ModifiersControllerTests
     {
         var service = A.Fake<IModifierService>();
         A.CallTo(() => service.GetModifierByPuid("alias", "modPuid"))
-            .Returns(ServiceResult<Modifier>.Redirection(ServiceStatus.SeeOther303, "/projects/canonical/modifiers/modPuid"));
+            .Returns(ServiceResult<ModifierResponse>.Redirection(ServiceStatus.SeeOther303, "/projects/canonical/modifiers/modPuid"));
         var controller = CreateController(service);
 
         var result = await controller.GetModifierByPuid("alias", "modPuid");
@@ -92,8 +103,8 @@ public class ModifiersControllerTests
     public async Task GetModifiersByProjectPuid_ValidRequest_Returns200OkWithList()
     {
         var service = A.Fake<IModifierService>();
-        var modifiers = new List<Modifier> { CreateModifier(puid: "p1"), CreateModifier(puid: "p2") };
-        A.CallTo(() => service.GetModifiersByProjectPuid("projPuid")).Returns(ServiceResult<List<Modifier>>.SuccessResult(modifiers));
+        var modifiers = new List<ModifierResponse> { CreateModifierResponse(puid: "p1"), CreateModifierResponse(puid: "p2") };
+        A.CallTo(() => service.GetModifiersByProjectPuid("projPuid")).Returns(ServiceResult<List<ModifierResponse>>.SuccessResult(modifiers));
         var controller = CreateController(service);
 
         var result = await controller.GetModifiersByProjectPuid("projPuid");
@@ -102,13 +113,14 @@ public class ModifiersControllerTests
         Assert.Equal(200, obj.StatusCode);
         var response = Assert.IsType<List<ModifierResponse>>(obj.Value);
         Assert.Equal(2, response.Count);
+        Assert.All(response, r => Assert.Single(r.Attributes));
     }
 
     [Fact]
     public async Task GetModifiersByProjectPuid_ProjectNotFound_Returns404NotFound()
     {
         var service = A.Fake<IModifierService>();
-        A.CallTo(() => service.GetModifiersByProjectPuid("missing")).Returns(ServiceResult<List<Modifier>>.Fail(ServiceStatus.NotFound404, "Not Found"));
+        A.CallTo(() => service.GetModifiersByProjectPuid("missing")).Returns(ServiceResult<List<ModifierResponse>>.Fail(ServiceStatus.NotFound404, "Not Found"));
         var controller = CreateController(service);
 
         var result = await controller.GetModifiersByProjectPuid("missing");
@@ -122,7 +134,7 @@ public class ModifiersControllerTests
     {
         var service = A.Fake<IModifierService>();
         A.CallTo(() => service.GetModifiersByProjectPuid("alias"))
-            .Returns(ServiceResult<List<Modifier>>.Redirection(ServiceStatus.SeeOther303, "/projects/canonical/modifiers"));
+            .Returns(ServiceResult<List<ModifierResponse>>.Redirection(ServiceStatus.SeeOther303, "/projects/canonical/modifiers"));
         var controller = CreateController(service);
 
         var result = await controller.GetModifiersByProjectPuid("alias");
@@ -136,10 +148,10 @@ public class ModifiersControllerTests
     public async Task AddModifier_ValidRequest_Returns201Created()
     {
         var service = A.Fake<IModifierService>();
-        var modifier = CreateModifier();
+        var modifier = CreateModifierResponse();
         var req = new ModifierRequest { Name = "New", Description = "Desc", FlatBonus = 1, PercentBonus = 2, MultiplicativeBonus = 3, InputPercent = 1, OutputPercent = 1, Attributes = [] };
         A.CallTo(() => service.AddModifier("projPuid", req.Name, req.Description, req.FlatBonus, req.PercentBonus, req.MultiplicativeBonus, req.InputPercent, req.OutputPercent, req.Attributes))
-            .Returns(ServiceResult<Modifier>.SuccessResult(modifier, ServiceStatus.Created201));
+            .Returns(ServiceResult<ModifierResponse>.SuccessResult(modifier, ServiceStatus.Created201));
         var controller = CreateController(service);
 
         var result = await controller.AddModifier("projPuid", req);
@@ -156,7 +168,7 @@ public class ModifiersControllerTests
         var service = A.Fake<IModifierService>();
         var req = new ModifierRequest { Name = "Bad", Description = "Desc", FlatBonus = 1, PercentBonus = 2, MultiplicativeBonus = 3, InputPercent = 1, OutputPercent = 1, Attributes = [] };
         A.CallTo(() => service.AddModifier("projPuid", req.Name, req.Description, req.FlatBonus, req.PercentBonus, req.MultiplicativeBonus, req.InputPercent, req.OutputPercent, req.Attributes))
-            .Returns(ServiceResult<Modifier>.Fail(ServiceStatus.BadRequest400, "Bad Request"));
+            .Returns(ServiceResult<ModifierResponse>.Fail(ServiceStatus.BadRequest400, "Bad Request"));
         var controller = CreateController(service);
 
         var result = await controller.AddModifier("projPuid", req);
@@ -169,10 +181,10 @@ public class ModifiersControllerTests
     public async Task UpdateModifier_ValidRequest_Returns200OkWithResponse()
     {
         var service = A.Fake<IModifierService>();
-        var modifier = CreateModifier();
+        var modifier = CreateModifierResponse();
         var req = new ModifierRequest { Name = "Updated", Description = "Desc", FlatBonus = 1, PercentBonus = 2, MultiplicativeBonus = 3, InputPercent = 1, OutputPercent = 1, Attributes = [] };
         A.CallTo(() => service.UpdateModifier("projPuid", "modPuid", req.Name, req.Description, req.FlatBonus, req.PercentBonus, req.MultiplicativeBonus, req.InputPercent, req.OutputPercent, req.Attributes))
-            .Returns(ServiceResult<Modifier>.SuccessResult(modifier, ServiceStatus.Ok200));
+            .Returns(ServiceResult<ModifierResponse>.SuccessResult(modifier, ServiceStatus.Ok200));
         var controller = CreateController(service);
 
         var result = await controller.UpdateModifier("projPuid", "modPuid", req);
@@ -189,7 +201,7 @@ public class ModifiersControllerTests
         var service = A.Fake<IModifierService>();
         var req = new ModifierRequest { Name = "Bad", Description = "Desc", FlatBonus = 1, PercentBonus = 2, MultiplicativeBonus = 3, InputPercent = 1, OutputPercent = 1, Attributes = [] };
         A.CallTo(() => service.UpdateModifier("projPuid", "modPuid", req.Name, req.Description, req.FlatBonus, req.PercentBonus, req.MultiplicativeBonus, req.InputPercent, req.OutputPercent, req.Attributes))
-            .Returns(ServiceResult<Modifier>.Fail(ServiceStatus.Conflict409, "Conflict"));
+            .Returns(ServiceResult<ModifierResponse>.Fail(ServiceStatus.Conflict409, "Conflict"));
         var controller = CreateController(service);
 
         var result = await controller.UpdateModifier("projPuid", "modPuid", req);

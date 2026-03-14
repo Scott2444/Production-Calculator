@@ -115,7 +115,7 @@ namespace ProductionCalculator.Business.Services
         /// Builds a new list of recipe attributes for the node based on the request. 
         /// Similar to modifiers, we overwrite the existing list with the new one from the request.
         /// </summary>
-        private List<WorkflowRecipeAttribute> BuildRecipeAttributes(int nodeId, List<AttributeRateExchange> requestModifiers, ProjectObjects projectObjects)
+        private List<WorkflowRecipeAttribute> BuildRecipeAttributes(int nodeId, List<AttributeRateRequest> requestModifiers, ProjectObjects projectObjects)
         {
             var newAttributes = new List<WorkflowRecipeAttribute>();
             foreach (var requestAttribute in requestModifiers)
@@ -136,7 +136,7 @@ namespace ProductionCalculator.Business.Services
         /// Builds a new list of machine attributes for the node based on the request. 
         /// Similar to modifiers, we overwrite the existing list with the new one from the request.
         /// </summary>
-        private List<WorkflowMachineAttribute> BuildMachineAttributes(int nodeId, List<AttributeRateExchange> requestModifiers, ProjectObjects projectObjects)
+        private List<WorkflowMachineAttribute> BuildMachineAttributes(int nodeId, List<AttributeRateRequest> requestModifiers, ProjectObjects projectObjects)
         {
             var newAttributes = new List<WorkflowMachineAttribute>();
             foreach (var requestAttribute in requestModifiers)

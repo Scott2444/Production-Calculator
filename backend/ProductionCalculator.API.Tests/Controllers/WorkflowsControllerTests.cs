@@ -279,8 +279,8 @@ public class WorkflowsControllerTests
             MachinePuid = "m1",
             ActualMachineCount = 1,
             Modifiers = new List<WorkflowModifierExchange>(),
-            RecipeAttributes = new List<AttributeRateExchange>(),
-            MachineAttributes = new List<AttributeRateExchange>()
+            RecipeAttributes = new List<AttributeRateRequest>(),
+            MachineAttributes = new List<AttributeRateRequest>()
         };
         var chart = new WorkflowChartResponse { Nodes = [], Edges = [], Targets = [], ProductNodes = [], PreferredRecipes = [] };
         A.CallTo(() => service.UpdateNode("projPuid", "wfPuid", "nodePuid", req)).Returns(ServiceResult<WorkflowChartResponse>.SuccessResult(chart));
@@ -302,8 +302,8 @@ public class WorkflowsControllerTests
             MachinePuid = "m1",
             ActualMachineCount = 1,
             Modifiers = new List<WorkflowModifierExchange>(),
-            RecipeAttributes = new List<AttributeRateExchange>(),
-            MachineAttributes = new List<AttributeRateExchange>()
+            RecipeAttributes = new List<AttributeRateRequest>(),
+            MachineAttributes = new List<AttributeRateRequest>()
         };
         A.CallTo(() => service.UpdateNode("projPuid", "wfPuid", "nodePuid", req)).Returns(ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, "Node Not Found"));
         var controller = CreateController(service);

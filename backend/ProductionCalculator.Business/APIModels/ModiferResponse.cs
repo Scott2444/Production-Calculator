@@ -10,7 +10,7 @@ namespace ProductionCalculator.Business.APIModels
         public required double MultiplicativeBonus { get; set; }
         public required double InputPercent { get; set; }
         public required double OutputPercent { get; set; }
-        public required List<ModifierAttributeExchange> Attributes { get; set; }
+        public required List<ModifierAttributeResponse> Attributes { get; set; }
         public required DateTime CreatedAt { get; set; }
         public required DateTime UpdatedAt { get; set; }
     }

@@ -10,7 +10,8 @@ namespace ProductionCalculator.Business.APIModels
 		public double? CalculatedTargetRate { get; set; }
 		public double? CalculatedActualRate { get; set; }
 		public List<WorkflowModifierExchange> Modifiers { get; set; } = [];
-		public List<AttributeRateExchange> RecipeAttributes { get; set; } = [];
-		public List<AttributeRateExchange> MachineAttributes { get; set; } = [];
+		// Use AttributeRateRequest here since attribute links don't have datetime info in workflow data
+		public List<AttributeRateRequest> RecipeAttributes { get; set; } = [];
+		public List<AttributeRateRequest> MachineAttributes { get; set; } = [];
 	}
 }
