@@ -20,6 +20,7 @@ interface ResolvedProject {
 interface Project {
     puid: string;
     name: string;
+    ownerUsername: string;
     description: string | null;
     isPublic: boolean;
     aliasProjectPuid: string | null;
@@ -30,6 +31,7 @@ interface Project {
 interface UserProjectsData {
     resolvedProjects: ResolvedProject[];
     projects: Project[];
+    aliasProjects: Record<string, Project>;
     detailErrors: string[];
 }
 
@@ -98,12 +100,30 @@ export default function ProjectHomePage() {
             );
 
             const projects: Project[] = [];
+            const aliasProjects: Record<string, Project> = {};
             const detailErrors: string[] = [];
 
             for (let index = 0; index < settled.length; index++) {
                 const result = settled[index];
                 if (result.status === "fulfilled") {
-                    projects.push(result.value);
+                    const project = result.value;
+                    projects.push(project);
+
+                    // Fetch alias project details if applicable
+                    if (project.aliasProjectPuid) {
+                        try {
+                            const alias = (await fetchProject(
+                                project.aliasProjectPuid,
+                                protectedApi,
+                            )) as Project;
+                            aliasProjects[project.aliasProjectPuid] = alias;
+                        } catch (err) {
+                            console.error(
+                                `Failed to fetch alias ${project.aliasProjectPuid}:`,
+                                err,
+                            );
+                        }
+                    }
                     continue;
                 }
 
@@ -119,6 +139,7 @@ export default function ProjectHomePage() {
             return {
                 resolvedProjects: dedupedProjects,
                 projects,
+                aliasProjects,
                 detailErrors,
             };
         },
@@ -218,8 +239,6 @@ export default function ProjectHomePage() {
                             <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
                                 {userProjectsQuery.data?.projects.map(
                                     (project, index) => {
-                                        const projectHref = `/${encodeURIComponent(username)}/${encodeURIComponent(project.name)}/`;
-
                                         return (
                                             <div
                                                 key={project.puid}
@@ -235,7 +254,12 @@ export default function ProjectHomePage() {
                                             >
                                                 <div className="min-w-0">
                                                     <Link
-                                                        to={projectHref}
+                                                        to="/$username/$projectName"
+                                                        params={{
+                                                            username,
+                                                            projectName:
+                                                                project.name,
+                                                        }}
                                                         className="text-base font-semibold text-purple-300 transition-colors hover:text-purple-200"
                                                     >
                                                         {project.name}
@@ -251,10 +275,67 @@ export default function ProjectHomePage() {
                                                                 : "Private"}
                                                         </span>
                                                         {project.aliasProjectPuid && (
-                                                            <span className="rounded-md border border-blue-900/50 bg-blue-950/40 px-2 py-0.5 text-blue-200">
-                                                                Alias
-                                                            </span>
+                                                            <>
+                                                                <span className="rounded-md border border-blue-900/50 bg-blue-950/40 px-2 py-0.5 text-blue-200">
+                                                                    Alias
+                                                                </span>
+                                                                {userProjectsQuery
+                                                                    .data
+                                                                    ?.aliasProjects?.[
+                                                                    project
+                                                                        .aliasProjectPuid
+                                                                ] && (
+                                                                    <Link
+                                                                        to="/$username/$projectName"
+                                                                        params={{
+                                                                            username:
+                                                                                userProjectsQuery
+                                                                                    .data
+                                                                                    .aliasProjects?.[
+                                                                                    project
+                                                                                        .aliasProjectPuid
+                                                                                ]
+                                                                                    ?.ownerUsername ??
+                                                                                "",
+                                                                            projectName:
+                                                                                userProjectsQuery
+                                                                                    .data
+                                                                                    .aliasProjects?.[
+                                                                                    project
+                                                                                        .aliasProjectPuid
+                                                                                ]
+                                                                                    ?.name ??
+                                                                                "",
+                                                                        }}
+                                                                        className="text-blue-400 underline decoration-blue-900/50 transition-colors hover:text-blue-300"
+                                                                    >
+                                                                        Original
+                                                                        Project:{" "}
+                                                                        {
+                                                                            userProjectsQuery
+                                                                                .data
+                                                                                .aliasProjects?.[
+                                                                                project
+                                                                                    .aliasProjectPuid
+                                                                            ]
+                                                                                ?.ownerUsername
+                                                                        }
+                                                                        /
+                                                                        {
+                                                                            userProjectsQuery
+                                                                                .data
+                                                                                .aliasProjects?.[
+                                                                                project
+                                                                                    .aliasProjectPuid
+                                                                            ]
+                                                                                ?.name
+                                                                        }
+                                                                    </Link>
+                                                                )}
+                                                            </>
                                                         )}
+                                                    </div>
+                                                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                                                         <span>
                                                             Updated{" "}
                                                             {formatTimestamp(
@@ -272,7 +353,12 @@ export default function ProjectHomePage() {
 
                                                 <div className="flex items-center gap-2 sm:pt-1">
                                                     <Link
-                                                        to={projectHref}
+                                                        to="/$username/$projectName"
+                                                        params={{
+                                                            username,
+                                                            projectName:
+                                                                project.name,
+                                                        }}
                                                         className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors hover:border-purple-500/60 hover:bg-slate-800/60"
                                                     >
                                                         Open
