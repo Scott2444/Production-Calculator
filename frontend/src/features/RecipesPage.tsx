@@ -25,8 +25,8 @@ import {
     IconSearch,
     IconTrash,
     IconClock,
-    IconArrowRight,
-    IconArrowLeft,
+    IconArrowBarToRight,
+    IconArrowBarRight,
     IconSettings,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -817,7 +817,7 @@ export default function Recipes() {
                         )}
 
                     {filteredRecipes.length > 0 && (
-                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
                             {filteredRecipes.map((recipe) => (
                                 <div
                                     key={recipe.puid}
@@ -825,23 +825,105 @@ export default function Recipes() {
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0 flex-1">
-                                            <div className="truncate text-base font-semibold text-slate-100">
-                                                {recipe.name}
-                                            </div>
+                                            <div className="flex flex-row justify-between">
+                                                <div className="flex flex-col">
+                                                    <div className="truncate text-base font-semibold text-slate-100">
+                                                        {recipe.name}
+                                                    </div>
 
-                                            {
-                                                recipe.description ? (
-                                                    <div className="mt-1 text-sm text-slate-300">
-                                                        <ReactMarkdown>
-                                                            {recipe.description}
-                                                        </ReactMarkdown>
-                                                    </div>
-                                                ) : (
-                                                    <div className="mt-1 text-sm text-slate-500">
-                                                        No description
-                                                    </div>
-                                                ) /* End description */
-                                            }
+                                                    {
+                                                        recipe.description ? (
+                                                            <div className="mt-1 text-sm text-slate-300">
+                                                                <ReactMarkdown>
+                                                                    {
+                                                                        recipe.description
+                                                                    }
+                                                                </ReactMarkdown>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="mt-1 text-sm text-slate-500">
+                                                                No description
+                                                            </div>
+                                                        ) /* End description */
+                                                    }
+                                                </div>
+                                                <div className="flex gap-2 h-min">
+                                                    <button
+                                                        type="button"
+                                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                        title="Edit recipe"
+                                                        aria-label="Edit recipe"
+                                                        onClick={() => {
+                                                            setEditTarget(
+                                                                recipe,
+                                                            );
+                                                            setEditError(null);
+                                                            setEditOpen(true);
+                                                        }}
+                                                        disabled={!canEdit}
+                                                    >
+                                                        <IconEdit size={20} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        data-delete-confirm="true"
+                                                        className={
+                                                            deleteConfirm.isConfirming(
+                                                                recipe.puid,
+                                                            )
+                                                                ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                                : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                        }
+                                                        title={
+                                                            deleteConfirm.isConfirming(
+                                                                recipe.puid,
+                                                            )
+                                                                ? "Click again to confirm"
+                                                                : "Delete recipe"
+                                                        }
+                                                        aria-label={
+                                                            deleteConfirm.isConfirming(
+                                                                recipe.puid,
+                                                            )
+                                                                ? "Confirm delete recipe"
+                                                                : "Delete recipe"
+                                                        }
+                                                        onClick={() => {
+                                                            if (!canEdit)
+                                                                return;
+
+                                                            setDeleteError(
+                                                                null,
+                                                            );
+
+                                                            deleteConfirm.confirmOrRequest(
+                                                                recipe.puid,
+                                                                () => {
+                                                                    deleteRecipeMutation.mutate(
+                                                                        recipe.puid,
+                                                                    );
+                                                                },
+                                                            );
+                                                        }}
+                                                        disabled={
+                                                            !canEdit ||
+                                                            deleteRecipeMutation.isPending
+                                                        }
+                                                    >
+                                                        {deleteConfirm.isConfirming(
+                                                            recipe.puid,
+                                                        ) ? (
+                                                            <IconCheck
+                                                                size={20}
+                                                            />
+                                                        ) : (
+                                                            <IconTrash
+                                                                size={20}
+                                                            />
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </div>
 
                                             <div className="mt-3 grid grid-cols-1 gap-4 text-sm text-slate-300">
                                                 <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
@@ -860,7 +942,7 @@ export default function Recipes() {
                                                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                                     <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
                                                         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-400">
-                                                            <IconArrowRight
+                                                            <IconArrowBarToRight
                                                                 size={14}
                                                             />
                                                             Inputs
@@ -873,7 +955,7 @@ export default function Recipes() {
                                                     </div>
                                                     <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
                                                         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-400">
-                                                            <IconArrowLeft
+                                                            <IconArrowBarRight
                                                                 size={14}
                                                             />
                                                             Outputs
@@ -900,74 +982,6 @@ export default function Recipes() {
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-
-                                        <div className="flex gap-2">
-                                            <button
-                                                type="button"
-                                                className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                title="Edit recipe"
-                                                aria-label="Edit recipe"
-                                                onClick={() => {
-                                                    setEditTarget(recipe);
-                                                    setEditError(null);
-                                                    setEditOpen(true);
-                                                }}
-                                                disabled={!canEdit}
-                                            >
-                                                <IconEdit size={20} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                data-delete-confirm="true"
-                                                className={
-                                                    deleteConfirm.isConfirming(
-                                                        recipe.puid,
-                                                    )
-                                                        ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                        : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                }
-                                                title={
-                                                    deleteConfirm.isConfirming(
-                                                        recipe.puid,
-                                                    )
-                                                        ? "Click again to confirm"
-                                                        : "Delete recipe"
-                                                }
-                                                aria-label={
-                                                    deleteConfirm.isConfirming(
-                                                        recipe.puid,
-                                                    )
-                                                        ? "Confirm delete recipe"
-                                                        : "Delete recipe"
-                                                }
-                                                onClick={() => {
-                                                    if (!canEdit) return;
-
-                                                    setDeleteError(null);
-
-                                                    deleteConfirm.confirmOrRequest(
-                                                        recipe.puid,
-                                                        () => {
-                                                            deleteRecipeMutation.mutate(
-                                                                recipe.puid,
-                                                            );
-                                                        },
-                                                    );
-                                                }}
-                                                disabled={
-                                                    !canEdit ||
-                                                    deleteRecipeMutation.isPending
-                                                }
-                                            >
-                                                {deleteConfirm.isConfirming(
-                                                    recipe.puid,
-                                                ) ? (
-                                                    <IconCheck size={20} />
-                                                ) : (
-                                                    <IconTrash size={20} />
-                                                )}
-                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -1627,7 +1641,7 @@ export default function Recipes() {
                     <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
                         <div className="flex items-center justify-between gap-3 mb-4">
                             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-400">
-                                <IconArrowRight size={16} />
+                                <IconArrowBarToRight size={16} />
                                 Inputs
                             </div>
                             <button
@@ -1737,7 +1751,7 @@ export default function Recipes() {
                     <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
                         <div className="flex items-center justify-between gap-3 mb-4">
                             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-400">
-                                <IconArrowLeft size={16} />
+                                <IconArrowBarRight size={16} />
                                 Outputs
                             </div>
                             <button

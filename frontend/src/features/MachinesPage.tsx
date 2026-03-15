@@ -801,7 +801,7 @@ export default function Machines() {
                         )}
 
                     {filteredMachines.length > 0 && (
-                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
                             {filteredMachines.map((machine) => (
                                 <div
                                     key={machine.puid}
@@ -809,25 +809,105 @@ export default function Machines() {
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0 flex-1">
-                                            <div className="truncate text-base font-semibold text-slate-100">
-                                                {machine.name}
-                                            </div>
+                                            <div className="flex flex-row justify-between">
+                                                <div className="flex flex-col">
+                                                    <div className="truncate text-base font-semibold text-slate-100">
+                                                        {machine.name}
+                                                    </div>
 
-                                            {
-                                                machine.description ? (
-                                                    <div className="mt-1 text-sm text-slate-300">
-                                                        <ReactMarkdown>
-                                                            {
-                                                                machine.description
-                                                            }
-                                                        </ReactMarkdown>
-                                                    </div>
-                                                ) : (
-                                                    <div className="mt-1 text-sm text-slate-500">
-                                                        No description
-                                                    </div>
-                                                ) /* End description */
-                                            }
+                                                    {
+                                                        machine.description ? (
+                                                            <div className="mt-1 text-sm text-slate-300">
+                                                                <ReactMarkdown>
+                                                                    {
+                                                                        machine.description
+                                                                    }
+                                                                </ReactMarkdown>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="mt-1 text-sm text-slate-500">
+                                                                No description
+                                                            </div>
+                                                        ) /* End description */
+                                                    }
+                                                </div>
+                                                <div className="flex gap-2 h-min">
+                                                    <button
+                                                        type="button"
+                                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                        title="Edit machine"
+                                                        aria-label="Edit machine"
+                                                        onClick={() => {
+                                                            setEditTarget(
+                                                                machine,
+                                                            );
+                                                            setEditError(null);
+                                                            setEditOpen(true);
+                                                        }}
+                                                        disabled={!canEdit}
+                                                    >
+                                                        <IconEdit size={20} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        data-delete-confirm="true"
+                                                        className={
+                                                            deleteConfirm.isConfirming(
+                                                                machine.puid,
+                                                            )
+                                                                ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                                : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                        }
+                                                        title={
+                                                            deleteConfirm.isConfirming(
+                                                                machine.puid,
+                                                            )
+                                                                ? "Click again to confirm"
+                                                                : "Delete machine"
+                                                        }
+                                                        aria-label={
+                                                            deleteConfirm.isConfirming(
+                                                                machine.puid,
+                                                            )
+                                                                ? "Confirm delete machine"
+                                                                : "Delete machine"
+                                                        }
+                                                        onClick={() => {
+                                                            if (!canEdit)
+                                                                return;
+
+                                                            setDeleteError(
+                                                                null,
+                                                            );
+
+                                                            deleteConfirm.confirmOrRequest(
+                                                                machine.puid,
+                                                                () => {
+                                                                    deleteMachineMutation.mutate(
+                                                                        machine.puid,
+                                                                    );
+                                                                },
+                                                            );
+                                                        }}
+                                                        disabled={
+                                                            !canEdit ||
+                                                            deleteMachineMutation.isPending
+                                                        }
+                                                    >
+                                                        {deleteConfirm.isConfirming(
+                                                            machine.puid,
+                                                        ) ? (
+                                                            <IconCheck
+                                                                size={20}
+                                                            />
+                                                        ) : (
+                                                            <IconTrash
+                                                                size={20}
+                                                            />
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </div>
 
                                             <div className="mt-3 grid grid-cols-1 gap-4 text-sm text-slate-300">
                                                 <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
@@ -868,74 +948,6 @@ export default function Machines() {
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-
-                                        <div className="flex gap-2">
-                                            <button
-                                                type="button"
-                                                className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                title="Edit machine"
-                                                aria-label="Edit machine"
-                                                onClick={() => {
-                                                    setEditTarget(machine);
-                                                    setEditError(null);
-                                                    setEditOpen(true);
-                                                }}
-                                                disabled={!canEdit}
-                                            >
-                                                <IconEdit size={20} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                data-delete-confirm="true"
-                                                className={
-                                                    deleteConfirm.isConfirming(
-                                                        machine.puid,
-                                                    )
-                                                        ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                        : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                }
-                                                title={
-                                                    deleteConfirm.isConfirming(
-                                                        machine.puid,
-                                                    )
-                                                        ? "Click again to confirm"
-                                                        : "Delete machine"
-                                                }
-                                                aria-label={
-                                                    deleteConfirm.isConfirming(
-                                                        machine.puid,
-                                                    )
-                                                        ? "Confirm delete machine"
-                                                        : "Delete machine"
-                                                }
-                                                onClick={() => {
-                                                    if (!canEdit) return;
-
-                                                    setDeleteError(null);
-
-                                                    deleteConfirm.confirmOrRequest(
-                                                        machine.puid,
-                                                        () => {
-                                                            deleteMachineMutation.mutate(
-                                                                machine.puid,
-                                                            );
-                                                        },
-                                                    );
-                                                }}
-                                                disabled={
-                                                    !canEdit ||
-                                                    deleteMachineMutation.isPending
-                                                }
-                                            >
-                                                {deleteConfirm.isConfirming(
-                                                    machine.puid,
-                                                ) ? (
-                                                    <IconCheck size={20} />
-                                                ) : (
-                                                    <IconTrash size={20} />
-                                                )}
-                                            </button>
                                         </div>
                                     </div>
                                 </div>

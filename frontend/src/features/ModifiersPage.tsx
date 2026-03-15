@@ -596,7 +596,7 @@ export default function Modifiers() {
                             </div>
                         )}
 
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
                         {filteredModifiers.map((modifier) => (
                             <div
                                 key={modifier.puid}
@@ -604,21 +604,93 @@ export default function Modifiers() {
                             >
                                 <div className="flex items-start justify-between gap-3 flex-1">
                                     <div className="min-w-0 flex-1">
-                                        <div className="truncate text-base font-semibold text-slate-100">
-                                            {modifier.name}
-                                        </div>
+                                        <div className="flex flex-row justify-between">
+                                            <div className="flex flex-col">
+                                                <div className="truncate text-base font-semibold text-slate-100">
+                                                    {modifier.name}
+                                                </div>
 
-                                        {modifier.description ? (
-                                            <div className="mt-1 text-sm text-slate-300">
-                                                <ReactMarkdown>
-                                                    {modifier.description}
-                                                </ReactMarkdown>
+                                                {modifier.description ? (
+                                                    <div className="mt-1 text-sm text-slate-300">
+                                                        <ReactMarkdown>
+                                                            {
+                                                                modifier.description
+                                                            }
+                                                        </ReactMarkdown>
+                                                    </div>
+                                                ) : (
+                                                    <div className="mt-1 text-sm text-slate-500">
+                                                        No description
+                                                    </div>
+                                                )}
                                             </div>
-                                        ) : (
-                                            <div className="mt-1 text-sm text-slate-500">
-                                                No description
+                                            <div className="flex gap-2 h-min">
+                                                <button
+                                                    type="button"
+                                                    className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                    title="Edit modifier"
+                                                    aria-label="Edit modifier"
+                                                    onClick={() => {
+                                                        setEditTarget(modifier);
+                                                        setEditError(null);
+                                                        setEditOpen(true);
+                                                    }}
+                                                    disabled={!canEdit}
+                                                >
+                                                    <IconEdit size={20} />
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    data-delete-confirm="true"
+                                                    className={
+                                                        deleteConfirm.isConfirming(
+                                                            modifier.puid,
+                                                        )
+                                                            ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                            : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                    }
+                                                    title={
+                                                        deleteConfirm.isConfirming(
+                                                            modifier.puid,
+                                                        )
+                                                            ? "Click again to confirm"
+                                                            : "Delete modifier"
+                                                    }
+                                                    aria-label={
+                                                        deleteConfirm.isConfirming(
+                                                            modifier.puid,
+                                                        )
+                                                            ? "Confirm delete modifier"
+                                                            : "Delete modifier"
+                                                    }
+                                                    onClick={() => {
+                                                        if (!canEdit) return;
+                                                        setDeleteError(null);
+                                                        deleteConfirm.confirmOrRequest(
+                                                            modifier.puid,
+                                                            () => {
+                                                                deleteModifierMutation.mutate(
+                                                                    modifier.puid,
+                                                                );
+                                                            },
+                                                        );
+                                                    }}
+                                                    disabled={
+                                                        !canEdit ||
+                                                        deleteModifierMutation.isPending
+                                                    }
+                                                >
+                                                    {deleteConfirm.isConfirming(
+                                                        modifier.puid,
+                                                    ) ? (
+                                                        <IconCheck size={20} />
+                                                    ) : (
+                                                        <IconTrash size={20} />
+                                                    )}
+                                                </button>
                                             </div>
-                                        )}
+                                        </div>
 
                                         <div className="mt-3 grid grid-cols-1 gap-4 text-sm text-slate-300">
                                             <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
@@ -683,73 +755,6 @@ export default function Modifiers() {
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-
-                                    <div className="flex gap-2">
-                                        <button
-                                            type="button"
-                                            className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                            title="Edit modifier"
-                                            aria-label="Edit modifier"
-                                            onClick={() => {
-                                                setEditTarget(modifier);
-                                                setEditError(null);
-                                                setEditOpen(true);
-                                            }}
-                                            disabled={!canEdit}
-                                        >
-                                            <IconEdit size={20} />
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            data-delete-confirm="true"
-                                            className={
-                                                deleteConfirm.isConfirming(
-                                                    modifier.puid,
-                                                )
-                                                    ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                    : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                            }
-                                            title={
-                                                deleteConfirm.isConfirming(
-                                                    modifier.puid,
-                                                )
-                                                    ? "Click again to confirm"
-                                                    : "Delete modifier"
-                                            }
-                                            aria-label={
-                                                deleteConfirm.isConfirming(
-                                                    modifier.puid,
-                                                )
-                                                    ? "Confirm delete modifier"
-                                                    : "Delete modifier"
-                                            }
-                                            onClick={() => {
-                                                if (!canEdit) return;
-                                                setDeleteError(null);
-                                                deleteConfirm.confirmOrRequest(
-                                                    modifier.puid,
-                                                    () => {
-                                                        deleteModifierMutation.mutate(
-                                                            modifier.puid,
-                                                        );
-                                                    },
-                                                );
-                                            }}
-                                            disabled={
-                                                !canEdit ||
-                                                deleteModifierMutation.isPending
-                                            }
-                                        >
-                                            {deleteConfirm.isConfirming(
-                                                modifier.puid,
-                                            ) ? (
-                                                <IconCheck size={20} />
-                                            ) : (
-                                                <IconTrash size={20} />
-                                            )}
-                                        </button>
                                     </div>
                                 </div>
                             </div>
