@@ -1,0 +1,583 @@
+"use client";
+
+import ProjectPageLayout from "@/components/ProjectPageLayout";
+import ProjectStatusGate from "@/components/ProjectStatusGate";
+import SearchBar from "@/components/SearchBar";
+import ErrorDisplay from "@/components/ErrorDisplay";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+    fetchAttributes,
+    type NewAttributePayload,
+    postNewAttribute,
+    updateAttribute,
+    deleteAttribute,
+} from "@/lib/attributes";
+import { useProtectedApi } from "@/lib/api";
+import Popup from "@/components/Popup";
+import ItemCard from "@/components/ItemCard";
+import { useAuth } from "@/context/AuthContext";
+import { useProject } from "@/context/ProjectContext";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearch } from "@/hooks/Search";
+import { useDeleteConfirmation } from "@/hooks/DeleteConfirmation";
+import { IconCheck, IconEdit, IconPlus, IconTrash } from "@tabler/icons-react";
+import ReactMarkdown from "react-markdown";
+
+interface Attribute {
+    puid: string;
+    name: string;
+    description: string | null;
+    unit: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+function coerceAttributes(value: unknown): Attribute[] {
+    if (!value) return [];
+    if (Array.isArray(value)) return value as Attribute[];
+    if (typeof value === "object") {
+        const maybeItems = (value as { items?: unknown }).items;
+        if (Array.isArray(maybeItems)) return maybeItems as Attribute[];
+    }
+    return [];
+}
+
+export default function Attributes() {
+    const { loggedIn } = useAuth();
+    const { routeUsername, routeProjectName, projectId, canEdit } =
+        useProject();
+    const protectedApi = useProtectedApi();
+    const queryClient = useQueryClient();
+
+    const attributesQuery = useQuery({
+        queryKey: ["attributes", projectId],
+        queryFn: () => fetchAttributes(projectId, protectedApi),
+        enabled: Boolean(projectId),
+        staleTime: 60 * 1000,
+    });
+
+    const attributes = useMemo(
+        () => coerceAttributes(attributesQuery.data),
+        [attributesQuery.data],
+    );
+
+    const sortedAttributes = useMemo(() => {
+        return [...attributes].sort((a, b) =>
+            a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+        );
+    }, [attributes]);
+
+    const {
+        searchText,
+        setSearchText,
+        filteredItems: filteredAttributes,
+    } = useSearch(sortedAttributes, {
+        toText: (a) => `${a.name} ${a.description ?? ""} ${a.unit ?? ""}`,
+    });
+
+    const [createOpen, setCreateOpen] = useState(false);
+    const [createName, setCreateName] = useState("");
+    const [createDescription, setCreateDescription] = useState("");
+    const [createUnit, setCreateUnit] = useState("");
+    const [createError, setCreateError] = useState<string | null>(null);
+    const createNameRef = useRef<HTMLInputElement>(null);
+
+    const createAttributeMutation = useMutation({
+        mutationFn: async (payload: NewAttributePayload) => {
+            if (!projectId) throw new Error("No project selected.");
+            return postNewAttribute(
+                projectId,
+                protectedApi,
+                payload,
+            ) as Promise<Attribute>;
+        },
+        onSuccess: async () => {
+            setCreateError(null);
+            setCreateName("");
+            setCreateDescription("");
+            setCreateUnit("");
+            setCreateOpen(false);
+            await queryClient.invalidateQueries({
+                queryKey: ["attributes", projectId],
+            });
+        },
+        onError: (err) => {
+            setCreateError(
+                err instanceof Error
+                    ? err.message
+                    : "Failed to create attribute.",
+            );
+        },
+    });
+
+    const [editOpen, setEditOpen] = useState(false);
+    const [editTarget, setEditTarget] = useState<Attribute | null>(null);
+    const [editName, setEditName] = useState("");
+    const [editDescription, setEditDescription] = useState("");
+    const [editUnit, setEditUnit] = useState("");
+    const [editError, setEditError] = useState<string | null>(null);
+    const editNameRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (!editOpen) return;
+        setEditError(null);
+        setEditName(editTarget?.name ?? "");
+        setEditDescription(editTarget?.description ?? "");
+        setEditUnit(editTarget?.unit ?? "");
+    }, [editOpen, editTarget]);
+
+    const updateAttributeMutation = useMutation({
+        mutationFn: async (payload: NewAttributePayload) => {
+            if (!projectId) throw new Error("No project selected.");
+            if (!editTarget) throw new Error("No attribute selected.");
+            return updateAttribute(
+                projectId,
+                editTarget.puid,
+                protectedApi,
+                payload,
+            ) as Promise<Attribute>;
+        },
+        onSuccess: async () => {
+            setEditError(null);
+            setEditOpen(false);
+            await queryClient.invalidateQueries({
+                queryKey: ["attributes", projectId],
+            });
+        },
+        onError: (err) => {
+            setEditError(
+                err instanceof Error
+                    ? err.message
+                    : "Failed to update attribute.",
+            );
+        },
+    });
+
+    const deleteConfirm = useDeleteConfirmation<string>({
+        resetDeps: [projectId],
+    });
+    const [deleteError, setDeleteError] = useState<string | null>(null);
+
+    useEffect(() => {
+        setDeleteError(null);
+    }, [projectId]);
+
+    const deleteAttributeMutation = useMutation({
+        mutationFn: async (puid: string) => {
+            if (!projectId) throw new Error("No project selected.");
+            await deleteAttribute(projectId, puid, protectedApi);
+        },
+        onSuccess: async () => {
+            deleteConfirm.reset();
+            setDeleteError(null);
+            await queryClient.invalidateQueries({
+                queryKey: ["attributes", projectId],
+            });
+        },
+        onError: (err) => {
+            deleteConfirm.reset();
+            setDeleteError(
+                err instanceof Error
+                    ? err.message
+                    : "Failed to delete attribute.",
+            );
+        },
+    });
+
+    return (
+        <ProjectPageLayout>
+            <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                        <h1 className="truncate text-2xl font-semibold text-slate-100">
+                            Attributes
+                        </h1>
+                        <div className="mt-1 text-sm text-slate-400">
+                            {routeProjectName ? (
+                                <span>Project: {routeProjectName}</span>
+                            ) : (
+                                <span>Select a project</span>
+                            )}
+                            {routeUsername ? (
+                                <span> • Owner: {routeUsername}</span>
+                            ) : null}
+                        </div>
+                    </div>
+
+                    <button
+                        type="button"
+                        className="inline-flex items-center gap-2 self-start rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={() => {
+                            setCreateError(null);
+                            setCreateOpen(true);
+                        }}
+                        disabled={!canEdit}
+                        title={
+                            canEdit
+                                ? "Add attribute"
+                                : loggedIn
+                                  ? "Only the project owner can manage attributes"
+                                  : "Sign in to manage attributes"
+                        }
+                    >
+                        <IconPlus size={18} />
+                        Add attribute
+                    </button>
+                </div>
+
+                <ProjectStatusGate>
+                    <SearchBar
+                        value={searchText}
+                        onChange={setSearchText}
+                        disabled={!projectId}
+                    />
+
+                    <ErrorDisplay
+                        errors={
+                            deleteError
+                                ? [
+                                      {
+                                          id: "delete-error",
+                                          message: deleteError,
+                                          onDismiss: () => setDeleteError(null),
+                                      },
+                                  ]
+                                : []
+                        }
+                    />
+
+                    {attributesQuery.isLoading && projectId && (
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
+                            Loading attributes...
+                        </div>
+                    )}
+
+                    {!attributesQuery.isLoading && attributesQuery.error && (
+                        <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+                            Failed to load attributes.
+                        </div>
+                    )}
+
+                    {!attributesQuery.isLoading &&
+                        !attributesQuery.error &&
+                        projectId &&
+                        filteredAttributes.length === 0 && (
+                            <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-6 text-sm text-slate-300">
+                                {searchText.trim()
+                                    ? "No attributes match your search."
+                                    : "No attributes yet."}
+                            </div>
+                        )}
+
+                    {filteredAttributes.length > 0 && (
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                            {filteredAttributes.map((attribute) => (
+                                <div
+                                    key={attribute.puid}
+                                    className="rounded-xl border border-slate-800 bg-slate-900/40 p-4"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <div className="truncate text-base font-semibold text-slate-100">
+                                                {attribute.name}
+                                            </div>
+                                            <div className="mt-1 text-sm text-slate-400">
+                                                Unit:{" "}
+                                                {attribute.unit?.trim() ||
+                                                    "(none)"}
+                                            </div>
+
+                                            {attribute.description ? (
+                                                <div className="mt-2 text-sm text-slate-300">
+                                                    <ReactMarkdown>
+                                                        {attribute.description}
+                                                    </ReactMarkdown>
+                                                </div>
+                                            ) : (
+                                                <div className="mt-2 text-sm text-slate-500">
+                                                    No description
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                title="Edit attribute"
+                                                aria-label="Edit attribute"
+                                                onClick={() => {
+                                                    setEditTarget(attribute);
+                                                    setEditError(null);
+                                                    setEditOpen(true);
+                                                }}
+                                                disabled={!canEdit}
+                                            >
+                                                <IconEdit size={20} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                data-delete-confirm="true"
+                                                className={
+                                                    deleteConfirm.isConfirming(
+                                                        attribute.puid,
+                                                    )
+                                                        ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                        : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                }
+                                                title={
+                                                    deleteConfirm.isConfirming(
+                                                        attribute.puid,
+                                                    )
+                                                        ? "Click again to confirm"
+                                                        : "Delete attribute"
+                                                }
+                                                aria-label={
+                                                    deleteConfirm.isConfirming(
+                                                        attribute.puid,
+                                                    )
+                                                        ? "Confirm delete attribute"
+                                                        : "Delete attribute"
+                                                }
+                                                onClick={() => {
+                                                    if (!canEdit) return;
+
+                                                    setDeleteError(null);
+
+                                                    deleteConfirm.confirmOrRequest(
+                                                        attribute.puid,
+                                                        () => {
+                                                            deleteAttributeMutation.mutate(
+                                                                attribute.puid,
+                                                            );
+                                                        },
+                                                    );
+                                                }}
+                                                disabled={
+                                                    !canEdit ||
+                                                    deleteAttributeMutation.isPending
+                                                }
+                                            >
+                                                {deleteConfirm.isConfirming(
+                                                    attribute.puid,
+                                                ) ? (
+                                                    <IconCheck size={20} />
+                                                ) : (
+                                                    <IconTrash size={20} />
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </ProjectStatusGate>
+            </div>
+
+            <ItemCard
+                open={createOpen}
+                onOpenChange={(next) => {
+                    setCreateOpen(next);
+                    if (next) setCreateError(null);
+                }}
+                title="Add attribute"
+                description="Create a new attribute in this project."
+                initialFocusRef={createNameRef}
+                submitLabel="Create"
+                submittingLabel="Creating..."
+                submitting={createAttributeMutation.isPending}
+                submitDisabled={!canEdit || !projectId}
+                cancelDisabled={createAttributeMutation.isPending}
+                onCancel={() => setCreateOpen(false)}
+                onSubmit={() => {
+                    setCreateError(null);
+                    const trimmed = createName.trim();
+                    if (!trimmed) {
+                        setCreateError("Attribute name is required.");
+                        return;
+                    }
+
+                    createAttributeMutation.mutate({
+                        name: trimmed,
+                        description: createDescription.trim()
+                            ? createDescription.trim()
+                            : null,
+                        unit: createUnit.trim() ? createUnit.trim() : null,
+                    });
+                }}
+            >
+                <div className="flex flex-col gap-4">
+                    <ErrorDisplay
+                        errors={
+                            createError
+                                ? [
+                                      {
+                                          id: "create-error",
+                                          message: createError,
+                                          onDismiss: () => setCreateError(null),
+                                      },
+                                  ]
+                                : []
+                        }
+                    />
+
+                    <div className="flex flex-col gap-2">
+                        <label className="text-sm font-medium text-slate-200">
+                            Name
+                        </label>
+                        <input
+                            ref={createNameRef}
+                            value={createName}
+                            onChange={(e) => setCreateName(e.target.value)}
+                            placeholder="Power"
+                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                            disabled={createAttributeMutation.isPending}
+                        />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <label className="text-sm font-medium text-slate-200">
+                            Unit
+                        </label>
+                        <input
+                            value={createUnit}
+                            onChange={(e) => setCreateUnit(e.target.value)}
+                            placeholder="kW"
+                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                            disabled={createAttributeMutation.isPending}
+                        />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <label className="text-sm font-medium text-slate-200">
+                            Description
+                        </label>
+                        <textarea
+                            value={createDescription}
+                            onChange={(e) =>
+                                setCreateDescription(e.target.value)
+                            }
+                            placeholder="Optional"
+                            rows={3}
+                            className="resize-none rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                            disabled={createAttributeMutation.isPending}
+                        />
+                    </div>
+                </div>
+            </ItemCard>
+
+            <Popup
+                open={editOpen}
+                onOpenChange={(next) => {
+                    setEditOpen(next);
+                    if (next) setEditError(null);
+                }}
+                title="Edit attribute"
+                description="Update attribute details."
+                initialFocusRef={editNameRef}
+                footer={
+                    <div className="flex items-center justify-end gap-2">
+                        <button
+                            type="button"
+                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-4 py-2 text-sm font-medium text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                            onClick={() => setEditOpen(false)}
+                            disabled={updateAttributeMutation.isPending}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            className="rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                            onClick={() => {
+                                setEditError(null);
+                                const trimmed = editName.trim();
+                                if (!trimmed) {
+                                    setEditError("Attribute name is required.");
+                                    return;
+                                }
+                                if (!editTarget) {
+                                    setEditError("No attribute selected.");
+                                    return;
+                                }
+
+                                updateAttributeMutation.mutate({
+                                    name: trimmed,
+                                    description: editDescription.trim()
+                                        ? editDescription.trim()
+                                        : null,
+                                    unit: editUnit.trim()
+                                        ? editUnit.trim()
+                                        : null,
+                                });
+                            }}
+                            disabled={
+                                updateAttributeMutation.isPending ||
+                                !canEdit ||
+                                !editTarget
+                            }
+                        >
+                            {updateAttributeMutation.isPending
+                                ? "Saving..."
+                                : "Save"}
+                        </button>
+                    </div>
+                }
+            >
+                <div className="flex flex-col gap-4">
+                    <ErrorDisplay
+                        errors={
+                            editError
+                                ? [
+                                      {
+                                          id: "edit-error",
+                                          message: editError,
+                                          onDismiss: () => setEditError(null),
+                                      },
+                                  ]
+                                : []
+                        }
+                    />
+
+                    <div className="flex flex-col gap-2">
+                        <label className="text-sm font-medium text-slate-200">
+                            Name
+                        </label>
+                        <input
+                            ref={editNameRef}
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                            disabled={updateAttributeMutation.isPending}
+                        />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <label className="text-sm font-medium text-slate-200">
+                            Unit
+                        </label>
+                        <input
+                            value={editUnit}
+                            onChange={(e) => setEditUnit(e.target.value)}
+                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                            disabled={updateAttributeMutation.isPending}
+                        />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <label className="text-sm font-medium text-slate-200">
+                            Description
+                        </label>
+                        <textarea
+                            value={editDescription}
+                            onChange={(e) => setEditDescription(e.target.value)}
+                            rows={3}
+                            className="resize-none rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                            disabled={updateAttributeMutation.isPending}
+                        />
+                    </div>
+                </div>
+            </Popup>
+        </ProjectPageLayout>
+    );
+}

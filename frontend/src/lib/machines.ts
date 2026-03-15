@@ -14,6 +14,7 @@ export interface NewMachinePayload {
     description: string | null;
     baseSpeed: number;
     recipePuids: string[];
+    attributes: { puid: string; rate: number }[];
 }
 
 export async function postNewMachine(

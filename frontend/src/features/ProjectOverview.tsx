@@ -20,6 +20,7 @@ import { fetchProducts } from "@/lib/products";
 import { fetchRecipes } from "@/lib/recipes";
 import { fetchMachines } from "@/lib/machines";
 import { fetchModifiers } from "@/lib/modifiers";
+import { fetchAttributes } from "@/lib/attributes";
 import ReactMarkdown from "react-markdown";
 
 interface Project {
@@ -87,10 +88,18 @@ export default function ProjectPage() {
         staleTime: 60 * 1000,
     });
 
+    const attributesQuery = useQuery({
+        queryKey: ["attributes", projectId],
+        queryFn: () => fetchAttributes(projectId, protectedApi),
+        enabled: Boolean(projectId),
+        staleTime: 60 * 1000,
+    });
+
     const productsCount = getCount(productsQuery.data);
     const recipesCount = getCount(recipesQuery.data);
     const machinesCount = getCount(machinesQuery.data);
     const modifiersCount = getCount(modifiersQuery.data);
+    const attributesCount = getCount(attributesQuery.data);
     const workflowsCount: number | null = null;
 
     const [editOpen, setEditOpen] = useState(false);
@@ -202,6 +211,7 @@ export default function ProjectPage() {
             { label: "Recipes", value: recipesCount },
             { label: "Machines", value: machinesCount },
             { label: "Modifiers", value: modifiersCount },
+            { label: "Attributes", value: attributesCount },
         ],
         [
             workflowsCount,
@@ -209,6 +219,7 @@ export default function ProjectPage() {
             recipesCount,
             machinesCount,
             modifiersCount,
+            attributesCount,
         ],
     );
 
@@ -216,13 +227,15 @@ export default function ProjectPage() {
         productsQuery.isLoading ||
         recipesQuery.isLoading ||
         machinesQuery.isLoading ||
-        modifiersQuery.isLoading;
+        modifiersQuery.isLoading ||
+        attributesQuery.isLoading;
 
     const countsError =
         productsQuery.error ||
         recipesQuery.error ||
         machinesQuery.error ||
-        modifiersQuery.error;
+        modifiersQuery.error ||
+        attributesQuery.error;
 
     return (
         <ProjectPageLayout>
@@ -301,6 +314,8 @@ export default function ProjectPage() {
                                 href = `/${encodeURIComponent(routeUsername ?? "")}/${encodeURIComponent(routeProjectName ?? "")}/machines`;
                             } else if (item.label === "Modifiers") {
                                 href = `/${encodeURIComponent(routeUsername ?? "")}/${encodeURIComponent(routeProjectName ?? "")}/modifiers`;
+                            } else if (item.label === "Attributes") {
+                                href = `/${encodeURIComponent(routeUsername ?? "")}/${encodeURIComponent(routeProjectName ?? "")}/attributes`;
                             }
 
                             const cardContent = (

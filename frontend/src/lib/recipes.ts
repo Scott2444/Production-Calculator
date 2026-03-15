@@ -15,6 +15,7 @@ export interface NewRecipePayload {
     baseCraftingTime: number;
     inputs: { puid: string; quantity: number }[];
     outputs: { puid: string; quantity: number }[];
+    attributes: { puid: string; rate: number }[];
 }
 
 export async function postNewRecipe(

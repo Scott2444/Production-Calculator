@@ -17,6 +17,7 @@ import {
     IconGitBranch,
     IconPlus,
     IconSoup,
+    IconBolt,
 } from "@tabler/icons-react";
 
 interface Project {
@@ -32,6 +33,7 @@ interface Project {
 const navItems = [
     { name: "Workflows", slug: "workflows", icon: IconGitBranch },
     { name: "Products", slug: "products", icon: IconBox },
+    { name: "Attributes", slug: "attributes", icon: IconBolt },
     { name: "Recipes", slug: "recipes", icon: IconSoup },
     { name: "Machines", slug: "machines", icon: IconCpu },
     { name: "Modifiers", slug: "modifiers", icon: IconAdjustments },

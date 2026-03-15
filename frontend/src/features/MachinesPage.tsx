@@ -9,6 +9,7 @@ import SearchBar from "@/components/SearchBar";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import { useProject } from "@/context/ProjectContext";
 import { useProtectedApi } from "@/lib/api";
+import { fetchAttributes } from "@/lib/attributes";
 import {
     deleteMachine,
     fetchMachines,
@@ -25,6 +26,9 @@ import {
     IconPlus,
     IconSearch,
     IconTrash,
+    IconGauge,
+    IconClipboardList,
+    IconSettings,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -39,12 +43,24 @@ interface Recipe {
     updatedAt: string;
 }
 
+interface Attribute {
+    puid: string;
+    name: string;
+    description: string | null;
+    unit: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+type MachineAttributeRate = { puid: string; rate: number };
+
 interface Machine {
     puid: string;
     name: string;
     description: string | null;
     baseSpeed: number;
     recipePuids: string[];
+    attributes: MachineAttributeRate[];
     createdAt: string;
     updatedAt: string;
 }
@@ -69,10 +85,55 @@ function coerceRecipes(value: unknown): Recipe[] {
     return [];
 }
 
+function coerceAttributes(value: unknown): Attribute[] {
+    if (!value) return [];
+    if (Array.isArray(value)) return value as Attribute[];
+    if (typeof value === "object") {
+        const maybeItems = (value as { items?: unknown }).items;
+        if (Array.isArray(maybeItems)) return maybeItems as Attribute[];
+    }
+    return [];
+}
+
 function normalizeStringArray(value: unknown): string[] {
     if (!value) return [];
     if (Array.isArray(value)) return value as string[];
     return [];
+}
+
+function normalizeAttributeRates(value: unknown): MachineAttributeRate[] {
+    if (!value) return [];
+    if (Array.isArray(value)) return value as MachineAttributeRate[];
+    return [];
+}
+
+function validateAttributeRates(
+    attributes: MachineAttributeRate[],
+    label: string,
+): string | null {
+    const trimmed = attributes
+        .map((a) => ({
+            puid: a.puid?.trim?.() ?? a.puid,
+            rate: a.rate,
+        }))
+        .filter((a) => Boolean(a.puid));
+
+    const puids = trimmed.map((a) => a.puid);
+    const duplicates = puids
+        .filter((p, idx) => puids.indexOf(p) !== idx)
+        .filter((p, idx, arr) => arr.indexOf(p) === idx);
+    if (duplicates.length > 0) {
+        return `${label} has duplicate attributes selected.`;
+    }
+
+    for (const attr of trimmed) {
+        if (!attr.puid) return `${label} has a missing attribute.`;
+        if (!(typeof attr.rate === "number") || Number.isNaN(attr.rate)) {
+            return `${label} has an invalid rate.`;
+        }
+    }
+
+    return null;
 }
 
 function formatSelectedRecipesLabel(
@@ -99,6 +160,14 @@ function uniqueTrimmedPuids(values: string[]): string[] {
         out.push(v);
     }
     return out;
+}
+
+function pickDefaultAttributePuid(
+    attributes: Attribute[],
+    used: Set<string>,
+): string {
+    const firstUnused = attributes.find((a) => !used.has(a.puid));
+    return (firstUnused ?? attributes[0])?.puid ?? "";
 }
 
 export default function Machines() {
@@ -131,6 +200,38 @@ export default function Machines() {
         return map;
     }, [sortedRecipes]);
 
+    const attributesQuery = useQuery({
+        queryKey: ["attributes", projectId],
+        queryFn: () => fetchAttributes(projectId, protectedApi),
+        enabled: Boolean(projectId),
+        staleTime: 60 * 1000,
+    });
+
+    const attributes = useMemo(
+        () => coerceAttributes(attributesQuery.data),
+        [attributesQuery.data],
+    );
+
+    const sortedAttributes = useMemo(() => {
+        return [...attributes].sort((a, b) =>
+            a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+        );
+    }, [attributes]);
+
+    const attributeNameByPuid = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const a of sortedAttributes) map.set(a.puid, a.name);
+        return map;
+    }, [sortedAttributes]);
+
+    const attributeUnitByPuid = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const a of sortedAttributes) {
+            map.set(a.puid, a.unit?.trim() || "");
+        }
+        return map;
+    }, [sortedAttributes]);
+
     const machinesQuery = useQuery({
         queryKey: ["machines", projectId],
         queryFn: () => fetchMachines(projectId, protectedApi),
@@ -154,9 +255,12 @@ export default function Machines() {
             const recipeNames = normalizeStringArray(m.recipePuids)
                 .map((p) => recipeNameByPuid.get(p) ?? p)
                 .join(" ");
-            return `${m.name} ${m.description ?? ""} ${m.baseSpeed} ${recipeNames}`;
+            const attributeNames = normalizeAttributeRates(m.attributes)
+                .map((a) => attributeNameByPuid.get(a.puid) ?? a.puid)
+                .join(" ");
+            return `${m.name} ${m.description ?? ""} ${m.baseSpeed} ${recipeNames} ${attributeNames}`;
         };
-    }, [recipeNameByPuid]);
+    }, [recipeNameByPuid, attributeNameByPuid]);
 
     const {
         searchText,
@@ -171,6 +275,9 @@ export default function Machines() {
     const [createDescription, setCreateDescription] = useState("");
     const [createBaseSpeed, setCreateBaseSpeed] = useState<string>("1");
     const [createRecipePuids, setCreateRecipePuids] = useState<string[]>([]);
+    const [createAttributes, setCreateAttributes] = useState<
+        MachineAttributeRate[]
+    >([]);
     const [createError, setCreateError] = useState<string | null>(null);
     const createNameRef = useRef<HTMLInputElement>(null);
 
@@ -194,6 +301,7 @@ export default function Machines() {
             setCreateDescription("");
             setCreateBaseSpeed("1");
             setCreateRecipePuids([]);
+            setCreateAttributes([]);
             setCreateOpen(false);
             await queryClient.invalidateQueries({
                 queryKey: ["machines", projectId],
@@ -214,6 +322,9 @@ export default function Machines() {
     const [editDescription, setEditDescription] = useState("");
     const [editBaseSpeed, setEditBaseSpeed] = useState<string>("1");
     const [editRecipePuids, setEditRecipePuids] = useState<string[]>([]);
+    const [editAttributes, setEditAttributes] = useState<
+        MachineAttributeRate[]
+    >([]);
     const [editError, setEditError] = useState<string | null>(null);
     const editNameRef = useRef<HTMLInputElement>(null);
 
@@ -230,6 +341,7 @@ export default function Machines() {
         setEditRecipePuids(
             uniqueTrimmedPuids(normalizeStringArray(editTarget?.recipePuids)),
         );
+        setEditAttributes(normalizeAttributeRates(editTarget?.attributes));
     }, [editOpen, editTarget]);
 
     const updateMachineMutation = useMutation({
@@ -334,7 +446,7 @@ export default function Machines() {
                 {({ close }) => (
                     <div className="p-2">
                         <div className="flex flex-col gap-1">
-                            <div className="sticky top-0 z-10 rounded-lg border border-slate-800 bg-slate-950 p-2">
+                            <div className="sticky top-0 z-10 rounded-lg p-2">
                                 <div className="flex items-center gap-2">
                                     <div className="text-slate-400">
                                         <IconSearch size={16} />
@@ -419,6 +531,136 @@ export default function Machines() {
         );
     };
 
+    const AttributeDropDown = ({
+        value,
+        onSelect,
+        disabled,
+    }: {
+        value: string;
+        onSelect: (next: string) => void;
+        disabled?: boolean;
+    }) => {
+        const selectedName = value ? attributeNameByPuid.get(value) : undefined;
+        const effectiveDisabled =
+            Boolean(disabled) || sortedAttributes.length === 0;
+
+        const {
+            searchText: menuSearchText,
+            setSearchText: setMenuSearchText,
+            filteredItems: filteredAttributes,
+        } = useSearch(sortedAttributes, {
+            toText: (a) => `${a.name} ${a.description ?? ""} ${a.unit ?? ""}`,
+        });
+
+        return (
+            <DropDown
+                label={
+                    <div className="min-w-0">
+                        <div className="truncate text-sm text-slate-200">
+                            {selectedName ??
+                                (effectiveDisabled
+                                    ? "No attributes"
+                                    : "Select attribute")}
+                        </div>
+                    </div>
+                }
+                align="right"
+                disabled={effectiveDisabled}
+                className="w-full"
+                buttonClassName="rounded-lg px-3 py-2"
+                matchTriggerWidth
+            >
+                {({ close }) => (
+                    <div className="p-2">
+                        <div className="flex flex-col gap-1">
+                            <div className="sticky top-0 z-10 rounded-lg p-2">
+                                <div className="flex items-center gap-2">
+                                    <div className="text-slate-400">
+                                        <IconSearch size={16} />
+                                    </div>
+                                    <input
+                                        value={menuSearchText}
+                                        onChange={(e) =>
+                                            setMenuSearchText(e.target.value)
+                                        }
+                                        placeholder="Search attributes"
+                                        className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                        disabled={effectiveDisabled}
+                                        aria-label="Search attributes"
+                                    />
+                                </div>
+                            </div>
+
+                            {filteredAttributes.map((a) => {
+                                const selected = a.puid === value;
+                                const suffix = a.unit?.trim()
+                                    ? ` (${a.unit})`
+                                    : "";
+                                return (
+                                    <button
+                                        key={a.puid}
+                                        type="button"
+                                        className={`group flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer hover:bg-slate-800/70 ${
+                                            selected
+                                                ? "bg-purple-600/15 text-slate-100"
+                                                : "text-slate-200"
+                                        }`}
+                                        onClick={() => {
+                                            onSelect(a.puid);
+                                            setMenuSearchText("");
+                                            close();
+                                        }}
+                                    >
+                                        <span className="min-w-0 truncate">
+                                            {a.name}
+                                            {suffix}
+                                        </span>
+                                        <span
+                                            className={`shrink-0 ${
+                                                selected
+                                                    ? "text-purple-300"
+                                                    : "text-slate-500 opacity-0 group-hover:opacity-100"
+                                            }`}
+                                            aria-hidden="true"
+                                        >
+                                            <IconCheck size={16} />
+                                        </span>
+                                    </button>
+                                );
+                            })}
+
+                            {sortedAttributes.length > 0 &&
+                                filteredAttributes.length === 0 && (
+                                    <div className="px-3 py-2 text-sm text-slate-400">
+                                        No attributes match your search.
+                                    </div>
+                                )}
+
+                            {sortedAttributes.length === 0 && (
+                                <div className="px-3 py-2 text-sm text-slate-400">
+                                    No attributes yet.
+                                </div>
+                            )}
+
+                            <div className="mt-1 flex items-center justify-end">
+                                <button
+                                    type="button"
+                                    className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                    onClick={() => {
+                                        setMenuSearchText("");
+                                        close();
+                                    }}
+                                >
+                                    Done
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </DropDown>
+        );
+    };
+
     const renderRecipeList = (recipePuids: unknown) => {
         const items = uniqueTrimmedPuids(normalizeStringArray(recipePuids));
         if (items.length === 0) {
@@ -440,6 +682,37 @@ export default function Machines() {
                         {recipeNameByPuid.get(puid) ?? puid}
                     </div>
                 ))}
+            </div>
+        );
+    };
+
+    const renderAttributeRates = (value: unknown) => {
+        const items = normalizeAttributeRates(value);
+        if (items.length === 0) {
+            return <div className="text-sm text-slate-500">None</div>;
+        }
+
+        return (
+            <div className="flex flex-col gap-1">
+                {items.map((item, idx) => {
+                    const name =
+                        attributeNameByPuid.get(item.puid) ?? item.puid;
+                    const unit = attributeUnitByPuid.get(item.puid) || "";
+                    return (
+                        <div
+                            key={`${item.puid}-${idx}`}
+                            className="flex items-center justify-between gap-3"
+                        >
+                            <div className="min-w-0 truncate text-sm text-slate-200">
+                                {name}
+                            </div>
+                            <div className="shrink-0 text-sm text-slate-400">
+                                {item.rate}
+                                {unit ? ` ${unit}` : ""}
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
         );
     };
@@ -506,7 +779,7 @@ export default function Machines() {
 
                     {machinesQuery.isLoading && projectId && (
                         <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
-                            Loading machines…
+                            Loading machines...
                         </div>
                     )}
 
@@ -535,24 +808,66 @@ export default function Machines() {
                                     className="rounded-xl border border-slate-800 bg-slate-900/40 p-4"
                                 >
                                     <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0">
+                                        <div className="min-w-0 flex-1">
                                             <div className="truncate text-base font-semibold text-slate-100">
                                                 {machine.name}
                                             </div>
-                                            <div className="mt-1 text-sm text-slate-400">
-                                                Base speed: {machine.baseSpeed}
+
+                                            {
+                                                machine.description ? (
+                                                    <div className="mt-1 text-sm text-slate-300">
+                                                        <ReactMarkdown>
+                                                            {
+                                                                machine.description
+                                                            }
+                                                        </ReactMarkdown>
+                                                    </div>
+                                                ) : (
+                                                    <div className="mt-1 text-sm text-slate-500">
+                                                        No description
+                                                    </div>
+                                                ) /* End description */
+                                            }
+
+                                            <div className="mt-3 grid grid-cols-1 gap-4 text-sm text-slate-300">
+                                                <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
+                                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-purple-400">
+                                                        <IconGauge size={14} />
+                                                        Base Speed
+                                                    </div>
+                                                    <div className="mt-2 text-sm text-slate-200">
+                                                        {machine.baseSpeed}
+                                                    </div>
+                                                </div>
+
+                                                <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
+                                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-400">
+                                                        <IconClipboardList
+                                                            size={14}
+                                                        />
+                                                        Compatible Recipes
+                                                    </div>
+                                                    <div className="mt-2">
+                                                        {renderRecipeList(
+                                                            machine.recipePuids,
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
+                                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-blue-400">
+                                                        <IconSettings
+                                                            size={14}
+                                                        />
+                                                        User Defined Attributes
+                                                    </div>
+                                                    <div className="mt-2">
+                                                        {renderAttributeRates(
+                                                            machine.attributes,
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
-                                            {machine.description ? (
-                                                <div className="mt-2 text-sm text-slate-300">
-                                                    <ReactMarkdown>
-                                                        {machine.description}
-                                                    </ReactMarkdown>
-                                                </div>
-                                            ) : (
-                                                <div className="mt-2 text-sm text-slate-500">
-                                                    No description
-                                                </div>
-                                            )}
                                         </div>
 
                                         <div className="flex gap-2">
@@ -623,19 +938,6 @@ export default function Machines() {
                                             </button>
                                         </div>
                                     </div>
-
-                                    <div className="mt-4 grid grid-cols-1 gap-4">
-                                        <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
-                                            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                                Recipes
-                                            </div>
-                                            <div className="mt-2">
-                                                {renderRecipeList(
-                                                    machine.recipePuids,
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -653,7 +955,7 @@ export default function Machines() {
                 description="Create a new machine in this project."
                 initialFocusRef={createNameRef}
                 submitLabel="Create"
-                submittingLabel="Creating…"
+                submittingLabel="Creating..."
                 submitting={createMachineMutation.isPending}
                 submitDisabled={!canEdit || !projectId}
                 cancelDisabled={createMachineMutation.isPending}
@@ -672,6 +974,15 @@ export default function Machines() {
                         return;
                     }
 
+                    const attributesErr = validateAttributeRates(
+                        createAttributes,
+                        "Attributes",
+                    );
+                    if (attributesErr) {
+                        setCreateError(attributesErr);
+                        return;
+                    }
+
                     createMachineMutation.mutate({
                         name: trimmedName,
                         description: createDescription.trim()
@@ -679,6 +990,10 @@ export default function Machines() {
                             : null,
                         baseSpeed: base,
                         recipePuids: uniqueTrimmedPuids(createRecipePuids),
+                        attributes: createAttributes.map((a) => ({
+                            puid: a.puid,
+                            rate: Number(a.rate),
+                        })),
                     });
                 }}
             >
@@ -713,19 +1028,6 @@ export default function Machines() {
 
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-medium text-slate-200">
-                            Base speed
-                        </label>
-                        <input
-                            value={createBaseSpeed}
-                            onChange={(e) => setCreateBaseSpeed(e.target.value)}
-                            inputMode="decimal"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={createMachineMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
                             Description
                         </label>
                         <textarea
@@ -740,9 +1042,31 @@ export default function Machines() {
                         />
                     </div>
 
-                    <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
-                        <div className="text-sm font-medium text-slate-200">
-                            Recipes
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
+                        <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-purple-400">
+                            <IconGauge size={16} />
+                            Machine Speed
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-slate-200">
+                                Base speed
+                            </label>
+                            <input
+                                value={createBaseSpeed}
+                                onChange={(e) =>
+                                    setCreateBaseSpeed(e.target.value)
+                                }
+                                inputMode="decimal"
+                                className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                disabled={createMachineMutation.isPending}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
+                        <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-emerald-400">
+                            <IconClipboardList size={16} />
+                            Compatible Recipes
                         </div>
 
                         {sortedRecipes.length === 0 ? (
@@ -751,7 +1075,7 @@ export default function Machines() {
                             </div>
                         ) : null}
 
-                        <div className="mt-3 flex flex-col gap-2">
+                        <div className="flex flex-col gap-2">
                             <RecipeMultiSelect
                                 value={createRecipePuids}
                                 onChange={setCreateRecipePuids}
@@ -815,6 +1139,124 @@ export default function Machines() {
                             )}
                         </div>
                     </div>
+
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
+                        <div className="flex items-center justify-between gap-3 mb-4">
+                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-blue-400">
+                                <IconSettings size={16} />
+                                User Defined Attributes
+                            </div>
+                            <button
+                                type="button"
+                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                onClick={() => {
+                                    const used = new Set(
+                                        createAttributes.map((a) => a.puid),
+                                    );
+                                    const nextPuid = pickDefaultAttributePuid(
+                                        sortedAttributes,
+                                        used,
+                                    );
+                                    if (!nextPuid) return;
+                                    setCreateAttributes((prev) => [
+                                        ...prev,
+                                        { puid: nextPuid, rate: 0 },
+                                    ]);
+                                }}
+                                disabled={
+                                    createMachineMutation.isPending ||
+                                    sortedAttributes.length === 0
+                                }
+                                title={
+                                    sortedAttributes.length === 0
+                                        ? "Create attributes first"
+                                        : "Add attribute"
+                                }
+                            >
+                                <IconPlus size={16} />
+                                Add
+                            </button>
+                        </div>
+
+                        {sortedAttributes.length === 0 ? (
+                            <div className="mt-2 text-sm text-slate-500">
+                                No attributes available in this project.
+                            </div>
+                        ) : null}
+
+                        <div className="mt-3 flex flex-col gap-2">
+                            {createAttributes.length === 0 && (
+                                <div className="text-sm text-slate-500">
+                                    No attributes
+                                </div>
+                            )}
+                            {createAttributes.map((row, idx) => (
+                                <div
+                                    key={`create-attr-${idx}`}
+                                    className="flex items-center gap-2"
+                                >
+                                    <AttributeDropDown
+                                        value={row.puid}
+                                        disabled={
+                                            createMachineMutation.isPending
+                                        }
+                                        onSelect={(next) => {
+                                            setCreateAttributes((prev) =>
+                                                prev.map((p, i) =>
+                                                    i === idx
+                                                        ? {
+                                                              ...p,
+                                                              puid: next,
+                                                          }
+                                                        : p,
+                                                ),
+                                            );
+                                        }}
+                                    />
+                                    <input
+                                        value={String(row.rate)}
+                                        onChange={(e) => {
+                                            const next = Number(e.target.value);
+                                            setCreateAttributes((prev) =>
+                                                prev.map((p, i) =>
+                                                    i === idx
+                                                        ? {
+                                                              ...p,
+                                                              rate: next,
+                                                          }
+                                                        : p,
+                                                ),
+                                            );
+                                        }}
+                                        inputMode="decimal"
+                                        className="w-32 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                        disabled={
+                                            createMachineMutation.isPending
+                                        }
+                                        placeholder="Rate"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                        onClick={() =>
+                                            setCreateAttributes((prev) =>
+                                                prev.filter(
+                                                    (_, i) => i !== idx,
+                                                ),
+                                            )
+                                        }
+                                        disabled={
+                                            createMachineMutation.isPending
+                                        }
+                                        title="Remove"
+                                        aria-label="Remove attribute"
+                                    >
+                                        <IconTrash size={18} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </ItemCard>
 
@@ -860,6 +1302,15 @@ export default function Machines() {
                                     return;
                                 }
 
+                                const attributesErr = validateAttributeRates(
+                                    editAttributes,
+                                    "Attributes",
+                                );
+                                if (attributesErr) {
+                                    setEditError(attributesErr);
+                                    return;
+                                }
+
                                 updateMachineMutation.mutate({
                                     name: trimmedName,
                                     description: editDescription.trim()
@@ -868,6 +1319,10 @@ export default function Machines() {
                                     baseSpeed: base,
                                     recipePuids:
                                         uniqueTrimmedPuids(editRecipePuids),
+                                    attributes: editAttributes.map((a) => ({
+                                        puid: a.puid,
+                                        rate: Number(a.rate),
+                                    })),
                                 });
                             }}
                             disabled={
@@ -877,7 +1332,7 @@ export default function Machines() {
                             }
                         >
                             {updateMachineMutation.isPending
-                                ? "Saving…"
+                                ? "Saving..."
                                 : "Save"}
                         </button>
                     </div>
@@ -913,19 +1368,6 @@ export default function Machines() {
 
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-medium text-slate-200">
-                            Base speed
-                        </label>
-                        <input
-                            value={editBaseSpeed}
-                            onChange={(e) => setEditBaseSpeed(e.target.value)}
-                            inputMode="decimal"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={updateMachineMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
                             Description
                         </label>
                         <textarea
@@ -937,11 +1379,33 @@ export default function Machines() {
                         />
                     </div>
 
-                    <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
-                        <div className="text-sm font-medium text-slate-200">
-                            Recipes
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
+                        <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-purple-400">
+                            <IconGauge size={16} />
+                            Machine Speed
                         </div>
-                        <div className="mt-3 flex flex-col gap-2">
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-slate-200">
+                                Base speed
+                            </label>
+                            <input
+                                value={editBaseSpeed}
+                                onChange={(e) =>
+                                    setEditBaseSpeed(e.target.value)
+                                }
+                                inputMode="decimal"
+                                className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                disabled={updateMachineMutation.isPending}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
+                        <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-emerald-400">
+                            <IconClipboardList size={16} />
+                            Compatible Recipes
+                        </div>
+                        <div className="flex flex-col gap-2">
                             <RecipeMultiSelect
                                 value={editRecipePuids}
                                 onChange={setEditRecipePuids}
@@ -1002,6 +1466,118 @@ export default function Machines() {
                                         ))}
                                 </div>
                             )}
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
+                        <div className="flex items-center justify-between gap-3 mb-4">
+                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-blue-400">
+                                <IconSettings size={16} />
+                                User Defined Attributes
+                            </div>
+                            <button
+                                type="button"
+                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                onClick={() => {
+                                    const used = new Set(
+                                        editAttributes.map((a) => a.puid),
+                                    );
+                                    const nextPuid = pickDefaultAttributePuid(
+                                        sortedAttributes,
+                                        used,
+                                    );
+                                    if (!nextPuid) return;
+                                    setEditAttributes((prev) => [
+                                        ...prev,
+                                        { puid: nextPuid, rate: 0 },
+                                    ]);
+                                }}
+                                disabled={
+                                    updateMachineMutation.isPending ||
+                                    sortedAttributes.length === 0
+                                }
+                                title={
+                                    sortedAttributes.length === 0
+                                        ? "Create attributes first"
+                                        : "Add attribute"
+                                }
+                            >
+                                <IconPlus size={16} />
+                                Add
+                            </button>
+                        </div>
+
+                        <div className="mt-3 flex flex-col gap-2">
+                            {editAttributes.length === 0 && (
+                                <div className="text-sm text-slate-500">
+                                    No attributes
+                                </div>
+                            )}
+                            {editAttributes.map((row, idx) => (
+                                <div
+                                    key={`edit-attr-${idx}`}
+                                    className="flex items-center gap-2"
+                                >
+                                    <AttributeDropDown
+                                        value={row.puid}
+                                        disabled={
+                                            updateMachineMutation.isPending
+                                        }
+                                        onSelect={(next) => {
+                                            setEditAttributes((prev) =>
+                                                prev.map((p, i) =>
+                                                    i === idx
+                                                        ? {
+                                                              ...p,
+                                                              puid: next,
+                                                          }
+                                                        : p,
+                                                ),
+                                            );
+                                        }}
+                                    />
+                                    <input
+                                        value={String(row.rate)}
+                                        onChange={(e) => {
+                                            const next = Number(e.target.value);
+                                            setEditAttributes((prev) =>
+                                                prev.map((p, i) =>
+                                                    i === idx
+                                                        ? {
+                                                              ...p,
+                                                              rate: next,
+                                                          }
+                                                        : p,
+                                                ),
+                                            );
+                                        }}
+                                        inputMode="decimal"
+                                        className="w-32 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                        disabled={
+                                            updateMachineMutation.isPending
+                                        }
+                                        placeholder="Rate"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                        onClick={() =>
+                                            setEditAttributes((prev) =>
+                                                prev.filter(
+                                                    (_, i) => i !== idx,
+                                                ),
+                                            )
+                                        }
+                                        disabled={
+                                            updateMachineMutation.isPending
+                                        }
+                                        title="Remove"
+                                        aria-label="Remove attribute"
+                                    >
+                                        <IconTrash size={18} />
+                                    </button>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>

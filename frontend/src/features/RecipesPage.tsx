@@ -10,6 +10,7 @@ import ErrorDisplay from "@/components/ErrorDisplay";
 import { useProject } from "@/context/ProjectContext";
 import { useProtectedApi } from "@/lib/api";
 import { fetchProducts } from "@/lib/products";
+import { fetchAttributes } from "@/lib/attributes";
 import {
     deleteRecipe,
     fetchRecipes,
@@ -23,6 +24,10 @@ import {
     IconPlus,
     IconSearch,
     IconTrash,
+    IconClock,
+    IconArrowRight,
+    IconArrowLeft,
+    IconSettings,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@/hooks/Search";
@@ -38,7 +43,17 @@ interface Product {
     updatedAt: string;
 }
 
+interface Attribute {
+    puid: string;
+    name: string;
+    description: string | null;
+    unit: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
 type RecipeExchange = { puid: string; quantity: number };
+type RecipeAttributeRate = { puid: string; rate: number };
 
 interface Recipe {
     puid: string;
@@ -47,6 +62,7 @@ interface Recipe {
     baseCraftingTime: number;
     inputs: RecipeExchange[];
     outputs: RecipeExchange[];
+    attributes: RecipeAttributeRate[];
     createdAt: string;
     updatedAt: string;
 }
@@ -71,9 +87,25 @@ function coerceProducts(value: unknown): Product[] {
     return [];
 }
 
+function coerceAttributes(value: unknown): Attribute[] {
+    if (!value) return [];
+    if (Array.isArray(value)) return value as Attribute[];
+    if (typeof value === "object") {
+        const maybeItems = (value as { items?: unknown }).items;
+        if (Array.isArray(maybeItems)) return maybeItems as Attribute[];
+    }
+    return [];
+}
+
 function normalizeExchanges(value: unknown): RecipeExchange[] {
     if (!value) return [];
     if (Array.isArray(value)) return value as RecipeExchange[];
+    return [];
+}
+
+function normalizeAttributeRates(value: unknown): RecipeAttributeRate[] {
+    if (!value) return [];
+    if (Array.isArray(value)) return value as RecipeAttributeRate[];
     return [];
 }
 
@@ -106,12 +138,48 @@ function validateExchanges(
     return null;
 }
 
+function validateAttributeRates(
+    attributes: RecipeAttributeRate[],
+    label: string,
+): string | null {
+    const trimmed = attributes
+        .map((a) => ({
+            puid: a.puid?.trim?.() ?? a.puid,
+            rate: a.rate,
+        }))
+        .filter((a) => Boolean(a.puid));
+
+    const puids = trimmed.map((a) => a.puid);
+    const duplicates = puids
+        .filter((p, idx) => puids.indexOf(p) !== idx)
+        .filter((p, idx, arr) => arr.indexOf(p) === idx);
+    if (duplicates.length > 0) {
+        return `${label} has duplicate attributes selected.`;
+    }
+
+    for (const attr of trimmed) {
+        if (!attr.puid) return `${label} has a missing attribute.`;
+        if (!(typeof attr.rate === "number") || Number.isNaN(attr.rate)) {
+            return `${label} has an invalid rate.`;
+        }
+    }
+    return null;
+}
+
 function pickDefaultProductPuid(
     products: Product[],
     used: Set<string>,
 ): string {
     const firstUnused = products.find((p) => !used.has(p.puid));
     return (firstUnused ?? products[0])?.puid ?? "";
+}
+
+function pickDefaultAttributePuid(
+    attributes: Attribute[],
+    used: Set<string>,
+): string {
+    const firstUnused = attributes.find((a) => !used.has(a.puid));
+    return (firstUnused ?? attributes[0])?.puid ?? "";
 }
 
 export default function Recipes() {
@@ -144,6 +212,38 @@ export default function Recipes() {
         return map;
     }, [sortedProducts]);
 
+    const attributesQuery = useQuery({
+        queryKey: ["attributes", projectId],
+        queryFn: () => fetchAttributes(projectId, protectedApi),
+        enabled: Boolean(projectId),
+        staleTime: 60 * 1000,
+    });
+
+    const attributes = useMemo(
+        () => coerceAttributes(attributesQuery.data),
+        [attributesQuery.data],
+    );
+
+    const sortedAttributes = useMemo(() => {
+        return [...attributes].sort((a, b) =>
+            a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+        );
+    }, [attributes]);
+
+    const attributeNameByPuid = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const a of sortedAttributes) map.set(a.puid, a.name);
+        return map;
+    }, [sortedAttributes]);
+
+    const attributeUnitByPuid = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const a of sortedAttributes) {
+            map.set(a.puid, a.unit?.trim() || "");
+        }
+        return map;
+    }, [sortedAttributes]);
+
     const recipesQuery = useQuery({
         queryKey: ["recipes", projectId],
         queryFn: () => fetchRecipes(projectId, protectedApi),
@@ -170,9 +270,12 @@ export default function Recipes() {
             const outputNames = normalizeExchanges(r.outputs)
                 .map((o) => productNameByPuid.get(o.puid) ?? o.puid)
                 .join(" ");
-            return `${r.name} ${r.description ?? ""} ${inputNames} ${outputNames}`;
+            const attributeNames = normalizeAttributeRates(r.attributes)
+                .map((a) => attributeNameByPuid.get(a.puid) ?? a.puid)
+                .join(" ");
+            return `${r.name} ${r.description ?? ""} ${inputNames} ${outputNames} ${attributeNames}`;
         };
-    }, [productNameByPuid]);
+    }, [productNameByPuid, attributeNameByPuid]);
 
     const {
         searchText,
@@ -188,6 +291,9 @@ export default function Recipes() {
     const [createBaseTime, setCreateBaseTime] = useState<string>("1");
     const [createInputs, setCreateInputs] = useState<RecipeExchange[]>([]);
     const [createOutputs, setCreateOutputs] = useState<RecipeExchange[]>([]);
+    const [createAttributes, setCreateAttributes] = useState<
+        RecipeAttributeRate[]
+    >([]);
     const [createError, setCreateError] = useState<string | null>(null);
     const createNameRef = useRef<HTMLInputElement>(null);
 
@@ -219,6 +325,7 @@ export default function Recipes() {
             setCreateBaseTime("1");
             setCreateInputs([]);
             setCreateOutputs([]);
+            setCreateAttributes([]);
             setCreateOpen(false);
             await queryClient.invalidateQueries({
                 queryKey: ["recipes", projectId],
@@ -238,6 +345,9 @@ export default function Recipes() {
     const [editBaseTime, setEditBaseTime] = useState<string>("1");
     const [editInputs, setEditInputs] = useState<RecipeExchange[]>([]);
     const [editOutputs, setEditOutputs] = useState<RecipeExchange[]>([]);
+    const [editAttributes, setEditAttributes] = useState<RecipeAttributeRate[]>(
+        [],
+    );
     const [editError, setEditError] = useState<string | null>(null);
     const editNameRef = useRef<HTMLInputElement>(null);
 
@@ -253,6 +363,7 @@ export default function Recipes() {
         );
         setEditInputs(normalizeExchanges(editTarget?.inputs));
         setEditOutputs(normalizeExchanges(editTarget?.outputs));
+        setEditAttributes(normalizeAttributeRates(editTarget?.attributes));
     }, [editOpen, editTarget]);
 
     const updateRecipeMutation = useMutation({
@@ -351,7 +462,7 @@ export default function Recipes() {
                 {({ close }) => (
                     <div className="p-2">
                         <div className="flex flex-col gap-1">
-                            <div className="sticky top-0 z-10 rounded-lg border border-slate-800 bg-slate-950 p-2">
+                            <div className="sticky top-0 z-10 rounded-lg p-2">
                                 <div className="flex items-center gap-2">
                                     <div className="text-slate-400">
                                         <IconSearch size={16} />
@@ -435,6 +546,136 @@ export default function Recipes() {
         );
     };
 
+    const AttributeDropDown = ({
+        value,
+        onSelect,
+        disabled,
+    }: {
+        value: string;
+        onSelect: (next: string) => void;
+        disabled?: boolean;
+    }) => {
+        const selectedName = value ? attributeNameByPuid.get(value) : undefined;
+        const effectiveDisabled =
+            Boolean(disabled) || sortedAttributes.length === 0;
+
+        const {
+            searchText: menuSearchText,
+            setSearchText: setMenuSearchText,
+            filteredItems: filteredAttributes,
+        } = useSearch(sortedAttributes, {
+            toText: (a) => `${a.name} ${a.description ?? ""} ${a.unit ?? ""}`,
+        });
+
+        return (
+            <DropDown
+                label={
+                    <div className="min-w-0">
+                        <div className="truncate text-sm text-slate-200">
+                            {selectedName ??
+                                (effectiveDisabled
+                                    ? "No attributes"
+                                    : "Select attribute")}
+                        </div>
+                    </div>
+                }
+                align="right"
+                disabled={effectiveDisabled}
+                className="w-full"
+                buttonClassName="rounded-lg px-3 py-2"
+                matchTriggerWidth
+            >
+                {({ close }) => (
+                    <div className="p-2">
+                        <div className="flex flex-col gap-1">
+                            <div className="sticky top-0 z-10 rounded-lg p-2">
+                                <div className="flex items-center gap-2">
+                                    <div className="text-slate-400">
+                                        <IconSearch size={16} />
+                                    </div>
+                                    <input
+                                        value={menuSearchText}
+                                        onChange={(e) =>
+                                            setMenuSearchText(e.target.value)
+                                        }
+                                        placeholder="Search attributes"
+                                        className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                        disabled={effectiveDisabled}
+                                        aria-label="Search attributes"
+                                    />
+                                </div>
+                            </div>
+
+                            {filteredAttributes.map((a) => {
+                                const selected = a.puid === value;
+                                const suffix = a.unit?.trim()
+                                    ? ` (${a.unit})`
+                                    : "";
+                                return (
+                                    <button
+                                        key={a.puid}
+                                        type="button"
+                                        className={`group flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer hover:bg-slate-800/70 ${
+                                            selected
+                                                ? "bg-purple-600/15 text-slate-100"
+                                                : "text-slate-200"
+                                        }`}
+                                        onClick={() => {
+                                            onSelect(a.puid);
+                                            setMenuSearchText("");
+                                            close();
+                                        }}
+                                    >
+                                        <span className="min-w-0 truncate">
+                                            {a.name}
+                                            {suffix}
+                                        </span>
+                                        <span
+                                            className={`shrink-0 ${
+                                                selected
+                                                    ? "text-purple-300"
+                                                    : "text-slate-500 opacity-0 group-hover:opacity-100"
+                                            }`}
+                                            aria-hidden="true"
+                                        >
+                                            <IconCheck size={16} />
+                                        </span>
+                                    </button>
+                                );
+                            })}
+
+                            {sortedAttributes.length > 0 &&
+                                filteredAttributes.length === 0 && (
+                                    <div className="px-3 py-2 text-sm text-slate-400">
+                                        No attributes match your search.
+                                    </div>
+                                )}
+
+                            {sortedAttributes.length === 0 && (
+                                <div className="px-3 py-2 text-sm text-slate-400">
+                                    No attributes yet.
+                                </div>
+                            )}
+
+                            <div className="mt-1 flex items-center justify-end">
+                                <button
+                                    type="button"
+                                    className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                    onClick={() => {
+                                        setMenuSearchText("");
+                                        close();
+                                    }}
+                                >
+                                    Done
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </DropDown>
+        );
+    };
+
     const renderExchanges = (exchanges: RecipeExchange[]) => {
         const items = normalizeExchanges(exchanges);
         if (items.length === 0) {
@@ -453,7 +694,37 @@ export default function Recipes() {
                                 {name}
                             </div>
                             <div className="shrink-0 text-sm text-slate-400">
-                                × {ex.quantity}
+                                x {ex.quantity}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
+    const renderAttributeRates = (itemsValue: unknown) => {
+        const items = normalizeAttributeRates(itemsValue);
+        if (items.length === 0) {
+            return <div className="text-sm text-slate-500">None</div>;
+        }
+        return (
+            <div className="flex flex-col gap-1">
+                {items.map((item, idx) => {
+                    const name =
+                        attributeNameByPuid.get(item.puid) ?? item.puid;
+                    const unit = attributeUnitByPuid.get(item.puid) || "";
+                    return (
+                        <div
+                            key={`${item.puid}-${idx}`}
+                            className="flex items-center justify-between gap-3"
+                        >
+                            <div className="min-w-0 truncate text-sm text-slate-200">
+                                {name}
+                            </div>
+                            <div className="shrink-0 text-sm text-slate-400">
+                                {item.rate}
+                                {unit ? ` ${unit}` : ""}
                             </div>
                         </div>
                     );
@@ -524,7 +795,7 @@ export default function Recipes() {
 
                     {recipesQuery.isLoading && projectId && (
                         <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
-                            Loading recipes…
+                            Loading recipes...
                         </div>
                     )}
 
@@ -553,25 +824,82 @@ export default function Recipes() {
                                     className="rounded-xl border border-slate-800 bg-slate-900/40 p-4"
                                 >
                                     <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0">
+                                        <div className="min-w-0 flex-1">
                                             <div className="truncate text-base font-semibold text-slate-100">
                                                 {recipe.name}
                                             </div>
-                                            <div className="mt-1 text-sm text-slate-400">
-                                                Base crafting time:{" "}
-                                                {recipe.baseCraftingTime}s
+
+                                            {
+                                                recipe.description ? (
+                                                    <div className="mt-1 text-sm text-slate-300">
+                                                        <ReactMarkdown>
+                                                            {recipe.description}
+                                                        </ReactMarkdown>
+                                                    </div>
+                                                ) : (
+                                                    <div className="mt-1 text-sm text-slate-500">
+                                                        No description
+                                                    </div>
+                                                ) /* End description */
+                                            }
+
+                                            <div className="mt-3 grid grid-cols-1 gap-4 text-sm text-slate-300">
+                                                <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
+                                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-purple-400">
+                                                        <IconClock size={14} />
+                                                        Base Crafting Time
+                                                    </div>
+                                                    <div className="mt-2 text-sm text-slate-200">
+                                                        {
+                                                            recipe.baseCraftingTime
+                                                        }
+                                                        s
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                                    <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
+                                                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-400">
+                                                            <IconArrowRight
+                                                                size={14}
+                                                            />
+                                                            Inputs
+                                                        </div>
+                                                        <div className="mt-2">
+                                                            {renderExchanges(
+                                                                recipe.inputs,
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
+                                                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-400">
+                                                            <IconArrowLeft
+                                                                size={14}
+                                                            />
+                                                            Outputs
+                                                        </div>
+                                                        <div className="mt-2">
+                                                            {renderExchanges(
+                                                                recipe.outputs,
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
+                                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-blue-400">
+                                                        <IconSettings
+                                                            size={14}
+                                                        />
+                                                        User Defined Attributes
+                                                    </div>
+                                                    <div className="mt-2">
+                                                        {renderAttributeRates(
+                                                            recipe.attributes,
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
-                                            {recipe.description ? (
-                                                <div className="mt-2 text-sm text-slate-300">
-                                                    <ReactMarkdown>
-                                                        {recipe.description}
-                                                    </ReactMarkdown>
-                                                </div>
-                                            ) : (
-                                                <div className="mt-2 text-sm text-slate-500">
-                                                    No description
-                                                </div>
-                                            )}
                                         </div>
 
                                         <div className="flex gap-2">
@@ -642,27 +970,6 @@ export default function Recipes() {
                                             </button>
                                         </div>
                                     </div>
-
-                                    <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                        <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
-                                            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                                Inputs
-                                            </div>
-                                            <div className="mt-2">
-                                                {renderExchanges(recipe.inputs)}
-                                            </div>
-                                        </div>
-                                        <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
-                                            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                                Outputs
-                                            </div>
-                                            <div className="mt-2">
-                                                {renderExchanges(
-                                                    recipe.outputs,
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -680,7 +987,7 @@ export default function Recipes() {
                 description="Create a new recipe in this project."
                 initialFocusRef={createNameRef}
                 submitLabel="Create"
-                submittingLabel="Creating…"
+                submittingLabel="Creating..."
                 submitting={createRecipeMutation.isPending}
                 submitDisabled={!canEdit || !projectId}
                 cancelDisabled={createRecipeMutation.isPending}
@@ -715,6 +1022,15 @@ export default function Recipes() {
                         return;
                     }
 
+                    const attributesErr = validateAttributeRates(
+                        createAttributes,
+                        "Attributes",
+                    );
+                    if (attributesErr) {
+                        setCreateError(attributesErr);
+                        return;
+                    }
+
                     createRecipeMutation.mutate({
                         name: trimmedName,
                         description: createDescription.trim()
@@ -728,6 +1044,10 @@ export default function Recipes() {
                         outputs: createOutputs.map((o) => ({
                             puid: o.puid,
                             quantity: Number(o.quantity),
+                        })),
+                        attributes: createAttributes.map((a) => ({
+                            puid: a.puid,
+                            rate: Number(a.rate),
                         })),
                     });
                 }}
@@ -1021,6 +1341,123 @@ export default function Recipes() {
                             ))}
                         </div>
                     </div>
+
+                    <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="text-sm font-medium text-slate-200">
+                                Attributes
+                            </div>
+                            <button
+                                type="button"
+                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                onClick={() => {
+                                    const used = new Set(
+                                        createAttributes.map((a) => a.puid),
+                                    );
+                                    const nextPuid = pickDefaultAttributePuid(
+                                        sortedAttributes,
+                                        used,
+                                    );
+                                    if (!nextPuid) return;
+                                    setCreateAttributes((prev) => [
+                                        ...prev,
+                                        { puid: nextPuid, rate: 0 },
+                                    ]);
+                                }}
+                                disabled={
+                                    createRecipeMutation.isPending ||
+                                    sortedAttributes.length === 0
+                                }
+                                title={
+                                    sortedAttributes.length === 0
+                                        ? "Create attributes first"
+                                        : "Add attribute"
+                                }
+                            >
+                                <IconPlus size={16} />
+                                Add
+                            </button>
+                        </div>
+
+                        {sortedAttributes.length === 0 ? (
+                            <div className="mt-2 text-sm text-slate-500">
+                                No attributes available in this project.
+                            </div>
+                        ) : null}
+
+                        <div className="mt-3 flex flex-col gap-2">
+                            {createAttributes.length === 0 && (
+                                <div className="text-sm text-slate-500">
+                                    No attributes
+                                </div>
+                            )}
+                            {createAttributes.map((row, idx) => (
+                                <div
+                                    key={`create-attr-${idx}`}
+                                    className="flex items-center gap-2"
+                                >
+                                    <AttributeDropDown
+                                        value={row.puid}
+                                        disabled={
+                                            createRecipeMutation.isPending
+                                        }
+                                        onSelect={(next) => {
+                                            setCreateAttributes((prev) =>
+                                                prev.map((p, i) =>
+                                                    i === idx
+                                                        ? {
+                                                              ...p,
+                                                              puid: next,
+                                                          }
+                                                        : p,
+                                                ),
+                                            );
+                                        }}
+                                    />
+                                    <input
+                                        value={String(row.rate)}
+                                        onChange={(e) => {
+                                            const next = Number(e.target.value);
+                                            setCreateAttributes((prev) =>
+                                                prev.map((p, i) =>
+                                                    i === idx
+                                                        ? {
+                                                              ...p,
+                                                              rate: next,
+                                                          }
+                                                        : p,
+                                                ),
+                                            );
+                                        }}
+                                        inputMode="decimal"
+                                        className="w-32 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                        disabled={
+                                            createRecipeMutation.isPending
+                                        }
+                                        placeholder="Rate"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                        onClick={() =>
+                                            setCreateAttributes((prev) =>
+                                                prev.filter(
+                                                    (_, i) => i !== idx,
+                                                ),
+                                            )
+                                        }
+                                        disabled={
+                                            createRecipeMutation.isPending
+                                        }
+                                        title="Remove"
+                                        aria-label="Remove attribute"
+                                    >
+                                        <IconTrash size={18} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </ItemCard>
 
@@ -1083,6 +1520,15 @@ export default function Recipes() {
                                     return;
                                 }
 
+                                const attributesErr = validateAttributeRates(
+                                    editAttributes,
+                                    "Attributes",
+                                );
+                                if (attributesErr) {
+                                    setEditError(attributesErr);
+                                    return;
+                                }
+
                                 updateRecipeMutation.mutate({
                                     name: trimmedName,
                                     description: editDescription.trim()
@@ -1097,6 +1543,10 @@ export default function Recipes() {
                                         puid: o.puid,
                                         quantity: Number(o.quantity),
                                     })),
+                                    attributes: editAttributes.map((a) => ({
+                                        puid: a.puid,
+                                        rate: Number(a.rate),
+                                    })),
                                 });
                             }}
                             disabled={
@@ -1106,7 +1556,7 @@ export default function Recipes() {
                             }
                         >
                             {updateRecipeMutation.isPending
-                                ? "Saving…"
+                                ? "Saving..."
                                 : "Save"}
                         </button>
                     </div>
@@ -1142,19 +1592,6 @@ export default function Recipes() {
 
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-medium text-slate-200">
-                            Base crafting time (seconds)
-                        </label>
-                        <input
-                            value={editBaseTime}
-                            onChange={(e) => setEditBaseTime(e.target.value)}
-                            inputMode="decimal"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={updateRecipeMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
                             Description
                         </label>
                         <textarea
@@ -1166,14 +1603,36 @@ export default function Recipes() {
                         />
                     </div>
 
-                    <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
-                        <div className="flex items-center justify-between gap-3">
-                            <div className="text-sm font-medium text-slate-200">
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
+                        <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-purple-400">
+                            <IconClock size={16} />
+                            Recipe Time
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-slate-200">
+                                Base crafting time (seconds)
+                            </label>
+                            <input
+                                value={editBaseTime}
+                                onChange={(e) =>
+                                    setEditBaseTime(e.target.value)
+                                }
+                                inputMode="decimal"
+                                className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                disabled={updateRecipeMutation.isPending}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
+                        <div className="flex items-center justify-between gap-3 mb-4">
+                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-400">
+                                <IconArrowRight size={16} />
                                 Inputs
                             </div>
                             <button
                                 type="button"
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-amber-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-amber-500/40 disabled:cursor-not-allowed disabled:opacity-60"
                                 onClick={() => {
                                     const used = new Set(
                                         editInputs.map((i) => i.puid),
@@ -1202,7 +1661,7 @@ export default function Recipes() {
                                 Add
                             </button>
                         </div>
-                        <div className="mt-3 flex flex-col gap-2">
+                        <div className="flex flex-col gap-2">
                             {editInputs.length === 0 && (
                                 <div className="text-sm text-slate-500">
                                     No inputs
@@ -1275,14 +1734,15 @@ export default function Recipes() {
                         </div>
                     </div>
 
-                    <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
-                        <div className="flex items-center justify-between gap-3">
-                            <div className="text-sm font-medium text-slate-200">
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
+                        <div className="flex items-center justify-between gap-3 mb-4">
+                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-400">
+                                <IconArrowLeft size={16} />
                                 Outputs
                             </div>
                             <button
                                 type="button"
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-emerald-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:cursor-not-allowed disabled:opacity-60"
                                 onClick={() => {
                                     const used = new Set(
                                         editOutputs.map((o) => o.puid),
@@ -1311,7 +1771,7 @@ export default function Recipes() {
                                 Add
                             </button>
                         </div>
-                        <div className="mt-3 flex flex-col gap-2">
+                        <div className="flex flex-col gap-2">
                             {editOutputs.length === 0 && (
                                 <div className="text-sm text-slate-500">
                                     No outputs
@@ -1376,6 +1836,117 @@ export default function Recipes() {
                                         }
                                         title="Remove"
                                         aria-label="Remove output"
+                                    >
+                                        <IconTrash size={18} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
+                        <div className="flex items-center justify-between gap-3 mb-4">
+                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-blue-400">
+                                <IconSettings size={16} />
+                                User Defined Attributes
+                            </div>
+                            <button
+                                type="button"
+                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-blue-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                onClick={() => {
+                                    const used = new Set(
+                                        editAttributes.map((a) => a.puid),
+                                    );
+                                    const nextPuid = pickDefaultAttributePuid(
+                                        sortedAttributes,
+                                        used,
+                                    );
+                                    if (!nextPuid) return;
+                                    setEditAttributes((prev) => [
+                                        ...prev,
+                                        { puid: nextPuid, rate: 0 },
+                                    ]);
+                                }}
+                                disabled={
+                                    updateRecipeMutation.isPending ||
+                                    sortedAttributes.length === 0
+                                }
+                                title={
+                                    sortedAttributes.length === 0
+                                        ? "Create attributes first"
+                                        : "Add attribute"
+                                }
+                            >
+                                <IconPlus size={16} />
+                                Add
+                            </button>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            {editAttributes.length === 0 && (
+                                <div className="text-sm text-slate-500">
+                                    No attributes
+                                </div>
+                            )}
+                            {editAttributes.map((row, idx) => (
+                                <div
+                                    key={`edit-attr-${idx}`}
+                                    className="flex items-center gap-2"
+                                >
+                                    <AttributeDropDown
+                                        value={row.puid}
+                                        disabled={
+                                            updateRecipeMutation.isPending
+                                        }
+                                        onSelect={(next) => {
+                                            setEditAttributes((prev) =>
+                                                prev.map((p, i) =>
+                                                    i === idx
+                                                        ? {
+                                                              ...p,
+                                                              puid: next,
+                                                          }
+                                                        : p,
+                                                ),
+                                            );
+                                        }}
+                                    />
+                                    <input
+                                        value={String(row.rate)}
+                                        onChange={(e) => {
+                                            const next = Number(e.target.value);
+                                            setEditAttributes((prev) =>
+                                                prev.map((p, i) =>
+                                                    i === idx
+                                                        ? {
+                                                              ...p,
+                                                              rate: next,
+                                                          }
+                                                        : p,
+                                                ),
+                                            );
+                                        }}
+                                        inputMode="decimal"
+                                        className="w-32 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                        disabled={
+                                            updateRecipeMutation.isPending
+                                        }
+                                        placeholder="Rate"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                        onClick={() =>
+                                            setEditAttributes((prev) =>
+                                                prev.filter(
+                                                    (_, i) => i !== idx,
+                                                ),
+                                            )
+                                        }
+                                        disabled={
+                                            updateRecipeMutation.isPending
+                                        }
+                                        title="Remove"
+                                        aria-label="Remove attribute"
                                     >
                                         <IconTrash size={18} />
                                     </button>

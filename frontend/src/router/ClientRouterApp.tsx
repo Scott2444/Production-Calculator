@@ -14,6 +14,7 @@ import RecipesPage from "@/features/RecipesPage";
 import MachinesPage from "@/features/MachinesPage";
 import ModifiersPage from "@/features/ModifiersPage";
 import ProductsPage from "@/features/ProductsPage";
+import AttributesPage from "@/features/AttributesPage";
 import HomeRoute from "@/routes/HomeRoute";
 import LoginRoute from "@/routes/LoginRoute";
 import SignUpRoute from "@/routes/SignUpRoute";
@@ -122,6 +123,12 @@ const productsRoute = createRoute({
     component: ProductsPage,
 });
 
+const attributesRoute = createRoute({
+    getParentRoute: () => projectLayoutRoute,
+    path: "attributes",
+    component: AttributesPage,
+});
+
 const routeTree = rootRoute.addChildren([
     homeRoute,
     loginRoute,
@@ -137,6 +144,7 @@ const routeTree = rootRoute.addChildren([
         machinesRoute,
         modifiersRoute,
         productsRoute,
+        attributesRoute,
     ]),
 ]);
 
