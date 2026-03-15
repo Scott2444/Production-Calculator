@@ -199,25 +199,27 @@ export default function Products() {
                         </div>
                     </div>
 
-                    <button
-                        type="button"
-                        className="inline-flex items-center gap-2 self-start rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                        onClick={() => {
-                            setCreateError(null);
-                            setCreateOpen(true);
-                        }}
-                        disabled={!canEdit}
-                        title={
-                            canEdit
-                                ? "Add product"
-                                : loggedIn
-                                  ? "Only the project owner can manage products"
-                                  : "Sign in to manage products"
-                        }
-                    >
-                        <IconPlus size={18} />
-                        Add product
-                    </button>
+                    {canEdit && (
+                        <button
+                            type="button"
+                            className="inline-flex items-center gap-2 self-start rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                            onClick={() => {
+                                setCreateError(null);
+                                setCreateOpen(true);
+                            }}
+                            disabled={!canEdit}
+                            title={
+                                canEdit
+                                    ? "Add product"
+                                    : loggedIn
+                                      ? "Only the project owner can manage products"
+                                      : "Sign in to manage products"
+                            }
+                        >
+                            <IconPlus size={18} />
+                            Add product
+                        </button>
+                    )}
                 </div>
                 <ProjectStatusGate>
                     <SearchBar
@@ -288,73 +290,75 @@ export default function Products() {
                                             )}
                                         </div>
 
-                                        <div className="flex gap-2">
-                                            <button
-                                                type="button"
-                                                className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                title="Edit product"
-                                                aria-label="Edit product"
-                                                onClick={() => {
-                                                    setEditTarget(product);
-                                                    setEditError(null);
-                                                    setEditOpen(true);
-                                                }}
-                                                disabled={!canEdit}
-                                            >
-                                                <IconEdit size={20} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                data-delete-confirm="true"
-                                                className={
-                                                    deleteConfirm.isConfirming(
-                                                        product.puid,
-                                                    )
-                                                        ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                        : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                }
-                                                title={
-                                                    deleteConfirm.isConfirming(
-                                                        product.puid,
-                                                    )
-                                                        ? "Click again to confirm"
-                                                        : "Delete product"
-                                                }
-                                                aria-label={
-                                                    deleteConfirm.isConfirming(
-                                                        product.puid,
-                                                    )
-                                                        ? "Confirm delete product"
-                                                        : "Delete product"
-                                                }
-                                                onClick={() => {
-                                                    if (!canEdit) return;
+                                        {canEdit && (
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                    title="Edit product"
+                                                    aria-label="Edit product"
+                                                    onClick={() => {
+                                                        setEditTarget(product);
+                                                        setEditError(null);
+                                                        setEditOpen(true);
+                                                    }}
+                                                    disabled={!canEdit}
+                                                >
+                                                    <IconEdit size={20} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    data-delete-confirm="true"
+                                                    className={
+                                                        deleteConfirm.isConfirming(
+                                                            product.puid,
+                                                        )
+                                                            ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                            : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                    }
+                                                    title={
+                                                        deleteConfirm.isConfirming(
+                                                            product.puid,
+                                                        )
+                                                            ? "Click again to confirm"
+                                                            : "Delete product"
+                                                    }
+                                                    aria-label={
+                                                        deleteConfirm.isConfirming(
+                                                            product.puid,
+                                                        )
+                                                            ? "Confirm delete product"
+                                                            : "Delete product"
+                                                    }
+                                                    onClick={() => {
+                                                        if (!canEdit) return;
 
-                                                    setDeleteError(null);
+                                                        setDeleteError(null);
 
-                                                    deleteConfirm.confirmOrRequest(
+                                                        deleteConfirm.confirmOrRequest(
+                                                            product.puid,
+                                                            () => {
+                                                                deleteProductMutation.mutate(
+                                                                    product.puid,
+                                                                );
+                                                            },
+                                                        );
+                                                    }}
+                                                    disabled={
+                                                        !canEdit ||
+                                                        deleteProductMutation.isPending
+                                                    }
+                                                >
+                                                    {deleteConfirm.isConfirming(
                                                         product.puid,
-                                                        () => {
-                                                            deleteProductMutation.mutate(
-                                                                product.puid,
-                                                            );
-                                                        },
-                                                    );
-                                                }}
-                                                disabled={
-                                                    !canEdit ||
-                                                    deleteProductMutation.isPending
-                                                }
-                                            >
-                                                {deleteConfirm.isConfirming(
-                                                    product.puid,
-                                                ) ? (
-                                                    <IconCheck size={20} />
-                                                ) : (
-                                                    <IconTrash size={20} />
-                                                )}
-                                            </button>
-                                        </div>
+                                                    ) ? (
+                                                        <IconCheck size={20} />
+                                                    ) : (
+                                                        <IconTrash size={20} />
+                                                    )}
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))}
