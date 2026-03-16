@@ -18,6 +18,7 @@ import {
     IconPlus,
     IconSoup,
     IconBolt,
+    IconChevronRight,
 } from "@tabler/icons-react";
 
 interface Project {
@@ -46,7 +47,7 @@ export default function ProjectSidebar() {
     const navigate = useNavigate();
     const { username, projectName: routeProjectName } = useRouteParams();
 
-    const { userId, loggedIn } = useAuth();
+    const { userId, loggedIn, username: authUsername } = useAuth();
     const protectedApi = useProtectedApi();
     const {
         data: projects,
@@ -97,6 +98,21 @@ export default function ProjectSidebar() {
     };
 
     const linksDisabled = !currentProject;
+    const isProjectOwner =
+        Boolean(loggedIn) &&
+        Boolean(username) &&
+        Boolean(authUsername) &&
+        username === authUsername;
+    const workflowsDisabled = linksDisabled || !isProjectOwner;
+
+    const workflowsHref = useMemo(() => {
+        if (!username || !currentProject) return userHomeHref;
+        return `/${encodeURIComponent(username)}/${encodeURIComponent(currentProject.name)}/workflows/`;
+    }, [username, currentProject, userHomeHref]);
+
+    const workflowsActive =
+        pathname === workflowsHref ||
+        (pathname?.startsWith(workflowsHref) && workflowsHref !== "/");
 
     return (
         <aside className="w-72 shrink-0 self-stretch border-r-2 border-black bg-slate-900/80 text-slate-200">
@@ -240,13 +256,85 @@ export default function ProjectSidebar() {
                     }`}
                     aria-disabled={!currentProject}
                 >
-                    <div className="text-xs text-slate-400">Overview</div>
-                    <div className="font-medium">
+                    <div className="text-xs text-slate-400">
+                        Project Overview
+                    </div>
+                    <div className="text-lg font-medium">
                         {currentProject
-                            ? "Project Dashboard"
+                            ? currentProject.name
                             : "Select a project"}
                     </div>
                 </Link>
+
+                <div>
+                    <div className="px-2 pb-2 text-xs font-medium uppercase tracking-wider text-slate-400">
+                        Core
+                    </div>
+                    {workflowsDisabled ? (
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-500">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex min-w-0 items-center gap-2">
+                                    <IconGitBranch
+                                        size={18}
+                                        className="text-slate-600"
+                                    />
+                                    <span className="font-medium">
+                                        Workflows
+                                    </span>
+                                </div>
+                                <IconChevronRight
+                                    size={16}
+                                    className="text-slate-600"
+                                />
+                            </div>
+                            <div className="mt-1 text-xs text-slate-600">
+                                Owner-only workspace
+                            </div>
+                        </div>
+                    ) : (
+                        <Link
+                            to={workflowsHref}
+                            className={`group block rounded-xl border px-4 py-3 transition-all ${
+                                workflowsActive
+                                    ? "border-purple-500/60 bg-purple-700/15"
+                                    : "border-slate-700 bg-slate-900/60 hover:border-purple-500/60 hover:bg-slate-800/60"
+                            }`}
+                        >
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex min-w-0 items-center gap-2">
+                                    <IconGitBranch
+                                        size={18}
+                                        className={
+                                            workflowsActive
+                                                ? "text-purple-300"
+                                                : "text-slate-400 group-hover:text-purple-300"
+                                        }
+                                    />
+                                    <span
+                                        className={
+                                            workflowsActive
+                                                ? "font-medium text-slate-100"
+                                                : "font-medium text-slate-200"
+                                        }
+                                    >
+                                        Workflows
+                                    </span>
+                                </div>
+                                <IconChevronRight
+                                    size={16}
+                                    className={
+                                        workflowsActive
+                                            ? "text-purple-300"
+                                            : "text-slate-500"
+                                    }
+                                />
+                            </div>
+                            <div className="mt-1 text-xs text-slate-400">
+                                Open production workflow graphs
+                            </div>
+                        </Link>
+                    )}
+                </div>
 
                 {/* Navigation Links */}
                 <nav className="flex flex-col gap-1">
@@ -255,6 +343,9 @@ export default function ProjectSidebar() {
                     </div>
                     {navItems.map((item) => {
                         const Icon = item.icon;
+                        const itemDisabled =
+                            linksDisabled ||
+                            (item.slug === "workflows" && !isProjectOwner);
                         const href = currentProject
                             ? `/${encodeURIComponent(username)}/${encodeURIComponent(currentProject.name)}/${item.slug}/`
                             : userHomeHref;
@@ -262,7 +353,7 @@ export default function ProjectSidebar() {
                             pathname === href ||
                             (pathname?.startsWith(href) && href !== "/");
 
-                        if (linksDisabled) {
+                        if (itemDisabled) {
                             return (
                                 <div
                                     key={item.slug}

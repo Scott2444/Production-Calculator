@@ -10,6 +10,7 @@ import { fetchProject, resolveProject } from "@/lib/projects";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { formatTimestamp } from "@/lib/timestamp";
 
 interface ResolvedProject {
     projectName: string;
@@ -32,18 +33,6 @@ interface UserProjectsData {
     projects: Project[];
     aliasProjects: Record<string, Project>;
     detailErrors: string[];
-}
-
-function formatTimestamp(value: string): string {
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return "Unknown";
-    return parsed.toLocaleString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
 }
 
 function errorMessage(error: unknown, fallback: string): string {

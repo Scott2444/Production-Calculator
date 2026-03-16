@@ -21,7 +21,9 @@ import { fetchRecipes } from "@/lib/recipes";
 import { fetchMachines } from "@/lib/machines";
 import { fetchModifiers } from "@/lib/modifiers";
 import { fetchAttributes } from "@/lib/attributes";
+import { fetchWorkflows, type Workflow } from "@/lib/workflow";
 import ReactMarkdown from "react-markdown";
+import { formatTimestamp } from "@/lib/timestamp";
 
 interface Project {
     puid: string;
@@ -47,6 +49,21 @@ function getCount(value: unknown): number | null {
         if (Array.isArray(maybeItems)) return maybeItems.length;
     }
     return null;
+}
+
+function coerceWorkflows(value: unknown): Workflow[] {
+    if (!value) return [];
+    if (Array.isArray(value)) return value as Workflow[];
+    if (typeof value === "object") {
+        const maybeItems = (value as { items?: unknown }).items;
+        if (Array.isArray(maybeItems)) return maybeItems as Workflow[];
+    }
+    return [];
+}
+
+function getWorkflowRouteSegment(workflow: Workflow): string {
+    const trimmedName = workflow.name?.trim();
+    return trimmedName && trimmedName.length > 0 ? trimmedName : workflow.puid;
 }
 
 export default function ProjectPage() {
@@ -95,12 +112,33 @@ export default function ProjectPage() {
         staleTime: 60 * 1000,
     });
 
+    const workflowsQuery = useQuery({
+        queryKey: ["workflows", projectId],
+        queryFn: () => fetchWorkflows(projectId, protectedApi),
+        enabled: Boolean(projectId) && canEdit,
+        staleTime: 60 * 1000,
+    });
+
     const productsCount = getCount(productsQuery.data);
     const recipesCount = getCount(recipesQuery.data);
     const machinesCount = getCount(machinesQuery.data);
     const modifiersCount = getCount(modifiersQuery.data);
     const attributesCount = getCount(attributesQuery.data);
-    const workflowsCount: number | null = null;
+
+    const workflows = useMemo(
+        () => coerceWorkflows(workflowsQuery.data),
+        [workflowsQuery.data],
+    );
+
+    const sortedWorkflows = useMemo(() => {
+        return [...workflows].sort((a, b) => {
+            const left = a.name?.trim() || a.puid;
+            const right = b.name?.trim() || b.puid;
+            return left.localeCompare(right, undefined, {
+                sensitivity: "base",
+            });
+        });
+    }, [workflows]);
 
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -202,11 +240,6 @@ export default function ProjectPage() {
 
     const summaryItems: SummaryItem[] = useMemo(
         () => [
-            {
-                label: "Workflows",
-                value: workflowsCount,
-                helper: "Coming soon",
-            },
             { label: "Products", value: productsCount },
             { label: "Recipes", value: recipesCount },
             { label: "Machines", value: machinesCount },
@@ -214,7 +247,6 @@ export default function ProjectPage() {
             { label: "Attributes", value: attributesCount },
         ],
         [
-            workflowsCount,
             productsCount,
             recipesCount,
             machinesCount,
@@ -236,6 +268,8 @@ export default function ProjectPage() {
         machinesQuery.error ||
         modifiersQuery.error ||
         attributesQuery.error;
+
+    const workflowsListHref: string = `/${encodeURIComponent(routeUsername ?? "")}/${encodeURIComponent(routeProjectName ?? "")}/workflows`;
 
     return (
         <ProjectPageLayout>
@@ -369,6 +403,109 @@ export default function ProjectPage() {
                             ]}
                         />
                     )}
+
+                    <div className="mt-6 flex items-center justify-between gap-3">
+                        <div>
+                            <h2 className="text-lg font-semibold text-slate-100">
+                                Workflows
+                            </h2>
+                            <div className="text-sm text-slate-400">
+                                Key production workflow definitions for this
+                                project.
+                            </div>
+                        </div>
+                        <Link
+                            to={workflowsListHref}
+                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-300 transition-colors hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                        >
+                            View all
+                        </Link>
+                    </div>
+
+                    {!canEdit ? (
+                        <div className="mt-4 rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-8 text-sm text-slate-300">
+                            Workflows can only be viewed by the project owner.
+                        </div>
+                    ) : (
+                        <>
+                            {workflowsQuery.isLoading && projectId && (
+                                <div className="mt-4 rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
+                                    Loading workflows…
+                                </div>
+                            )}
+
+                            {!workflowsQuery.isLoading &&
+                                workflowsQuery.error && (
+                                    <div className="mt-4 rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+                                        Failed to load workflows.
+                                    </div>
+                                )}
+
+                            {!workflowsQuery.isLoading &&
+                                !workflowsQuery.error &&
+                                projectId &&
+                                sortedWorkflows.length === 0 && (
+                                    <div className="mt-4 rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-6 text-sm text-slate-300">
+                                        No workflows yet.
+                                    </div>
+                                )}
+
+                            {sortedWorkflows.length > 0 && (
+                                <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+                                    {sortedWorkflows.map((workflow) => {
+                                        const workflowLabel =
+                                            workflow.name?.trim() ||
+                                            workflow.puid;
+                                        const workflowHref: string = `/${encodeURIComponent(routeUsername ?? "")}/${encodeURIComponent(routeProjectName ?? "")}/workflows/${encodeURIComponent(getWorkflowRouteSegment(workflow))}`;
+
+                                        return (
+                                            <Link
+                                                key={workflow.puid}
+                                                to={workflowHref}
+                                                className="group rounded-xl border border-slate-800 bg-slate-900/40 p-4 transition-colors hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                            >
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="min-w-0">
+                                                        <div className="truncate text-base font-semibold text-slate-100 group-hover:text-white">
+                                                            {workflowLabel}
+                                                        </div>
+                                                        {workflow.description ? (
+                                                            <div className="mt-1 line-clamp-3 text-sm text-slate-300">
+                                                                {
+                                                                    workflow.description
+                                                                }
+                                                            </div>
+                                                        ) : (
+                                                            <div className="mt-1 text-sm text-slate-500">
+                                                                No description
+                                                            </div>
+                                                        )}
+                                                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                                                            <span>
+                                                                Updated{" "}
+                                                                {formatTimestamp(
+                                                                    workflow.updatedAt,
+                                                                )}
+                                                            </span>
+                                                            <span>
+                                                                Created{" "}
+                                                                {formatTimestamp(
+                                                                    workflow.createdAt,
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="rounded-md border border-slate-700 bg-slate-900/70 px-2 py-1 text-xs text-slate-400">
+                                                        Open
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </>
+                    )}
                 </ProjectStatusGate>
             </div>
 
@@ -455,11 +592,12 @@ export default function ProjectPage() {
 
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-medium text-slate-200">
-                            Description
+                            Description (Optional)
                         </label>
                         <textarea
                             value={editDescription}
                             onChange={(e) => setEditDescription(e.target.value)}
+                            placeholder="A brief description about this project..."
                             rows={3}
                             className="resize-none rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
                             disabled={updateProjectMutation.isPending}

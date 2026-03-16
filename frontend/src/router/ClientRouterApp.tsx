@@ -10,6 +10,8 @@ import { createBrowserHistory, createMemoryHistory } from "@tanstack/history";
 import { ProjectProvider } from "@/context/ProjectContext";
 import UsernamePage from "@/features/UsernamePage";
 import ProjectOverview from "@/features/ProjectOverview";
+import WorkflowsPage from "@/features/WorkflowsPage";
+import WorkflowPage from "@/features/WorkflowPage";
 import RecipesPage from "@/features/RecipesPage";
 import MachinesPage from "@/features/MachinesPage";
 import ModifiersPage from "@/features/ModifiersPage";
@@ -99,6 +101,18 @@ const projectOverviewRoute = createRoute({
     component: ProjectOverview,
 });
 
+const workflowsRoute = createRoute({
+    getParentRoute: () => projectLayoutRoute,
+    path: "workflows",
+    component: WorkflowsPage,
+});
+
+const workflowRoute = createRoute({
+    getParentRoute: () => projectLayoutRoute,
+    path: "workflows/$workflowName",
+    component: WorkflowPage,
+});
+
 const recipesRoute = createRoute({
     getParentRoute: () => projectLayoutRoute,
     path: "recipes",
@@ -140,6 +154,8 @@ const routeTree = rootRoute.addChildren([
     usernameRoute,
     projectLayoutRoute.addChildren([
         projectOverviewRoute,
+        workflowsRoute,
+        workflowRoute,
         recipesRoute,
         machinesRoute,
         modifiersRoute,
