@@ -29,7 +29,7 @@ function getWorkflowRouteSegment(workflow: Workflow): string {
 }
 
 export default function WorkflowsPage() {
-    const { routeUsername, routeProjectName, projectId, canEdit } =
+    const { routeUsername, routeProjectName, projectId, isOwner } =
         useProject();
     const protectedApi = useProtectedApi();
     const navigate = useNavigate();
@@ -39,7 +39,7 @@ export default function WorkflowsPage() {
     const workflowsQuery = useQuery({
         queryKey: ["workflows", projectId],
         queryFn: () => fetchWorkflows(projectId, protectedApi),
-        enabled: Boolean(projectId) && canEdit,
+        enabled: Boolean(projectId) && isOwner,
         staleTime: 60 * 1000,
     });
 
@@ -90,7 +90,7 @@ export default function WorkflowsPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                        {canEdit && (
+                        {isOwner && (
                             <button
                                 type="button"
                                 className="inline-flex items-center gap-2 self-start rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
@@ -103,7 +103,7 @@ export default function WorkflowsPage() {
                 </div>
 
                 <ProjectStatusGate>
-                    {!canEdit ? (
+                    {!isOwner ? (
                         <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-8 text-sm text-slate-300">
                             Workflows can only be viewed by the project owner.
                         </div>

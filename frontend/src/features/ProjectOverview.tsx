@@ -12,6 +12,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useProtectedApi } from "@/lib/api";
 import {
+    fetchProject,
     UpsertProjectPayload,
     updateProject,
     deleteProject,
@@ -31,6 +32,7 @@ interface Project {
     description: string | null;
     isPublic: boolean;
     aliasProjectPuid: string | null;
+    ownerUsername: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -67,8 +69,13 @@ function getWorkflowRouteSegment(workflow: Workflow): string {
 }
 
 export default function ProjectPage() {
-    const { routeUsername, routeProjectName, currentProject, canEdit } =
-        useProject();
+    const {
+        routeUsername,
+        routeProjectName,
+        currentProject,
+        canEdit,
+        isOwner,
+    } = useProject();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
@@ -115,8 +122,16 @@ export default function ProjectPage() {
     const workflowsQuery = useQuery({
         queryKey: ["workflows", projectId],
         queryFn: () => fetchWorkflows(projectId, protectedApi),
-        enabled: Boolean(projectId) && canEdit,
+        enabled: Boolean(projectId) && isOwner,
         staleTime: 60 * 1000,
+    });
+
+    const aliasProjectQuery = useQuery({
+        queryKey: ["project", currentProject?.aliasProjectPuid],
+        queryFn: () =>
+            fetchProject(currentProject!.aliasProjectPuid!, protectedApi),
+        enabled: Boolean(currentProject?.aliasProjectPuid),
+        staleTime: 5 * 60 * 1000,
     });
 
     const productsCount = getCount(productsQuery.data);
@@ -298,9 +313,73 @@ export default function ProjectPage() {
                                 </ReactMarkdown>
                             </div>
                         )}
+                        {currentProject?.aliasProjectPuid && (
+                            <div>
+                                <div className="mt-6">
+                                    <h2 className="text-lg font-semibold text-slate-100">
+                                        Alias
+                                    </h2>
+                                    <div className="text-sm text-slate-400">
+                                        This project is an alias for another
+                                        project. All of components are copied
+                                        from the source project, but workflows
+                                        can be created independently.
+                                    </div>
+                                </div>
+                                <div className="mt-4 flex flex-col gap-2 rounded-xl border border-blue-900/50 bg-blue-950/30 p-4 w-fit">
+                                    <div className="flex items-center gap-2">
+                                        <span className="rounded-md border border-blue-900/50 bg-blue-950/40 px-2 py-0.5 text-xs font-medium text-blue-200 uppercase tracking-wider">
+                                            Alias Project
+                                        </span>
+                                    </div>
+                                    {aliasProjectQuery.isLoading ? (
+                                        <div className="text-sm text-blue-300/60 animate-pulse">
+                                            Loading source project details...
+                                        </div>
+                                    ) : aliasProjectQuery.data ? (
+                                        <div className="flex items-center justify-between gap-20">
+                                            <div className="min-w-0">
+                                                <div className="text-base font-semibold text-blue-100">
+                                                    {
+                                                        aliasProjectQuery.data
+                                                            .name
+                                                    }
+                                                </div>
+                                                <div className="text-sm text-blue-300">
+                                                    By{" "}
+                                                    {
+                                                        aliasProjectQuery.data
+                                                            .ownerUsername
+                                                    }
+                                                </div>
+                                            </div>
+                                            <Link
+                                                to="/$username/$projectName"
+                                                params={{
+                                                    username:
+                                                        aliasProjectQuery.data
+                                                            .ownerUsername,
+                                                    projectName:
+                                                        aliasProjectQuery.data
+                                                            .name,
+                                                }}
+                                                className="rounded-lg bg-blue-700/30 px-4 py-2 text-sm font-medium text-blue-100 transition-colors hover:bg-blue-700/50 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                                            >
+                                                View Source
+                                            </Link>
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm text-red-300/80">
+                                            Failed to load source project
+                                            details.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    {canEdit && (
+                    {isOwner && (
                         <div className="flex gap-2 mt-2">
                             <button
                                 type="button"
@@ -308,7 +387,7 @@ export default function ProjectPage() {
                                 title="Edit project"
                                 aria-label="Edit project"
                                 onClick={() => setEditOpen(true)}
-                                disabled={!canEdit}
+                                disabled={!isOwner}
                             >
                                 <IconEdit size={20} />
                             </button>
@@ -318,7 +397,7 @@ export default function ProjectPage() {
                                 title="Delete project"
                                 aria-label="Delete project"
                                 onClick={() => setDeleteOpen(true)}
-                                disabled={!canEdit}
+                                disabled={!isOwner}
                             >
                                 <IconTrash size={20} />
                             </button>
@@ -326,8 +405,19 @@ export default function ProjectPage() {
                     )}
                 </div>
 
+                <div className="mt-6">
+                    <h2 className="text-lg font-semibold text-slate-100">
+                        Components
+                    </h2>
+                    <div className="text-sm text-slate-400">
+                        Overview of the components in this project. These
+                        represent the fundamental game data that can be used in
+                        workflows.
+                    </div>
+                </div>
+
                 <ProjectStatusGate>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
                         {summaryItems.map((item) => {
                             const showPlaceholder = item.value === null;
                             const isUnknown =
@@ -422,7 +512,7 @@ export default function ProjectPage() {
                         </Link>
                     </div>
 
-                    {!canEdit ? (
+                    {!isOwner ? (
                         <div className="mt-4 rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-8 text-sm text-slate-300">
                             Workflows can only be viewed by the project owner.
                         </div>

@@ -24,6 +24,7 @@ interface ProjectContextType {
     projectId: string;
     canEdit: boolean;
     projectQuery: ReturnType<typeof useQuery<Project>>;
+    isOwner: boolean;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -72,6 +73,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         loggedIn &&
         !currentProject?.aliasProjectPuid;
 
+    const isOwner = routeUsername === username && loggedIn;
+
     const value: ProjectContextType = {
         routeUsername,
         routeProjectName,
@@ -79,6 +82,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         projectId,
         canEdit,
         projectQuery,
+        isOwner,
     };
 
     return (
