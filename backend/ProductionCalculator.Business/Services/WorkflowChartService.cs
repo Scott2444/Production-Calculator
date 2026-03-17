@@ -2,6 +2,7 @@ using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Helpers;
+using ProductionCalculator.Business.Records;
 
 
 namespace ProductionCalculator.Business.Services
@@ -297,8 +298,8 @@ namespace ProductionCalculator.Business.Services
             await _chartDataService.WorkflowUpdate(workflow.Workflow_Id, updatedChart); // Update chart in DB to assign node IDs before rebuilding edges
             updatedChart = _workflowChartAssembler.RebuildChartEdges(nodeChart, updatedChart, projectObjects);
             // Supply calculation
-            recipeRates = _workflowSolver.SolveSupply(projectObjects, updatedChart);
-            updatedChart = _workflowChartAssembler.UpdateChartRates(updatedChart, recipeRates, projectObjects);
+            var supplySolverResult = _workflowSolver.SolveSupply(projectObjects, updatedChart);
+            updatedChart = _workflowChartAssembler.UpdateChartRates(updatedChart, supplySolverResult, projectObjects);
 
             await _chartDataService.WorkflowUpdate(workflow.Workflow_Id, updatedChart); // Final update to save all calculated values
             return updatedChart;

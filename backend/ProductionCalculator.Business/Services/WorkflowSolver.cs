@@ -1,6 +1,7 @@
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using Google.OrTools.LinearSolver;
+using ProductionCalculator.Business.Records;
 
 namespace ProductionCalculator.Business.Services
 {
@@ -149,7 +150,7 @@ namespace ProductionCalculator.Business.Services
         /// Uses a linear solver for supply calculation based on only the recipes in the node chart, externally provided products, and Actual_Machine_Count in a node.
         /// Used for calculating supply rates when either the chart structure is updated or when the user updates supply values.
         /// </summary>
-        public Dictionary<int, double> SolveSupply(ProjectObjects projectObjects, NodeChart nodeChart)
+        public SolverSupplyResult SolveSupply(ProjectObjects projectObjects, NodeChart nodeChart)
         {
             if (nodeChart.Targets.Any(t => t.Target_Rate < 0.0))
             {
@@ -261,6 +262,7 @@ namespace ProductionCalculator.Business.Services
             }
 
             // Add primary and overflow sink variables for targets
+            var sinkVarMap = new Dictionary<int, (Variable primarySink, Variable overflowSink)>();
             foreach (var target in targetDict)
             {
                 if (!productConstraintMap.ContainsKey(target.Key))
@@ -277,9 +279,11 @@ namespace ProductionCalculator.Business.Services
 
                 objective.SetCoefficient(primarySink, TARGET_BONUS);
                 objective.SetCoefficient(overflowSink, OVERFLOW_BONUS);
+                sinkVarMap[target.Key] = (primarySink, overflowSink);
             }
 
             // Add import recipes (bounded by external flow rates)
+            var importVarMap = new Dictionary<int, Variable>();
             foreach (var externalProduct in externalProducts)
             {
                 var productConstraint = productConstraintMap[externalProduct.Product_Id];
@@ -288,6 +292,7 @@ namespace ProductionCalculator.Business.Services
                 productConstraint.SetCoefficient(importRecipe, 1.0);
 
                 objective.SetCoefficient(importRecipe, -EXTERNAL_IMPORT);
+                importVarMap[externalProduct.Product_Id] = importRecipe;
             }
 
             objective.SetMaximization();
@@ -315,7 +320,37 @@ namespace ProductionCalculator.Business.Services
                 }
             }
 
-            return recipeRates;
+            // Extract ingoing and outgoing flow rates for products (leaf product nodes only)
+            var productInFlowRates = new Dictionary<int, double>();
+            // Imported products will have inflow rates
+            foreach (var kvp in importVarMap)
+            {
+                var productId = kvp.Key;
+                var variable = kvp.Value;
+                if (variable.SolutionValue() > 1e-5)
+                {
+                    productInFlowRates[productId] = variable.SolutionValue();
+                }
+            }
+
+            var productOutFlowRates = new Dictionary<int, double>();
+            foreach (var target in targetDict)
+            {
+                var productId = target.Key;
+                if (!sinkVarMap.ContainsKey(productId))
+                {
+                    continue;
+                }
+
+                var (primarySink, overflowSink) = sinkVarMap[productId];
+                var totalOutFlow = primarySink.SolutionValue() + overflowSink.SolutionValue();
+                if (totalOutFlow > 1e-5)
+                {
+                    productOutFlowRates[productId] = totalOutFlow;
+                }
+            }
+
+            return new SolverSupplyResult(recipeRates, productInFlowRates, productOutFlowRates);
         }
 
         /// <summary>

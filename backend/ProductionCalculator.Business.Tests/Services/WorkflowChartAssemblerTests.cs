@@ -3,11 +3,7 @@ using FakeItEasy;
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Services;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Xunit;
+using ProductionCalculator.Business.Records;
 
 namespace ProductionCalculator.Business.Tests.Services
 {
@@ -141,6 +137,48 @@ namespace ProductionCalculator.Business.Tests.Services
         }
 
         [Fact]
+        public async Task RebuildChartNodes_ExternalImportIsTarget()
+        {
+            // Arrange
+            var projectObjects = CreateEmptyProjectObjects();
+            var productId = 100;
+            projectObjects.Products = [new Product { Product_Id = productId, Project_Id = 1, Puid = "P1", Name = "Product 1", Created_At = DateTime.UtcNow, Last_Updated = DateTime.UtcNow }];
+
+            var externalProductNode = new WorkflowProductNode
+            {
+                Workflow_Product_Node_Id = 1,
+                Workflow_Id = 1,
+                Product_Id = productId,
+                Calculated_Flow_Rate = 0,
+                Actual_Flow_Rate_In = 25,
+                Actual_Flow_Rate_Out = 0,
+                Is_External = true
+            };
+
+            var currentChart = new NodeChart
+            {
+                Nodes = [],
+                Edges = [],
+                ProductNodes = [externalProductNode],
+                PreferredRecipes = [],
+                Targets = new List<WorkflowTarget>
+                {
+                    new WorkflowTarget { Workflow_Target_Id = 1, Workflow_Id = 1, Product_Id = productId, Target_Rate = 20 }
+                }
+            };
+
+            // Act
+            var result = await _assembler.RebuildChartNodes(currentChart, new Dictionary<int, double>(), projectObjects, CreateTestWorkflow(), _ => Task.FromResult(false));
+
+            // Assert
+            var productNode = Assert.Single(result.ProductNodes);
+            Assert.Equal(productId, productNode.Product_Id);
+            Assert.True(productNode.Is_External); // Should be marked as external since it's a target without an internal producer
+            Assert.Equal(25, productNode.Actual_Flow_Rate_In);
+            Assert.Equal(20, productNode.Calculated_Flow_Rate); // Demand calculation; remain unchanged            
+        }
+
+        [Fact]
         public void RebuildChartEdges_ShouldAssembleEdgesAndPreserveIds()
         {
             // Arrange
@@ -197,7 +235,7 @@ namespace ProductionCalculator.Business.Tests.Services
         public void UpdateChartRates_ShouldUpdateAllComponents()
         {
             // Arrange
-            var recipeRates = new Dictionary<int, double> { { 10, 50.0 } };
+            var recipeRates = new SolverSupplyResult(new Dictionary<int, double> { { 10, 50.0 } }, new Dictionary<int, double>(), new Dictionary<int, double>());
             var projectObjects = CreateEmptyProjectObjects();
             projectObjects.RecipeProducts = new List<RecipeProduct>
             {
@@ -235,6 +273,54 @@ namespace ProductionCalculator.Business.Tests.Services
             Assert.Equal(50.0, result.Nodes[0].Node.Calculated_Actual_Rate);
             Assert.Equal(100.0, result.Edges[0].Calculated_Flow_Rate); // 2 * 50
             Assert.Equal(100.0, result.ProductNodes[0].Actual_Flow_Rate_Out);
+        }
+
+        [Fact]
+        public void UpdateChartRates_ExternalImportIsTarget()
+        {
+            // Arrange
+            var projectObjects = CreateEmptyProjectObjects();
+            var productId = 100;
+            projectObjects.Products = [new Product { Product_Id = productId, Project_Id = 1, Puid = "P1", Name = "Product 1", Created_At = DateTime.UtcNow, Last_Updated = DateTime.UtcNow }];
+
+            var externalProductNode = new WorkflowProductNode
+            {
+                Workflow_Product_Node_Id = 1,
+                Workflow_Id = 1,
+                Product_Id = productId,
+                Calculated_Flow_Rate = 20,
+                Actual_Flow_Rate_In = 25,
+                Actual_Flow_Rate_Out = 0,
+                Is_External = true
+            };
+
+            var currentChart = new NodeChart
+            {
+                Nodes = [],
+                Edges = [],
+                ProductNodes = [externalProductNode],
+                PreferredRecipes = [],
+                Targets = new List<WorkflowTarget>
+                {
+                    new WorkflowTarget { Workflow_Target_Id = 1, Workflow_Id = 1, Product_Id = productId, Target_Rate = 20 }
+                }
+            };
+
+            var solverSupplyResult = new SolverSupplyResult(
+                new Dictionary<int, double>(), 
+                new Dictionary<int, double> { { productId, 20.0 } }, 
+                new Dictionary<int, double>{ { productId, 20.0 } });
+
+            // Act
+            var result = _assembler.UpdateChartRates(currentChart, solverSupplyResult, projectObjects);
+
+            // Assert
+            var productNode = Assert.Single(result.ProductNodes);
+            Assert.Equal(productId, productNode.Product_Id);
+            Assert.True(productNode.Is_External); // Should be marked as external since it's a target without an internal producer
+            Assert.Equal(25, productNode.Actual_Flow_Rate_In); // Inflow should remain unchanged (user defined)
+            Assert.Equal(20, productNode.Calculated_Flow_Rate); // Demand calculation; remain unchanged
+            Assert.Equal(20, productNode.Actual_Flow_Rate_Out); // Target rate should be reflected in actual outflow
         }
 
         [Fact]

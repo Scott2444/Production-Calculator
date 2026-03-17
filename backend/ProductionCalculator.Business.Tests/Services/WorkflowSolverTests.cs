@@ -202,10 +202,23 @@ public class WorkflowSolverTests
 	}
 
 	private static void AssertRate(Dictionary<int, double> rates, int recipeId, double expected, double tolerance = 1e-6)
-	{
-		Assert.True(rates.TryGetValue(recipeId, out var actual), $"Expected recipe {recipeId} in solution.");
-		Assert.InRange(actual, expected - tolerance, expected + tolerance);
-	}
+    {
+        Assert.True(rates.TryGetValue(recipeId, out var actual), $"Expected recipe {recipeId} in solution.");
+        Assert.InRange(actual, expected - tolerance, expected + tolerance);
+    }
+
+    private static void AssertFlow(IReadOnlyDictionary<int, double> flow, int productId, double expected, double tolerance = 1e-6)
+    {
+        if (expected <= 0)
+        {
+            Assert.False(flow.TryGetValue(productId, out _), $"Expected no flow for product {productId}.");
+        }
+        else
+        {
+            Assert.True(flow.TryGetValue(productId, out var actual), $"Expected flow for product {productId} in solution.");
+            Assert.InRange(actual, expected - tolerance, expected + tolerance);
+        }
+    }
 
 	[Fact]
 	public void SolveDemand_LinearWorkflow_ReturnsCorrect()
@@ -522,9 +535,11 @@ public class WorkflowSolverTests
 
 		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
 
-		Assert.Single(result);
-		AssertRate(result, 10, 10.0);
-	}
+        Assert.Single(result.RecipeRates);
+        AssertRate(result.RecipeRates.ToDictionary(), 10, 10.0);
+        AssertFlow(result.ProductInFlowRates, 1, 10.0);
+        AssertFlow(result.ProductOutFlowRates, 2, 10.0);
+    }
 
 	[Fact]
 	public void SolveSupply_IncompleteWorkflow_ReturnsZeroForUnproducibleProducts()
@@ -545,8 +560,9 @@ public class WorkflowSolverTests
 
 		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
 
-		Assert.Empty(result);
-	}
+        Assert.Empty(result.RecipeRates);
+        Assert.Empty(result.ProductOutFlowRates);
+    }
 
 	[Fact]
 	public void SolveSupply_OverbuiltWorkflow_RespectsOverflowRates()
@@ -567,9 +583,11 @@ public class WorkflowSolverTests
 
 		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
 
-		Assert.Single(result);
-		AssertRate(result, 10, 20.0);
-	}
+		Assert.Single(result.RecipeRates);
+        AssertRate(result.RecipeRates.ToDictionary(), 10, 20.0);
+        AssertFlow(result.ProductInFlowRates, 1, 20.0);
+        AssertFlow(result.ProductOutFlowRates, 2, 20.0);
+    }
 
 	[Fact]
 	public void SolveSupply_ExternalImport_RespectsActualFlowRate()
@@ -590,9 +608,10 @@ public class WorkflowSolverTests
 
 		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
 
-		Assert.Single(result);
-		AssertRate(result, 10, 7.0);
-	}
+		Assert.Single(result.RecipeRates);
+        AssertRate(result.RecipeRates.ToDictionary(), 10, 7.0);
+        AssertFlow(result.ProductInFlowRates, 1, 7.0);
+    }
 
 	[Fact]
 	public void SolveSupply_HandlesMultipleNodes_ReturnsMaxRates()
@@ -623,10 +642,12 @@ public class WorkflowSolverTests
 
 		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
 
-		Assert.Equal(2, result.Count);
-		AssertRate(result, 10, 5.0);
-		AssertRate(result, 20, 8.0);
-	}
+		Assert.Equal(2, result.RecipeRates.Count);
+        AssertRate(result.RecipeRates.ToDictionary(), 10, 5.0);
+        AssertRate(result.RecipeRates.ToDictionary(), 20, 8.0);
+        AssertFlow(result.ProductOutFlowRates, 2, 5.0);
+        AssertFlow(result.ProductOutFlowRates, 4, 8.0);
+    }
 
 	[Fact]
 	public void SolveSupply_HandlesZeroMachineCount_ReturnsZeroRates()
@@ -647,8 +668,8 @@ public class WorkflowSolverTests
 
 		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
 
-		Assert.Empty(result);
-	}
+		Assert.Empty(result.RecipeRates);
+    }
 
 	[Fact]
 	public void SolveSupply_HandlesNegativeMachineCount_ThrowsException()
@@ -689,9 +710,10 @@ public class WorkflowSolverTests
 
 		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
 
-		Assert.Single(result);
-		AssertRate(result, 10, 20.0);
-	}
+		Assert.Single(result.RecipeRates);
+        AssertRate(result.RecipeRates.ToDictionary(), 10, 20.0);
+        AssertFlow(result.ProductOutFlowRates, 2, 20.0);
+    }
 
 	[Fact]
 	public void SolveSupply_HandlesCyclicalWorkflow_CorrectRates()
@@ -720,9 +742,9 @@ public class WorkflowSolverTests
 
 		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
 
-		AssertRate(result, 10, 10.0);
-		Assert.False(result.TryGetValue(20, out var cycleRate) && cycleRate > 1e-5);
-	}
+		AssertRate(result.RecipeRates.ToDictionary(), 10, 10.0);
+        Assert.False(result.RecipeRates.TryGetValue(20, out var cycleRate) && cycleRate > 1e-5);
+    }
 
 	[Fact]
 	public void SolveSupply_HandlesMultiInputMultiOutput_CorrectRates()
@@ -748,9 +770,11 @@ public class WorkflowSolverTests
 
 		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
 
-		Assert.Single(result);
-		AssertRate(result, 10, 5.0);
-	}
+		Assert.Single(result.RecipeRates);
+        AssertRate(result.RecipeRates.ToDictionary(), 10, 5.0);
+        AssertFlow(result.ProductOutFlowRates, 3, 20.0);
+        AssertFlow(result.ProductOutFlowRates, 4, 5.0);
+    }
 
 	[Fact]
 	public void SolveDemand_WithOutputModifier_ReturnsCorrect()
@@ -818,7 +842,7 @@ public class WorkflowSolverTests
 		var raw = Product(1, "Raw");
 		var final = Product(2, "Final");
 		var recipe = Recipe(10, "MakeFinal");
-		var modifier = Modifier(100, "DoubleOutput", 1.0, 2.0); // +100% output
+		var modifier = Modifier(100, "DoubleOutput", 0, 1.0); // +100% output
 
 		var projectObjects = BuildProjectObjects(
 			[raw, final],
@@ -840,8 +864,9 @@ public class WorkflowSolverTests
 
 		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
 
-		AssertRate(result, 10, 10.0);
-	}
+		AssertRate(result.RecipeRates.ToDictionary(), 10, 10.0);
+        AssertFlow(result.ProductOutFlowRates, 2, 20.0);
+    }
 
 	[Fact]
 	public void SolveSupply_WithMultipleModifiers_ReturnsCorrect()
@@ -862,8 +887,8 @@ public class WorkflowSolverTests
 		node.Modifiers.Add(WorkflowNodeModifier(1, 10, 101));
 		node.Modifiers.Add(WorkflowNodeModifier(2, 10, 102));
 
-		// Combined output multiplier: (1 + 0.5) * (1 + 0.2) = 1.5 * 1.2 = 1.8
-		// Rate 10.0 -> 18.0 units produced.
+		// Combined output multiplier: (1 + 0.5) * (1 + 0.2) = 1 + 0.5 + 0.2 = 1.7
+		// Rate 10.0 -> 17.0 units produced.
 
 		var nodeChart = BuildSupplyNodeChart(
 			nodes: [node],
@@ -872,8 +897,9 @@ public class WorkflowSolverTests
 
 		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
 
-		AssertRate(result, 10, 10.0);
-	}
+		AssertRate(result.RecipeRates.ToDictionary(), 10, 10.0);
+        AssertFlow(result.ProductOutFlowRates, 2, 17.0);
+    }
 
 	[Fact]
 	public void SolveSupply_WithInputModifierBottleneck_ReturnsCorrect()
@@ -905,6 +931,8 @@ public class WorkflowSolverTests
 
 		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
 
-		AssertRate(result, 10, 10.0);
-	}
+		AssertRate(result.RecipeRates.ToDictionary(), 10, 10.0);
+        AssertFlow(result.ProductInFlowRates, 1, 5.0);
+        AssertFlow(result.ProductOutFlowRates, 2, 10.0);
+    }
 }

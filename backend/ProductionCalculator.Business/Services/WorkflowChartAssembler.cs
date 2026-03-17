@@ -1,6 +1,7 @@
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Helpers;
+using ProductionCalculator.Business.Records;
 
 namespace ProductionCalculator.Business.Services
 {
@@ -103,17 +104,36 @@ namespace ProductionCalculator.Business.Services
             updatedChart.ProductNodes = AssembleProductNodes(workflow.Workflow_Id, recipeRates, projectObjects);
             // Keep existing product nodes where possible
             // Always keep nodes flagged as external to avoid user defined data loss
-            foreach (var productNode in updatedChart.ProductNodes.ToList()) 
+            foreach (var productNode in currentChart.ProductNodes.Where(pn => pn.Is_External)) 
             {
-                var matchingNode = currentChart.ProductNodes.FirstOrDefault(pn => pn.Product_Id == productNode.Product_Id);
+                var matchingNode = updatedChart.ProductNodes.FirstOrDefault(pn => pn.Product_Id == productNode.Product_Id);
                 if (matchingNode != null)
                 {
-                    if (matchingNode.Is_External)
-                    {
-                        productNode.Is_External = true;
-                        productNode.Calculated_Flow_Rate = importRecipeRateDict[productNode.Product_Id];
-                    }
-                    productNode.Workflow_Product_Node_Id = matchingNode.Workflow_Product_Node_Id;
+                    matchingNode.Workflow_Product_Node_Id = productNode.Workflow_Product_Node_Id;
+                    matchingNode.Workflow_Id = productNode.Workflow_Id;
+                    matchingNode.Product_Id = productNode.Product_Id;
+                    matchingNode.Is_External = true;
+                    matchingNode.Actual_Flow_Rate_In = productNode.Actual_Flow_Rate_In;
+                }
+                else
+                {
+                    updatedChart.ProductNodes.Add(productNode);
+                }
+            }
+
+            // Update target rates on product nodes
+            // Usually, this is set by AssembleProductNodes based on the calculated recipe rates,
+            // but when the target is an external product, the target rate must be set here
+            foreach (var target in updatedChart.Targets)
+            {
+                var matchingProductNode = updatedChart.ProductNodes.FirstOrDefault(pn => pn.Product_Id == target.Product_Id);
+                if (matchingProductNode != null)
+                {
+                    matchingProductNode.Calculated_Flow_Rate = target.Target_Rate;
+                }
+                else
+                {
+                    throw new Exception($"No matching product node found for target with product ID {target.Product_Id} when rebuilding chart nodes.");
                 }
             }
 
@@ -164,8 +184,10 @@ namespace ProductionCalculator.Business.Services
         /// <param name="recipeRates">Supply recipe rates from workflow solver</param>
         /// <param name="projectObjects">Project objects</param>
         /// <returns>Updated node chart</returns>
-        public NodeChart UpdateChartRates(NodeChart chart, Dictionary<int, double> recipeRates, ProjectObjects projectObjects)
+        public NodeChart UpdateChartRates(NodeChart chart, SolverSupplyResult solverSupplyResult, ProjectObjects projectObjects)
         {
+            var recipeRates = solverSupplyResult.RecipeRates;
+
             // Update nodes
             foreach (var fullNode in chart.Nodes)
             {
@@ -215,8 +237,32 @@ namespace ProductionCalculator.Business.Services
             }
 
             // Update product nodes
+            var productInFlowRates = solverSupplyResult.ProductInFlowRates;
+            var productOutFlowRates = solverSupplyResult.ProductOutFlowRates;
             foreach (var productNode in chart.ProductNodes)
             {
+                var specialCase = false;
+                // Special cases for external and target product nodes
+                if (productNode.Is_External)
+                {
+                    // For external nodes, the flow rate out is determined by the solver supply using "import recipe"
+                    // The actual flow rate in is determined by the user and should not be overwritten
+                    // Actual flow rate out is the flow from the solver supply result
+                    productNode.Actual_Flow_Rate_Out = productInFlowRates.ContainsKey(productNode.Product_Id) ? productInFlowRates[productNode.Product_Id] : 0.0;
+                    specialCase = true;
+                }
+                if (chart.Targets.Any(t => t.Product_Id == productNode.Product_Id))
+                {
+                    // For target product nodes, the flow rate in is determined by the solver supply using "sink recipe"
+                    // Actual flow rate out is the flow from the solver supply result
+                    productNode.Actual_Flow_Rate_Out = productOutFlowRates.ContainsKey(productNode.Product_Id) ? productOutFlowRates[productNode.Product_Id] : 0.0;
+                    specialCase = true;
+                }
+                if (specialCase)
+                {
+                    continue; // Skip the rest of the loop to avoid overwriting the special case flow rates
+                }
+
                 // In
                 if (productFlowRateIn.ContainsKey(productNode.Workflow_Product_Node_Id))
                 {

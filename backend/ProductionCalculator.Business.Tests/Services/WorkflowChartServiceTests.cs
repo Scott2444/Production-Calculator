@@ -323,8 +323,8 @@ public class WorkflowChartServiceTests
         A.CallTo(() => _workflowSolver.SolveDemand(projectObjects, nodeChart)).Returns(new Dictionary<int, double>());
         A.CallTo(() => _workflowChartAssembler.RebuildChartNodes(A<NodeChart>._, A<Dictionary<int, double>>._, projectObjects, workflow, A<Func<string, Task<bool>>>._)).Returns(nodeChart);
         A.CallTo(() => _workflowChartAssembler.RebuildChartEdges(A<NodeChart>._, A<NodeChart>._, projectObjects)).Returns(nodeChart);
-        A.CallTo(() => _workflowSolver.SolveSupply(projectObjects, nodeChart)).Returns(new Dictionary<int, double>());
-        A.CallTo(() => _workflowChartAssembler.UpdateChartRates(nodeChart, A<Dictionary<int, double>>._, projectObjects)).Returns(nodeChart);
+        A.CallTo(() => _workflowSolver.SolveSupply(projectObjects, nodeChart)).Returns(new SolverSupplyResult(new Dictionary<int, double>(), new Dictionary<int, double>(), new Dictionary<int, double>()));
+        A.CallTo(() => _workflowChartAssembler.UpdateChartRates(nodeChart, A<SolverSupplyResult>._, projectObjects)).Returns(nodeChart);
         A.CallTo(() => _workflowMapper.ToResponse(projectObjects, nodeChart)).Returns(EmptyResponse());
 
         // Act
@@ -362,8 +362,8 @@ public class WorkflowChartServiceTests
         A.CallTo(() => _workflowSolver.SolveDemand(projectObjects, nodeChart)).Returns(new Dictionary<int, double>());
         A.CallTo(() => _workflowChartAssembler.RebuildChartNodes(A<NodeChart>._, A<Dictionary<int, double>>._, projectObjects, workflow, A<Func<string, Task<bool>>>._)).Returns(nodeChart);
         A.CallTo(() => _workflowChartAssembler.RebuildChartEdges(A<NodeChart>._, A<NodeChart>._, projectObjects)).Returns(nodeChart);
-        A.CallTo(() => _workflowSolver.SolveSupply(projectObjects, nodeChart)).Returns(new Dictionary<int, double>());
-        A.CallTo(() => _workflowChartAssembler.UpdateChartRates(nodeChart, A<Dictionary<int, double>>._, projectObjects)).Returns(nodeChart);
+        A.CallTo(() => _workflowSolver.SolveSupply(projectObjects, nodeChart)).Returns(new SolverSupplyResult(new Dictionary<int, double>(), new Dictionary<int, double>(), new Dictionary<int, double>()));
+        A.CallTo(() => _workflowChartAssembler.UpdateChartRates(nodeChart, A<SolverSupplyResult>._, projectObjects)).Returns(nodeChart);
         A.CallTo(() => _workflowMapper.ToResponse(projectObjects, nodeChart)).Returns(EmptyResponse());
 
         // Act
@@ -461,8 +461,8 @@ public class WorkflowChartServiceTests
         A.CallTo(() => _workflowSolver.SolveDemand(projectObjects, nodeChart)).Returns(new Dictionary<int, double>());
         A.CallTo(() => _workflowChartAssembler.RebuildChartNodes(A<NodeChart>._, A<Dictionary<int, double>>._, projectObjects, workflow, A<Func<string, Task<bool>>>._)).Returns(nodeChart);
         A.CallTo(() => _workflowChartAssembler.RebuildChartEdges(A<NodeChart>._, A<NodeChart>._, projectObjects)).Returns(nodeChart);
-        A.CallTo(() => _workflowSolver.SolveSupply(projectObjects, nodeChart)).Returns(new Dictionary<int, double>());
-        A.CallTo(() => _workflowChartAssembler.UpdateChartRates(nodeChart, A<Dictionary<int, double>>._, projectObjects)).Returns(nodeChart);
+        A.CallTo(() => _workflowSolver.SolveSupply(projectObjects, nodeChart)).Returns(new SolverSupplyResult(new Dictionary<int, double>(), new Dictionary<int, double>(), new Dictionary<int, double>()));
+        A.CallTo(() => _workflowChartAssembler.UpdateChartRates(nodeChart, A<SolverSupplyResult>._, projectObjects)).Returns(nodeChart);
         A.CallTo(() => _workflowMapper.ToResponse(projectObjects, nodeChart)).Returns(EmptyResponse());
 
         // Act
@@ -519,8 +519,8 @@ public class WorkflowChartServiceTests
         A.CallTo(() => _workflowSolver.SolveDemand(projectObjects, nodeChart)).Returns(new Dictionary<int, double>());
         A.CallTo(() => _workflowChartAssembler.RebuildChartNodes(A<NodeChart>._, A<Dictionary<int, double>>._, projectObjects, workflow, A<Func<string, Task<bool>>>._)).Returns(nodeChart);
         A.CallTo(() => _workflowChartAssembler.RebuildChartEdges(A<NodeChart>._, A<NodeChart>._, projectObjects)).Returns(nodeChart);
-        A.CallTo(() => _workflowSolver.SolveSupply(projectObjects, nodeChart)).Returns(new Dictionary<int, double>());
-        A.CallTo(() => _workflowChartAssembler.UpdateChartRates(nodeChart, A<Dictionary<int, double>>._, projectObjects)).Returns(nodeChart);
+        A.CallTo(() => _workflowSolver.SolveSupply(projectObjects, nodeChart)).Returns(new SolverSupplyResult(new Dictionary<int, double>(), new Dictionary<int, double>(), new Dictionary<int, double>()));
+        A.CallTo(() => _workflowChartAssembler.UpdateChartRates(nodeChart, A<SolverSupplyResult>._, projectObjects)).Returns(nodeChart);
         A.CallTo(() => _workflowMapper.ToResponse(projectObjects, nodeChart)).Returns(EmptyResponse());
 
         // Act
@@ -576,8 +576,8 @@ public class WorkflowChartServiceTests
         A.CallTo(() => _workflowSolver.SolveDemand(projectObjects, nodeChart)).Returns(new Dictionary<int, double>());
         A.CallTo(() => _workflowChartAssembler.RebuildChartNodes(A<NodeChart>._, A<Dictionary<int, double>>._, projectObjects, workflow, A<Func<string, Task<bool>>>._)).Returns(nodeChart);
         A.CallTo(() => _workflowChartAssembler.RebuildChartEdges(A<NodeChart>._, A<NodeChart>._, projectObjects)).Returns(nodeChart);
-        A.CallTo(() => _workflowSolver.SolveSupply(projectObjects, nodeChart)).Returns(new Dictionary<int, double>());
-        A.CallTo(() => _workflowChartAssembler.UpdateChartRates(nodeChart, A<Dictionary<int, double>>._, projectObjects)).Returns(nodeChart);
+        A.CallTo(() => _workflowSolver.SolveSupply(projectObjects, nodeChart)).Returns(new SolverSupplyResult(new Dictionary<int, double>(), new Dictionary<int, double>(), new Dictionary<int, double>()));
+        A.CallTo(() => _workflowChartAssembler.UpdateChartRates(nodeChart, A<SolverSupplyResult>._, projectObjects)).Returns(nodeChart);
         A.CallTo(() => _workflowMapper.ToResponse(projectObjects, nodeChart)).Returns(EmptyResponse());
 
         // Act
@@ -626,8 +626,8 @@ public class WorkflowChartServiceTests
         A.CallTo(() => _workflowSolver.SolveDemand(projectObjects, nodeChart)).Returns(new Dictionary<int, double>());
         A.CallTo(() => _workflowChartAssembler.RebuildChartNodes(A<NodeChart>._, A<Dictionary<int, double>>._, projectObjects, workflow, A<Func<string, Task<bool>>>._)).Returns(nodeChart);
         A.CallTo(() => _workflowChartAssembler.RebuildChartEdges(A<NodeChart>._, A<NodeChart>._, projectObjects)).Returns(nodeChart);
-        A.CallTo(() => _workflowSolver.SolveSupply(projectObjects, nodeChart)).Returns(new Dictionary<int, double>());
-        A.CallTo(() => _workflowChartAssembler.UpdateChartRates(nodeChart, A<Dictionary<int, double>>._, projectObjects)).Returns(nodeChart);
+        A.CallTo(() => _workflowSolver.SolveSupply(projectObjects, nodeChart)).Returns(new SolverSupplyResult(new Dictionary<int, double>(), new Dictionary<int, double>(), new Dictionary<int, double>()));
+        A.CallTo(() => _workflowChartAssembler.UpdateChartRates(nodeChart, A<SolverSupplyResult>._, projectObjects)).Returns(nodeChart);
         A.CallTo(() => _workflowMapper.ToResponse(projectObjects, nodeChart)).Returns(EmptyResponse());
 
         // Act
@@ -676,8 +676,8 @@ public class WorkflowChartServiceTests
         A.CallTo(() => _workflowSolver.SolveDemand(projectObjects, nodeChart)).Returns(new Dictionary<int, double>());
         A.CallTo(() => _workflowChartAssembler.RebuildChartNodes(A<NodeChart>._, A<Dictionary<int, double>>._, projectObjects, workflow, A<Func<string, Task<bool>>>._)).Returns(nodeChart);
         A.CallTo(() => _workflowChartAssembler.RebuildChartEdges(A<NodeChart>._, A<NodeChart>._, projectObjects)).Returns(nodeChart);
-        A.CallTo(() => _workflowSolver.SolveSupply(projectObjects, nodeChart)).Returns(new Dictionary<int, double>());
-        A.CallTo(() => _workflowChartAssembler.UpdateChartRates(nodeChart, A<Dictionary<int, double>>._, projectObjects)).Returns(nodeChart);
+        A.CallTo(() => _workflowSolver.SolveSupply(projectObjects, nodeChart)).Returns(new SolverSupplyResult(new Dictionary<int, double>(), new Dictionary<int, double>(), new Dictionary<int, double>()));
+        A.CallTo(() => _workflowChartAssembler.UpdateChartRates(nodeChart, A<SolverSupplyResult>._, projectObjects)).Returns(nodeChart);
         A.CallTo(() => _workflowMapper.ToResponse(projectObjects, nodeChart)).Returns(EmptyResponse());
 
         // Act
