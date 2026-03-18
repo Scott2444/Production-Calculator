@@ -8,13 +8,11 @@ export default function ProjectPageLayout({
     children: ReactNode;
 }) {
     return (
-        <div className="min-h-screen flex flex-col">
+        <div className="flex flex-col h-screen overflow-hidden">
             <NavBar />
-            <div className="flex flex-1 min-h-0">
+            <div className="flex flex-1 min-h-0 overflow-hidden">
                 <ProjectSidebar />
-                <div className="flex-1 p-6 min-w-0 flex flex-col">
-                    {children}
-                </div>
+                <div className="flex-1 p-6 overflow-y-auto">{children}</div>
             </div>
         </div>
     );

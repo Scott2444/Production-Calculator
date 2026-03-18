@@ -63,7 +63,7 @@ export default function NavBar({
     ];
 
     return (
-        <nav className="flex items-center justify-between py-5 px-8 border-b-2 border-black bg-slate-900/80">
+        <nav className="flex items-center justify-between py-5 px-8 border-b-2 border-black bg-slate-900/90 sticky top-0 z-50">
             <div className="flex items-center gap-14 text-xl">
                 <Link to="/">
                     <Image

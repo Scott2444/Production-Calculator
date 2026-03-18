@@ -130,8 +130,8 @@ export default function ProjectSidebar() {
     return (
         <aside
             className={`${
-                collapsed ? "w-17" : "w-72"
-            } shrink-0 self-stretch border-r border-slate-800 bg-slate-900/60 text-slate-200 transition-[width] duration-200 overflow-hidden text-nowrap`}
+                collapsed ? "w-17" : "w-60"
+            } shrink-0 self-stretch border-r border-slate-800 bg-slate-900/60 text-slate-200 transition-[width] duration-200 overflow-y-auto text-nowrap`}
         >
             <div className="flex h-full flex-col gap-3 p-3">
                 <div className="space-y-2">
@@ -340,7 +340,7 @@ export default function ProjectSidebar() {
                             collapsed ? "Expand sidebar" : "Collapse sidebar"
                         }
                         onClick={() => setCollapsed((value) => !value)}
-                        className="mt-3 inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-900/70 px-3 text-sm text-slate-300 transition-colors hover:bg-slate-800/80 hover:text-slate-100"
+                        className="cursor-pointer mt-3 inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-900/70 px-3 text-sm text-slate-300 transition-colors hover:bg-slate-800/80 hover:text-slate-100"
                     >
                         {collapsed ? (
                             <IconLayoutSidebarLeftExpand size={18} />
