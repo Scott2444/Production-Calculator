@@ -103,6 +103,14 @@ namespace ProductionCalculator.Business.Services
             // Update product nodes
             updatedChart.ProductNodes = AssembleProductNodes(workflow.Workflow_Id, recipeRates, projectObjects);
             // Keep existing product nodes where possible
+            foreach (var productNode in updatedChart.ProductNodes)
+            {
+                var matchingNode = currentChart.ProductNodes.FirstOrDefault(pn => pn.Product_Id == productNode.Product_Id);
+                if (matchingNode != null)
+                {
+                    productNode.Workflow_Product_Node_Id = matchingNode.Workflow_Product_Node_Id;
+                }
+            }
             // Always keep nodes flagged as external to avoid user defined data loss
             foreach (var productNode in currentChart.ProductNodes.Where(pn => pn.Is_External)) 
             {
@@ -158,15 +166,19 @@ namespace ProductionCalculator.Business.Services
             foreach (var edge in updatedChart.Edges.ToList())
             {
                 // Consumer edge match
-                var matchingConsumerEdge = currentChart.Edges.FirstOrDefault(e => e.Consumer_Node_Id == edge.Consumer_Node_Id
-                    && e.Product_Node_Id == edge.Product_Node_Id);
+                var matchingConsumerEdge = currentChart.Edges.FirstOrDefault(e => 
+                    e.Consumer_Node_Id != null && 
+                    e.Consumer_Node_Id == edge.Consumer_Node_Id && 
+                    e.Product_Node_Id == edge.Product_Node_Id);
                 if (matchingConsumerEdge != null)
                 {
                     edge.Workflow_Edge_Id = matchingConsumerEdge.Workflow_Edge_Id;
                 }
                 // Producer edge match
-                var matchingProducerEdge = currentChart.Edges.FirstOrDefault(e => e.Producer_Node_Id == edge.Producer_Node_Id
-                    && e.Product_Node_Id == edge.Product_Node_Id);
+                var matchingProducerEdge = currentChart.Edges.FirstOrDefault(e => 
+                    e.Producer_Node_Id != null && 
+                    e.Producer_Node_Id == edge.Producer_Node_Id &&
+                    e.Product_Node_Id == edge.Product_Node_Id);
                 if (matchingProducerEdge != null)
                 {
                     edge.Workflow_Edge_Id = matchingProducerEdge.Workflow_Edge_Id;

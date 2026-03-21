@@ -302,6 +302,7 @@ namespace ProductionCalculator.Business.Services
             updatedChart = _workflowChartAssembler.UpdateChartRates(updatedChart, supplySolverResult, projectObjects);
 
             await _chartDataService.WorkflowUpdate(workflow.Workflow_Id, updatedChart); // Final update to save all calculated values
+            await _chartDataService.WorkflowEdgeUpdate(workflow.Workflow_Id, updatedChart);
             return updatedChart;
         }
 
@@ -316,6 +317,7 @@ namespace ProductionCalculator.Business.Services
             var recipeRates = _workflowSolver.SolveSupply(projectObjects, nodeChart);
             nodeChart = _workflowChartAssembler.UpdateChartRates(nodeChart, recipeRates, projectObjects);
             await _chartDataService.WorkflowUpdate(workflow.Workflow_Id, nodeChart);
+            await _chartDataService.WorkflowEdgeUpdate(workflow.Workflow_Id, nodeChart);
             return nodeChart;
         }
 	}
