@@ -5,14 +5,8 @@ import ProjectPageLayout from "@/components/ProjectPageLayout";
 import ProjectStatusGate from "@/components/ProjectStatusGate";
 import { useProject } from "@/context/ProjectContext";
 import { useProtectedApi } from "@/lib/api";
-import { fetchAttributes } from "@/lib/attributes";
-import { fetchMachines } from "@/lib/machines";
-import { fetchModifiers } from "@/lib/modifiers";
-import { fetchProducts } from "@/lib/products";
-import { fetchRecipes } from "@/lib/recipes";
-import { fetchWorkflows, type Workflow } from "@/lib/workflow";
+import { type Workflow } from "@/lib/workflow";
 import {
-    fetchWorkflowChart,
     setWorkflowProductExternal,
     updateWorkflowChart,
     updateWorkflowNode,
@@ -45,9 +39,18 @@ import {
     IconSettings,
     IconTargetArrow,
 } from "@tabler/icons-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import {
+    useAttributesQuery,
+    useMachinesQuery,
+    useModifiersQuery,
+    useProductsQuery,
+    useRecipesQuery,
+    useWorkflowChartQuery,
+    useWorkflowsQuery,
+} from "@/hooks/useQueries";
 import "@xyflow/react/dist/style.css";
 
 interface Product {
@@ -298,12 +301,7 @@ export default function WorkflowPage() {
         return segments[3] ?? "";
     }, [pathname]);
 
-    const workflowsQuery = useQuery({
-        queryKey: ["workflows", projectId],
-        queryFn: () => fetchWorkflows(projectId, protectedApi),
-        enabled: Boolean(projectId) && isOwner,
-        staleTime: 60 * 1000,
-    });
+    const workflowsQuery = useWorkflowsQuery(projectId, { enabled: isOwner });
 
     const workflows = useMemo(
         () => coerceItems<Workflow>(workflowsQuery.data),
@@ -320,55 +318,24 @@ export default function WorkflowPage() {
 
     const workflowId = selectedWorkflow?.puid ?? "";
 
-    const chartQuery = useQuery({
-        queryKey: ["workflow-chart", projectId, workflowId],
-        queryFn: () => fetchWorkflowChart(projectId, workflowId, protectedApi),
-        enabled: Boolean(projectId && workflowId) && isOwner,
-        staleTime: 0,
+    const chartQuery = useWorkflowChartQuery(projectId, workflowId, {
+        enabled: isOwner,
     });
 
-    const productsQuery = useQuery({
-        queryKey: ["products", projectId],
-        queryFn: () => fetchProducts(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
+    const productsQuery = useProductsQuery(projectId);
 
-    const recipesQuery = useQuery({
-        queryKey: ["recipes", projectId],
-        queryFn: () => fetchRecipes(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
+    const recipesQuery = useRecipesQuery(projectId);
 
-    const machinesQuery = useQuery({
-        queryKey: ["machines", projectId],
-        queryFn: () => fetchMachines(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
+    const machinesQuery = useMachinesQuery(projectId);
 
-    const modifiersQuery = useQuery({
-        queryKey: ["modifiers", projectId],
-        queryFn: () => fetchModifiers(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
+    const modifiersQuery = useModifiersQuery(projectId);
 
-    const attributesQuery = useQuery({
-        queryKey: ["attributes", projectId],
-        queryFn: () => fetchAttributes(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
+    const attributesQuery = useAttributesQuery(projectId);
 
     const chart = useMemo(
         () => coerceWorkflowChart(chartQuery.data),
         [chartQuery.data],
     );
-    useMemo(() => {
-        console.log("Workflow chart data:", chart);
-    }, [chart]);
     const products = useMemo(
         () => coerceItems<Product>(productsQuery.data),
         [productsQuery.data],

@@ -5,13 +5,12 @@ import ProjectStatusGate from "@/components/ProjectStatusGate";
 import SearchBar from "@/components/SearchBar";
 import CreateWorkflow from "@/components/CreateWorkflow";
 import { useProject } from "@/context/ProjectContext";
-import { useProtectedApi } from "@/lib/api";
-import { fetchWorkflows, type Workflow } from "@/lib/workflow";
+import { type Workflow } from "@/lib/workflow";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useSearch } from "@/hooks/Search";
 import { formatTimestamp } from "@/lib/timestamp";
+import { useWorkflowsQuery } from "@/hooks/useQueries";
 
 function coerceWorkflows(value: unknown): Workflow[] {
     if (!value) return [];
@@ -31,17 +30,11 @@ function getWorkflowRouteSegment(workflow: Workflow): string {
 export default function WorkflowsPage() {
     const { routeUsername, routeProjectName, projectId, isOwner } =
         useProject();
-    const protectedApi = useProtectedApi();
     const navigate = useNavigate();
 
     const [createOpen, setCreateOpen] = useState(false);
 
-    const workflowsQuery = useQuery({
-        queryKey: ["workflows", projectId],
-        queryFn: () => fetchWorkflows(projectId, protectedApi),
-        enabled: Boolean(projectId) && isOwner,
-        staleTime: 60 * 1000,
-    });
+    const workflowsQuery = useWorkflowsQuery(projectId, { enabled: isOwner });
 
     const workflows = useMemo(
         () => coerceWorkflows(workflowsQuery.data),

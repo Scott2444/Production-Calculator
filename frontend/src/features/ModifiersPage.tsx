@@ -10,10 +10,8 @@ import ItemCard from "@/components/ItemCard";
 import { useAuth } from "@/context/AuthContext";
 import { useProject } from "@/context/ProjectContext";
 import { useProtectedApi } from "@/lib/api";
-import { fetchAttributes } from "@/lib/attributes";
 import {
     deleteModifier,
-    fetchModifiers,
     type NewModifierPayload,
     postNewModifier,
     updateModifier,
@@ -30,8 +28,9 @@ import {
     IconPackage,
     IconSettings,
 } from "@tabler/icons-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useModifiersQuery, useAttributesQuery } from "@/hooks/useQueries";
 import ReactMarkdown from "react-markdown";
 
 interface Attribute {
@@ -159,12 +158,7 @@ export default function Modifiers() {
     const protectedApi = useProtectedApi();
     const queryClient = useQueryClient();
 
-    const modifiersQuery = useQuery({
-        queryKey: ["modifiers", projectId],
-        queryFn: () => fetchModifiers(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
+    const modifiersQuery = useModifiersQuery(projectId);
 
     const modifiers = useMemo(
         () => coerceModifiers(modifiersQuery.data),
@@ -177,12 +171,7 @@ export default function Modifiers() {
         );
     }, [modifiers]);
 
-    const attributesQuery = useQuery({
-        queryKey: ["attributes", projectId],
-        queryFn: () => fetchAttributes(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
+    const attributesQuery = useAttributesQuery(projectId);
 
     const attributes = useMemo(
         () => coerceAttributes(attributesQuery.data),

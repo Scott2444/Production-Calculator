@@ -9,15 +9,12 @@ import SearchBar from "@/components/SearchBar";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import { useProject } from "@/context/ProjectContext";
 import { useProtectedApi } from "@/lib/api";
-import { fetchAttributes } from "@/lib/attributes";
 import {
     deleteMachine,
-    fetchMachines,
     postNewMachine,
     type NewMachinePayload,
     updateMachine,
 } from "@/lib/machines";
-import { fetchRecipes } from "@/lib/recipes";
 import { useDeleteConfirmation } from "@/hooks/DeleteConfirmation";
 import { useSearch } from "@/hooks/Search";
 import {
@@ -30,9 +27,14 @@ import {
     IconClipboardList,
     IconSettings,
 } from "@tabler/icons-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import {
+    useAttributesQuery,
+    useMachinesQuery,
+    useRecipesQuery,
+} from "@/hooks/useQueries";
 
 interface Recipe {
     puid: string;
@@ -176,12 +178,7 @@ export default function Machines() {
     const protectedApi = useProtectedApi();
     const queryClient = useQueryClient();
 
-    const recipesQuery = useQuery({
-        queryKey: ["recipes", projectId],
-        queryFn: () => fetchRecipes(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
+    const recipesQuery = useRecipesQuery(projectId);
 
     const recipes = useMemo(
         () => coerceRecipes(recipesQuery.data),
@@ -200,12 +197,7 @@ export default function Machines() {
         return map;
     }, [sortedRecipes]);
 
-    const attributesQuery = useQuery({
-        queryKey: ["attributes", projectId],
-        queryFn: () => fetchAttributes(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
+    const attributesQuery = useAttributesQuery(projectId);
 
     const attributes = useMemo(
         () => coerceAttributes(attributesQuery.data),
@@ -232,12 +224,7 @@ export default function Machines() {
         return map;
     }, [sortedAttributes]);
 
-    const machinesQuery = useQuery({
-        queryKey: ["machines", projectId],
-        queryFn: () => fetchMachines(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
+    const machinesQuery = useMachinesQuery(projectId);
 
     const machines = useMemo(
         () => coerceMachines(machinesQuery.data),

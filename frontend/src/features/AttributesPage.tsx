@@ -6,7 +6,6 @@ import SearchBar from "@/components/SearchBar";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-    fetchAttributes,
     type NewAttributePayload,
     postNewAttribute,
     updateAttribute,
@@ -17,11 +16,12 @@ import Popup from "@/components/Popup";
 import ItemCard from "@/components/ItemCard";
 import { useAuth } from "@/context/AuthContext";
 import { useProject } from "@/context/ProjectContext";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@/hooks/Search";
 import { useDeleteConfirmation } from "@/hooks/DeleteConfirmation";
 import { IconCheck, IconEdit, IconPlus, IconTrash } from "@tabler/icons-react";
 import ReactMarkdown from "react-markdown";
+import { useAttributesQuery } from "@/hooks/useQueries";
 
 interface Attribute {
     puid: string;
@@ -49,12 +49,7 @@ export default function Attributes() {
     const protectedApi = useProtectedApi();
     const queryClient = useQueryClient();
 
-    const attributesQuery = useQuery({
-        queryKey: ["attributes", projectId],
-        queryFn: () => fetchAttributes(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
+    const attributesQuery = useAttributesQuery(projectId);
 
     const attributes = useMemo(
         () => coerceAttributes(attributesQuery.data),

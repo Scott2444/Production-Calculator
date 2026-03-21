@@ -6,7 +6,6 @@ import SearchBar from "@/components/SearchBar";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-    fetchProducts,
     type NewProductPayload,
     postNewProduct,
     updateProduct,
@@ -17,11 +16,12 @@ import Popup from "@/components/Popup";
 import ItemCard from "@/components/ItemCard";
 import { useAuth } from "@/context/AuthContext";
 import { useProject } from "@/context/ProjectContext";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@/hooks/Search";
 import { useDeleteConfirmation } from "@/hooks/DeleteConfirmation";
 import { IconCheck, IconEdit, IconPlus, IconTrash } from "@tabler/icons-react";
 import ReactMarkdown from "react-markdown";
+import { useProductsQuery } from "@/hooks/useQueries";
 
 interface Product {
     puid: string;
@@ -48,12 +48,7 @@ export default function Products() {
     const protectedApi = useProtectedApi();
     const queryClient = useQueryClient();
 
-    const productsQuery = useQuery({
-        queryKey: ["products", projectId],
-        queryFn: () => fetchProducts(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
+    const productsQuery = useProductsQuery(projectId);
 
     const products = useMemo(
         () => coerceProducts(productsQuery.data),

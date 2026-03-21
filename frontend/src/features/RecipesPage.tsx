@@ -9,11 +9,8 @@ import SearchBar from "@/components/SearchBar";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import { useProject } from "@/context/ProjectContext";
 import { useProtectedApi } from "@/lib/api";
-import { fetchProducts } from "@/lib/products";
-import { fetchAttributes } from "@/lib/attributes";
 import {
     deleteRecipe,
-    fetchRecipes,
     type NewRecipePayload,
     postNewRecipe,
     updateRecipe,
@@ -29,11 +26,16 @@ import {
     IconArrowBarRight,
     IconSettings,
 } from "@tabler/icons-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "@/hooks/Search";
 import { useDeleteConfirmation } from "@/hooks/DeleteConfirmation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import {
+    useProductsQuery,
+    useAttributesQuery,
+    useRecipesQuery,
+} from "@/hooks/useQueries";
 
 interface Product {
     puid: string;
@@ -188,12 +190,7 @@ export default function Recipes() {
     const protectedApi = useProtectedApi();
     const queryClient = useQueryClient();
 
-    const productsQuery = useQuery({
-        queryKey: ["products", projectId],
-        queryFn: () => fetchProducts(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
+    const productsQuery = useProductsQuery(projectId);
 
     const products = useMemo(
         () => coerceProducts(productsQuery.data),
@@ -212,12 +209,7 @@ export default function Recipes() {
         return map;
     }, [sortedProducts]);
 
-    const attributesQuery = useQuery({
-        queryKey: ["attributes", projectId],
-        queryFn: () => fetchAttributes(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
+    const attributesQuery = useAttributesQuery(projectId);
 
     const attributes = useMemo(
         () => coerceAttributes(attributesQuery.data),
@@ -244,12 +236,7 @@ export default function Recipes() {
         return map;
     }, [sortedAttributes]);
 
-    const recipesQuery = useQuery({
-        queryKey: ["recipes", projectId],
-        queryFn: () => fetchRecipes(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
+    const recipesQuery = useRecipesQuery(projectId);
 
     const recipes = useMemo(
         () => coerceRecipes(recipesQuery.data),
