@@ -31,36 +31,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useModifiersQuery, useAttributesQuery } from "@/hooks/useQueries";
 import ReactMarkdown from "react-markdown";
-
-interface Attribute {
-    puid: string;
-    name: string;
-    description: string | null;
-    unit: string | null;
-    createdAt: string;
-    updatedAt: string;
-}
-
-type ModifierAttributeBonus = {
-    puid: string;
-    flatBonus: number;
-    percentBonus: number;
-    multiplicativeBonus: number;
-};
-
-interface Modifier {
-    puid: string;
-    name: string;
-    description: string | null;
-    flatBonus: number;
-    percentBonus: number;
-    multiplicativeBonus: number;
-    inputPercent: number;
-    outputPercent: number;
-    attributes: ModifierAttributeBonus[];
-    createdAt: string;
-    updatedAt: string;
-}
+import { type Attribute } from "@/types/attributes";
+import { type Modifier, type ModifierAttributeBonus } from "@/types/modifiers";
 
 function coerceModifiers(value: unknown): Modifier[] {
     if (!value) return [];

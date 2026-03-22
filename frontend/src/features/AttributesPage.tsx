@@ -22,15 +22,7 @@ import { useDeleteConfirmation } from "@/hooks/DeleteConfirmation";
 import { IconCheck, IconEdit, IconPlus, IconTrash } from "@tabler/icons-react";
 import ReactMarkdown from "react-markdown";
 import { useAttributesQuery } from "@/hooks/useQueries";
-
-interface Attribute {
-    puid: string;
-    name: string;
-    description: string | null;
-    unit: string | null;
-    createdAt: string;
-    updatedAt: string;
-}
+import { type Attribute } from "@/types/attributes";
 
 function coerceAttributes(value: unknown): Attribute[] {
     if (!value) return [];

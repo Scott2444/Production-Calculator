@@ -22,14 +22,7 @@ import { useDeleteConfirmation } from "@/hooks/DeleteConfirmation";
 import { IconCheck, IconEdit, IconPlus, IconTrash } from "@tabler/icons-react";
 import ReactMarkdown from "react-markdown";
 import { useProductsQuery } from "@/hooks/useQueries";
-
-interface Product {
-    puid: string;
-    name: string;
-    description: string | null;
-    createdAt: string;
-    updatedAt: string;
-}
+import { type Product } from "@/types/products";
 
 function coerceProducts(value: unknown): Product[] {
     if (!value) return [];

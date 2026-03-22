@@ -14,7 +14,7 @@ import {
     updateWorkflowPreferredRecipes,
     updateWorkflowTargets,
     type AttributeRate,
-    type Modifier,
+    type WorkflowModifier,
     type ProductNode,
     type Target,
     type WorkflowChart,
@@ -53,34 +53,12 @@ import {
     useWorkflowChartQuery,
     useWorkflowsQuery,
 } from "@/hooks/useQueries";
+import { type ProductSummary } from "@/types/products";
+import { type RecipeSummary } from "@/types/recipes";
+import { type MachineSummary } from "@/types/machines";
+import { type ModifierSummary } from "@/types/modifiers";
+import { type AttributeSummary } from "@/types/attributes";
 import "@xyflow/react/dist/style.css";
-
-interface Product {
-    puid: string;
-    name: string;
-}
-
-interface Recipe {
-    puid: string;
-    name: string;
-}
-
-interface Machine {
-    puid: string;
-    name: string;
-    recipePuids: string[];
-}
-
-interface ModifierItem {
-    puid: string;
-    name: string;
-}
-
-interface Attribute {
-    puid: string;
-    name: string;
-    unit: string | null;
-}
 
 interface ProcessNodeData {
     [key: string]: unknown;
@@ -345,23 +323,23 @@ export default function WorkflowPage() {
         [chartQuery.data],
     );
     const products = useMemo(
-        () => coerceItems<Product>(productsQuery.data),
+        () => coerceItems<ProductSummary>(productsQuery.data),
         [productsQuery.data],
     );
     const recipes = useMemo(
-        () => coerceItems<Recipe>(recipesQuery.data),
+        () => coerceItems<RecipeSummary>(recipesQuery.data),
         [recipesQuery.data],
     );
     const machines = useMemo(
-        () => coerceItems<Machine>(machinesQuery.data),
+        () => coerceItems<MachineSummary>(machinesQuery.data),
         [machinesQuery.data],
     );
     const modifiers = useMemo(
-        () => coerceItems<ModifierItem>(modifiersQuery.data),
+        () => coerceItems<ModifierSummary>(modifiersQuery.data),
         [modifiersQuery.data],
     );
     const attributes = useMemo(
-        () => coerceItems<Attribute>(attributesQuery.data),
+        () => coerceItems<AttributeSummary>(attributesQuery.data),
         [attributesQuery.data],
     );
 
@@ -384,7 +362,7 @@ export default function WorkflowPage() {
     }, [machines]);
 
     const attributeByPuid = useMemo(() => {
-        const map = new Map<string, Attribute>();
+        const map = new Map<string, AttributeSummary>();
         for (const item of attributes) map.set(item.puid, item);
         return map;
     }, [attributes]);
@@ -571,7 +549,7 @@ export default function WorkflowPage() {
             nodePuid: string;
             machinePuid: string;
             actualMachineCount: number;
-            modifiers: Modifier[];
+            modifiers: WorkflowModifier[];
             recipeAttributes: AttributeRate[];
             machineAttributes: AttributeRate[];
         }) => {
@@ -935,7 +913,7 @@ export default function WorkflowPage() {
             return;
         }
 
-        const existingModifierByPuid = new Map<string, Modifier>();
+        const existingModifierByPuid = new Map<string, WorkflowModifier>();
         for (const modifier of selectedProcessNode.modifiers) {
             existingModifierByPuid.set(modifier.puid, modifier);
         }

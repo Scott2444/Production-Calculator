@@ -5,7 +5,7 @@ export interface ModifierAttribute {
     multiplicativeBonus: number;
 }
 
-export interface Modifier {
+export interface WorkflowModifier {
     puid: string;
     attributes: ModifierAttribute[];
 }
@@ -23,7 +23,7 @@ export interface Node {
     calculatedMachineCount: number | null;
     calculatedTargetRate: number | null;
     calculatedActualRate: number | null;
-    modifiers: Modifier[];
+    modifiers: WorkflowModifier[];
     recipeAttributes: AttributeRate[];
     machineAttributes: AttributeRate[];
 }
@@ -119,7 +119,7 @@ export async function updateWorkflowTargets(
 export interface UpdateWorkflowChartPayload {
     machinePuid: string;
     actualMachineCount: number;
-    modifiers: Modifier[];
+    modifiers: WorkflowModifier[];
     recipeAttributes: AttributeRate[];
     machineAttributes: AttributeRate[];
 }

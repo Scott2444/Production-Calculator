@@ -34,37 +34,9 @@ import {
     useMachinesQuery,
     useRecipesQuery,
 } from "@/hooks/useQueries";
-
-interface Recipe {
-    puid: string;
-    name: string;
-    description: string | null;
-    baseCraftingTime: number;
-    createdAt: string;
-    updatedAt: string;
-}
-
-interface Attribute {
-    puid: string;
-    name: string;
-    description: string | null;
-    unit: string | null;
-    createdAt: string;
-    updatedAt: string;
-}
-
-type MachineAttributeRate = { puid: string; rate: number };
-
-interface Machine {
-    puid: string;
-    name: string;
-    description: string | null;
-    baseSpeed: number;
-    recipePuids: string[];
-    attributes: MachineAttributeRate[];
-    createdAt: string;
-    updatedAt: string;
-}
+import { type RecipeSummary } from "@/types/recipes";
+import { type Attribute } from "@/types/attributes";
+import { type Machine, type MachineAttributeRate } from "@/types/machines";
 
 function coerceMachines(value: unknown): Machine[] {
     if (!value) return [];
@@ -76,12 +48,12 @@ function coerceMachines(value: unknown): Machine[] {
     return [];
 }
 
-function coerceRecipes(value: unknown): Recipe[] {
+function coerceRecipes(value: unknown): RecipeSummary[] {
     if (!value) return [];
-    if (Array.isArray(value)) return value as Recipe[];
+    if (Array.isArray(value)) return value as RecipeSummary[];
     if (typeof value === "object") {
         const maybeItems = (value as { items?: unknown }).items;
-        if (Array.isArray(maybeItems)) return maybeItems as Recipe[];
+        if (Array.isArray(maybeItems)) return maybeItems as RecipeSummary[];
     }
     return [];
 }
@@ -181,7 +153,7 @@ function RecipeMultiSelect({
     value: string[];
     onChange: (next: string[]) => void;
     disabled?: boolean;
-    sortedRecipes: Recipe[];
+    sortedRecipes: RecipeSummary[];
     recipeNameByPuid: Map<string, string>;
 }) {
     const effectiveDisabled = Boolean(disabled) || sortedRecipes.length === 0;

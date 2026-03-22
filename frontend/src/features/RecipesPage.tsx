@@ -35,38 +35,13 @@ import {
     useAttributesQuery,
     useRecipesQuery,
 } from "@/hooks/useQueries";
-
-interface Product {
-    puid: string;
-    name: string;
-    description: string | null;
-    createdAt: string;
-    updatedAt: string;
-}
-
-interface Attribute {
-    puid: string;
-    name: string;
-    description: string | null;
-    unit: string | null;
-    createdAt: string;
-    updatedAt: string;
-}
-
-type RecipeExchange = { puid: string; quantity: number };
-type RecipeAttributeRate = { puid: string; rate: number };
-
-interface Recipe {
-    puid: string;
-    name: string;
-    description: string | null;
-    baseCraftingTime: number;
-    inputs: RecipeExchange[];
-    outputs: RecipeExchange[];
-    attributes: RecipeAttributeRate[];
-    createdAt: string;
-    updatedAt: string;
-}
+import { type Product } from "@/types/products";
+import { type Attribute } from "@/types/attributes";
+import {
+    type Recipe,
+    type RecipeAttributeRate,
+    type RecipeExchange,
+} from "@/types/recipes";
 
 function coerceRecipes(value: unknown): Recipe[] {
     if (!value) return [];
