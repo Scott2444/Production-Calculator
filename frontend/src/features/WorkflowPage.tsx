@@ -1,6 +1,7 @@
 "use client";
 
 import ErrorDisplay from "@/components/ErrorDisplay";
+import DropDown from "@/components/DropDown";
 import ProjectPageLayout from "@/components/ProjectPageLayout";
 import ProjectStatusGate from "@/components/ProjectStatusGate";
 import { useProject } from "@/context/ProjectContext";
@@ -193,7 +194,7 @@ function ProcessFlowNode({
 }: NodeProps<FlowNode<ProcessNodeData>>) {
     return (
         <div
-            className={`w-[260px] rounded-xl border p-3 shadow-sm ${
+            className={`w-65 rounded-xl border p-3 shadow-sm ${
                 selected
                     ? "border-purple-400 bg-slate-800"
                     : "border-slate-700 bg-slate-900"
@@ -202,12 +203,12 @@ function ProcessFlowNode({
             <Handle
                 type="target"
                 position={Position.Left}
-                className="!h-2 !w-2 !bg-slate-200"
+                className="h-2! w-2! bg-slate-200"
             />
             <Handle
                 type="source"
                 position={Position.Right}
-                className="!h-2 !w-2 !bg-slate-200"
+                className="h-2!w-2 bg-slate-200"
             />
 
             <div className="text-xs uppercase tracking-wide text-slate-400">
@@ -243,7 +244,7 @@ function ProductFlowNode({
 }: NodeProps<FlowNode<ProductFlowNodeData>>) {
     return (
         <div
-            className={`w-[220px] rounded-xl border p-3 shadow-sm ${
+            className={`w-55 rounded-xl border p-3 shadow-sm ${
                 selected
                     ? "border-cyan-400 bg-slate-800"
                     : "border-cyan-900/70 bg-slate-900"
@@ -252,12 +253,12 @@ function ProductFlowNode({
             <Handle
                 type="target"
                 position={Position.Left}
-                className="!h-2 !w-2 !bg-cyan-200"
+                className="h-2 w-2 bg-cyan-200"
             />
             <Handle
                 type="source"
                 position={Position.Right}
-                className="!h-2 !w-2 !bg-cyan-200"
+                className="h-2 w-2 bg-cyan-200"
             />
 
             <div className="truncate text-sm font-semibold text-cyan-100">
@@ -850,15 +851,58 @@ export default function WorkflowPage() {
         [modifiers],
     );
 
-    const availableProductOptions = useMemo(
-        () =>
-            sortedProducts.filter((product) =>
-                chart.productNodes.some(
-                    (node) => node.productPuid === product.puid,
-                ),
-            ),
-        [sortedProducts, chart.productNodes],
-    );
+    const TargetProductDropDown = ({
+        value,
+        onSelect,
+        disabled,
+    }: {
+        value: string;
+        onSelect: (next: string) => void;
+        disabled?: boolean;
+    }) => {
+        const selectedName = value ? productNameByPuid.get(value) : undefined;
+        const effectiveDisabled =
+            Boolean(disabled) || sortedProducts.length === 0;
+
+        const productOptions = sortedProducts.map((product) => ({
+            value: product.puid,
+            label: product.name,
+            searchText: product.name,
+        }));
+
+        return (
+            <DropDown
+                label={
+                    <div className="min-w-0">
+                        <div className="text-xs text-slate-200">
+                            {selectedName ??
+                                (effectiveDisabled
+                                    ? "No products"
+                                    : "Select product")}
+                        </div>
+                    </div>
+                }
+                align="left"
+                disabled={effectiveDisabled}
+                className="w-full"
+                buttonClassName="rounded-lg px-2 py-2"
+                matchTriggerWidth
+                mode="single"
+                options={productOptions}
+                value={value}
+                onSelect={onSelect}
+                searchPlaceholder="Search products"
+                searchAriaLabel="Search products"
+                emptyFilteredText="No products match your search."
+                emptyOptionsText="No products yet."
+                checkIconSize={14}
+                optionClassName="text-xs"
+                optionTextClassName="text-xs"
+                searchInputClassName="text-xs"
+                menuClassName="min-w-[250px]"
+            />
+        );
+    };
 
     const onSaveNode = () => {
         if (!selectedProcessNode) return;
@@ -1052,7 +1096,7 @@ export default function WorkflowPage() {
                                 workflowId && (
                                     <div className="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1fr)_360px]">
                                         <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-2">
-                                            <div className="h-[72dvh] min-h-[520px] w-full overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
+                                            <div className="h-[72dvh] min-h-130 w-full overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
                                                 <ReactFlow
                                                     nodes={flowData.nodes}
                                                     edges={flowData.edges}
@@ -1109,10 +1153,10 @@ export default function WorkflowPage() {
                                                     <MiniMap
                                                         pannable
                                                         zoomable
-                                                        className="!bg-slate-900"
+                                                        className="bg-slate-900!"
                                                         nodeStrokeWidth={3}
                                                     />
-                                                    <Controls className="!bg-slate-900" />
+                                                    <Controls className="bg-slate-900!" />
                                                 </ReactFlow>
                                             </div>
                                         </div>
@@ -1132,13 +1176,12 @@ export default function WorkflowPage() {
                                                                 key={`${draft.productPuid}-${index}`}
                                                                 className="grid grid-cols-[1fr_110px_auto] gap-2"
                                                             >
-                                                                <select
-                                                                    className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-xs text-slate-100 focus:border-purple-500/60 focus:outline-none"
+                                                                <TargetProductDropDown
                                                                     value={
                                                                         draft.productPuid
                                                                     }
-                                                                    onChange={(
-                                                                        event,
+                                                                    onSelect={(
+                                                                        next,
                                                                     ) => {
                                                                         setTargetDrafts(
                                                                             (
@@ -1154,9 +1197,7 @@ export default function WorkflowPage() {
                                                                                             ? {
                                                                                                   ...item,
                                                                                                   productPuid:
-                                                                                                      event
-                                                                                                          .target
-                                                                                                          .value,
+                                                                                                      next,
                                                                                               }
                                                                                             : item,
                                                                                 ),
@@ -1165,30 +1206,7 @@ export default function WorkflowPage() {
                                                                     disabled={
                                                                         anyMutationPending
                                                                     }
-                                                                >
-                                                                    <option value="">
-                                                                        Select
-                                                                        product
-                                                                    </option>
-                                                                    {availableProductOptions.map(
-                                                                        (
-                                                                            product,
-                                                                        ) => (
-                                                                            <option
-                                                                                key={
-                                                                                    product.puid
-                                                                                }
-                                                                                value={
-                                                                                    product.puid
-                                                                                }
-                                                                            >
-                                                                                {
-                                                                                    product.name
-                                                                                }
-                                                                            </option>
-                                                                        ),
-                                                                    )}
-                                                                </select>
+                                                                />
                                                                 <input
                                                                     type="number"
                                                                     min="0"
@@ -1271,7 +1289,7 @@ export default function WorkflowPage() {
                                                                         ),
                                                                     );
                                                                 const next =
-                                                                    availableProductOptions.find(
+                                                                    sortedProducts.find(
                                                                         (
                                                                             product,
                                                                         ) =>
@@ -1279,7 +1297,7 @@ export default function WorkflowPage() {
                                                                                 product.puid,
                                                                             ),
                                                                     ) ??
-                                                                    availableProductOptions[0];
+                                                                    sortedProducts[0];
 
                                                                 setTargetDrafts(
                                                                     (prev) => [
@@ -1296,7 +1314,7 @@ export default function WorkflowPage() {
                                                             }}
                                                             disabled={
                                                                 anyMutationPending ||
-                                                                availableProductOptions.length ===
+                                                                sortedProducts.length ===
                                                                     0
                                                             }
                                                         >

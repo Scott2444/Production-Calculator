@@ -21,7 +21,6 @@ import {
     IconCheck,
     IconEdit,
     IconPlus,
-    IconSearch,
     IconTrash,
     IconGauge,
     IconClipboardList,
@@ -170,6 +169,58 @@ function pickDefaultAttributePuid(
 ): string {
     const firstUnused = attributes.find((a) => !used.has(a.puid));
     return (firstUnused ?? attributes[0])?.puid ?? "";
+}
+
+function RecipeMultiSelect({
+    value,
+    onChange,
+    disabled,
+    sortedRecipes,
+    recipeNameByPuid,
+}: {
+    value: string[];
+    onChange: (next: string[]) => void;
+    disabled?: boolean;
+    sortedRecipes: Recipe[];
+    recipeNameByPuid: Map<string, string>;
+}) {
+    const effectiveDisabled = Boolean(disabled) || sortedRecipes.length === 0;
+    const selected = uniqueTrimmedPuids(value);
+
+    const recipeOptions = sortedRecipes.map((r) => ({
+        value: r.puid,
+        label: r.name,
+        searchText: `${r.name} ${r.description ?? ""}`,
+    }));
+
+    return (
+        <DropDown
+            label={
+                <div className="min-w-0">
+                    <div className="truncate text-sm text-slate-200">
+                        {formatSelectedRecipesLabel(
+                            selected,
+                            recipeNameByPuid,
+                            sortedRecipes.length,
+                        )}
+                    </div>
+                </div>
+            }
+            align="right"
+            disabled={effectiveDisabled}
+            className="w-full"
+            buttonClassName="rounded-lg px-3 py-2"
+            matchTriggerWidth
+            mode="multi"
+            options={recipeOptions}
+            values={selected}
+            onChangeValues={onChange}
+            searchPlaceholder="Search recipes"
+            searchAriaLabel="Search recipes"
+            emptyFilteredText="No recipes match your search."
+            emptyOptionsText="No recipes yet."
+        />
+    );
 }
 
 export default function Machines() {
@@ -389,135 +440,6 @@ export default function Machines() {
         },
     });
 
-    const RecipeMultiSelect = ({
-        value,
-        onChange,
-        disabled,
-    }: {
-        value: string[];
-        onChange: (next: string[]) => void;
-        disabled?: boolean;
-    }) => {
-        const effectiveDisabled =
-            Boolean(disabled) || sortedRecipes.length === 0;
-        const selected = uniqueTrimmedPuids(value);
-        const selectedSet = new Set(selected);
-
-        const {
-            searchText: menuSearchText,
-            setSearchText: setMenuSearchText,
-            filteredItems: filteredRecipes,
-        } = useSearch(sortedRecipes, {
-            toText: (r) => `${r.name} ${r.description ?? ""}`,
-        });
-
-        return (
-            <DropDown
-                label={
-                    <div className="min-w-0">
-                        <div className="truncate text-sm text-slate-200">
-                            {formatSelectedRecipesLabel(
-                                selected,
-                                recipeNameByPuid,
-                                sortedRecipes.length,
-                            )}
-                        </div>
-                    </div>
-                }
-                align="right"
-                disabled={effectiveDisabled}
-                className="w-full"
-                buttonClassName="rounded-lg px-3 py-2"
-                matchTriggerWidth
-            >
-                {({ close }) => (
-                    <div className="p-2">
-                        <div className="flex flex-col gap-1">
-                            <div className="sticky top-0 z-10 rounded-lg p-2">
-                                <div className="flex items-center gap-2">
-                                    <div className="text-slate-400">
-                                        <IconSearch size={16} />
-                                    </div>
-                                    <input
-                                        value={menuSearchText}
-                                        onChange={(e) =>
-                                            setMenuSearchText(e.target.value)
-                                        }
-                                        placeholder="Search recipes"
-                                        className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={effectiveDisabled}
-                                        aria-label="Search recipes"
-                                    />
-                                </div>
-                            </div>
-
-                            {filteredRecipes.map((r) => {
-                                const isSelected = selectedSet.has(r.puid);
-                                return (
-                                    <button
-                                        key={r.puid}
-                                        type="button"
-                                        className={`group flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer hover:bg-slate-800/70 ${
-                                            isSelected
-                                                ? "bg-purple-600/15 text-slate-100"
-                                                : "text-slate-200"
-                                        }`}
-                                        onClick={() => {
-                                            const next = new Set(selected);
-                                            if (next.has(r.puid))
-                                                next.delete(r.puid);
-                                            else next.add(r.puid);
-                                            onChange(Array.from(next));
-                                        }}
-                                    >
-                                        <span className="min-w-0 truncate">
-                                            {r.name}
-                                        </span>
-                                        <span
-                                            className={`shrink-0 ${
-                                                isSelected
-                                                    ? "text-purple-300"
-                                                    : "text-slate-500 opacity-0 group-hover:opacity-100"
-                                            }`}
-                                            aria-hidden="true"
-                                        >
-                                            <IconCheck size={16} />
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                            {sortedRecipes.length > 0 &&
-                                filteredRecipes.length === 0 && (
-                                    <div className="px-3 py-2 text-sm text-slate-400">
-                                        No recipes match your search.
-                                    </div>
-                                )}
-
-                            {sortedRecipes.length === 0 && (
-                                <div className="px-3 py-2 text-sm text-slate-400">
-                                    No recipes yet.
-                                </div>
-                            )}
-
-                            <div className="mt-1 flex items-center justify-end">
-                                <button
-                                    type="button"
-                                    className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                    onClick={() => {
-                                        setMenuSearchText("");
-                                        close();
-                                    }}
-                                >
-                                    Done
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </DropDown>
-        );
-    };
-
     const AttributeDropDown = ({
         value,
         onSelect,
@@ -531,12 +453,13 @@ export default function Machines() {
         const effectiveDisabled =
             Boolean(disabled) || sortedAttributes.length === 0;
 
-        const {
-            searchText: menuSearchText,
-            setSearchText: setMenuSearchText,
-            filteredItems: filteredAttributes,
-        } = useSearch(sortedAttributes, {
-            toText: (a) => `${a.name} ${a.description ?? ""} ${a.unit ?? ""}`,
+        const attributeOptions = sortedAttributes.map((a) => {
+            const suffix = a.unit?.trim() ? ` (${a.unit})` : "";
+            return {
+                value: a.puid,
+                label: `${a.name}${suffix}`,
+                searchText: `${a.name} ${a.description ?? ""} ${a.unit ?? ""}`,
+            };
         });
 
         return (
@@ -556,95 +479,15 @@ export default function Machines() {
                 className="w-full"
                 buttonClassName="rounded-lg px-3 py-2"
                 matchTriggerWidth
-            >
-                {({ close }) => (
-                    <div className="p-2">
-                        <div className="flex flex-col gap-1">
-                            <div className="sticky top-0 z-10 rounded-lg p-2">
-                                <div className="flex items-center gap-2">
-                                    <div className="text-slate-400">
-                                        <IconSearch size={16} />
-                                    </div>
-                                    <input
-                                        value={menuSearchText}
-                                        onChange={(e) =>
-                                            setMenuSearchText(e.target.value)
-                                        }
-                                        placeholder="Search attributes"
-                                        className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={effectiveDisabled}
-                                        aria-label="Search attributes"
-                                    />
-                                </div>
-                            </div>
-
-                            {filteredAttributes.map((a) => {
-                                const selected = a.puid === value;
-                                const suffix = a.unit?.trim()
-                                    ? ` (${a.unit})`
-                                    : "";
-                                return (
-                                    <button
-                                        key={a.puid}
-                                        type="button"
-                                        className={`group flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer hover:bg-slate-800/70 ${
-                                            selected
-                                                ? "bg-purple-600/15 text-slate-100"
-                                                : "text-slate-200"
-                                        }`}
-                                        onClick={() => {
-                                            onSelect(a.puid);
-                                            setMenuSearchText("");
-                                            close();
-                                        }}
-                                    >
-                                        <span className="min-w-0 truncate">
-                                            {a.name}
-                                            {suffix}
-                                        </span>
-                                        <span
-                                            className={`shrink-0 ${
-                                                selected
-                                                    ? "text-purple-300"
-                                                    : "text-slate-500 opacity-0 group-hover:opacity-100"
-                                            }`}
-                                            aria-hidden="true"
-                                        >
-                                            <IconCheck size={16} />
-                                        </span>
-                                    </button>
-                                );
-                            })}
-
-                            {sortedAttributes.length > 0 &&
-                                filteredAttributes.length === 0 && (
-                                    <div className="px-3 py-2 text-sm text-slate-400">
-                                        No attributes match your search.
-                                    </div>
-                                )}
-
-                            {sortedAttributes.length === 0 && (
-                                <div className="px-3 py-2 text-sm text-slate-400">
-                                    No attributes yet.
-                                </div>
-                            )}
-
-                            <div className="mt-1 flex items-center justify-end">
-                                <button
-                                    type="button"
-                                    className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                    onClick={() => {
-                                        setMenuSearchText("");
-                                        close();
-                                    }}
-                                >
-                                    Done
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </DropDown>
+                mode="single"
+                options={attributeOptions}
+                value={value}
+                onSelect={onSelect}
+                searchPlaceholder="Search attributes"
+                searchAriaLabel="Search attributes"
+                emptyFilteredText="No attributes match your search."
+                emptyOptionsText="No attributes yet."
+            />
         );
     };
 
@@ -1089,6 +932,8 @@ export default function Machines() {
                                 value={createRecipePuids}
                                 onChange={setCreateRecipePuids}
                                 disabled={createMachineMutation.isPending}
+                                sortedRecipes={sortedRecipes}
+                                recipeNameByPuid={recipeNameByPuid}
                             />
 
                             {uniqueTrimmedPuids(createRecipePuids).length ===
@@ -1420,6 +1265,8 @@ export default function Machines() {
                                 value={editRecipePuids}
                                 onChange={setEditRecipePuids}
                                 disabled={updateMachineMutation.isPending}
+                                sortedRecipes={sortedRecipes}
+                                recipeNameByPuid={recipeNameByPuid}
                             />
                             {uniqueTrimmedPuids(editRecipePuids).length ===
                             0 ? (

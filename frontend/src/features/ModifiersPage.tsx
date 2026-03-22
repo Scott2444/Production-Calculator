@@ -22,7 +22,6 @@ import {
     IconCheck,
     IconEdit,
     IconPlus,
-    IconSearch,
     IconTrash,
     IconGauge,
     IconPackage,
@@ -354,12 +353,13 @@ export default function Modifiers() {
         const effectiveDisabled =
             Boolean(disabled) || sortedAttributes.length === 0;
 
-        const {
-            searchText: menuSearchText,
-            setSearchText: setMenuSearchText,
-            filteredItems: filteredAttributes,
-        } = useSearch(sortedAttributes, {
-            toText: (a) => `${a.name} ${a.description ?? ""} ${a.unit ?? ""}`,
+        const attributeOptions = sortedAttributes.map((a) => {
+            const suffix = a.unit?.trim() ? ` (${a.unit})` : "";
+            return {
+                value: a.puid,
+                label: `${a.name}${suffix}`,
+                searchText: `${a.name} ${a.description ?? ""} ${a.unit ?? ""}`,
+            };
         });
 
         return (
@@ -379,95 +379,15 @@ export default function Modifiers() {
                 className="w-full"
                 buttonClassName="rounded-lg px-3 py-2"
                 matchTriggerWidth
-            >
-                {({ close }) => (
-                    <div className="p-2">
-                        <div className="flex flex-col gap-1">
-                            <div className="sticky top-0 z-10 rounded-lg p-2">
-                                <div className="flex items-center gap-2">
-                                    <div className="text-slate-400">
-                                        <IconSearch size={16} />
-                                    </div>
-                                    <input
-                                        value={menuSearchText}
-                                        onChange={(e) =>
-                                            setMenuSearchText(e.target.value)
-                                        }
-                                        placeholder="Search attributes"
-                                        className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={effectiveDisabled}
-                                        aria-label="Search attributes"
-                                    />
-                                </div>
-                            </div>
-
-                            {filteredAttributes.map((a) => {
-                                const selected = a.puid === value;
-                                const suffix = a.unit?.trim()
-                                    ? ` (${a.unit})`
-                                    : "";
-                                return (
-                                    <button
-                                        key={a.puid}
-                                        type="button"
-                                        className={`group flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer hover:bg-slate-800/70 ${
-                                            selected
-                                                ? "bg-purple-600/15 text-slate-100"
-                                                : "text-slate-200"
-                                        }`}
-                                        onClick={() => {
-                                            onSelect(a.puid);
-                                            setMenuSearchText("");
-                                            close();
-                                        }}
-                                    >
-                                        <span className="min-w-0 truncate">
-                                            {a.name}
-                                            {suffix}
-                                        </span>
-                                        <span
-                                            className={`shrink-0 ${
-                                                selected
-                                                    ? "text-purple-300"
-                                                    : "text-slate-500 opacity-0 group-hover:opacity-100"
-                                            }`}
-                                            aria-hidden="true"
-                                        >
-                                            <IconCheck size={16} />
-                                        </span>
-                                    </button>
-                                );
-                            })}
-
-                            {sortedAttributes.length > 0 &&
-                                filteredAttributes.length === 0 && (
-                                    <div className="px-3 py-2 text-sm text-slate-400">
-                                        No attributes match your search.
-                                    </div>
-                                )}
-
-                            {sortedAttributes.length === 0 && (
-                                <div className="px-3 py-2 text-sm text-slate-400">
-                                    No attributes yet.
-                                </div>
-                            )}
-
-                            <div className="mt-1 flex items-center justify-end">
-                                <button
-                                    type="button"
-                                    className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                    onClick={() => {
-                                        setMenuSearchText("");
-                                        close();
-                                    }}
-                                >
-                                    Done
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </DropDown>
+                mode="single"
+                options={attributeOptions}
+                value={value}
+                onSelect={onSelect}
+                searchPlaceholder="Search attributes"
+                searchAriaLabel="Search attributes"
+                emptyFilteredText="No attributes match your search."
+                emptyOptionsText="No attributes yet."
+            />
         );
     };
 
