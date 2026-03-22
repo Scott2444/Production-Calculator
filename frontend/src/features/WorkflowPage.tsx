@@ -111,6 +111,8 @@ type UiSelection =
     | { type: "product"; puid: string }
     | null;
 
+type GlobalMenu = "targets" | "preferredRecipes" | "externalProducts" | null;
+
 type FlowNodeData = ProcessNodeData | ProductFlowNodeData;
 
 function normalizePath(path: string): string {
@@ -416,11 +418,6 @@ export default function WorkflowPage() {
         return chart.nodes.find((node) => node.puid === selection.puid) ?? null;
     }, [selection, chart.nodes]);
 
-    const selectedProductNode = useMemo(() => {
-        if (!selection || selection.type !== "product") return null;
-        return productNodeByPuid.get(selection.puid) ?? null;
-    }, [selection, productNodeByPuid]);
-
     useEffect(() => {
         if (!selection) return;
         if (
@@ -458,6 +455,23 @@ export default function WorkflowPage() {
         setPreferredRecipePuids(chart.preferredRecipes);
     }, [chart.preferredRecipes]);
 
+    const [externalProductDrafts, setExternalProductDrafts] = useState<
+        Array<{ productPuid: string; externalRate: string }>
+    >([]);
+
+    useEffect(() => {
+        setExternalProductDrafts(
+            chart.productNodes
+                .filter((node) => node.isExternal)
+                .map((node) => ({
+                    productPuid: node.productPuid,
+                    externalRate: `${Math.max(0, node.actualFlowRateIn - node.actualFlowRateOut)}`,
+                })),
+        );
+    }, [chart.productNodes]);
+
+    const [activeGlobalMenu, setActiveGlobalMenu] = useState<GlobalMenu>(null);
+
     const compatibleMachines = useMemo(() => {
         if (!selectedProcessNode) return [];
         return machines.filter((machine) =>
@@ -491,25 +505,6 @@ export default function WorkflowPage() {
             selectedProcessNode.modifiers.map((modifier) => modifier.puid),
         );
     }, [selectedProcessNode, compatibleMachines]);
-
-    const [externalIsEnabled, setExternalIsEnabled] = useState(false);
-    const [externalRate, setExternalRate] = useState("0");
-
-    useEffect(() => {
-        if (!selectedProductNode) {
-            setExternalIsEnabled(false);
-            setExternalRate("0");
-            return;
-        }
-
-        setExternalIsEnabled(selectedProductNode.isExternal);
-        const inferredRate = Math.max(
-            0,
-            selectedProductNode.actualFlowRateIn -
-                selectedProductNode.actualFlowRateOut,
-        );
-        setExternalRate(`${inferredRate}`);
-    }, [selectedProductNode]);
 
     const [interactionError, setInteractionError] = useState<string | null>(
         null,
@@ -635,25 +630,36 @@ export default function WorkflowPage() {
         },
     });
 
-    const saveExternalMutation = useMutation({
+    const saveExternalProductsMutation = useMutation({
         mutationFn: async (payload: {
-            productPuid: string;
-            isExternal: boolean;
-            externalRate: number | null;
+            updates: Array<{
+                productPuid: string;
+                isExternal: boolean;
+                externalRate: number | null;
+            }>;
         }) => {
             if (!projectId || !workflowId)
                 throw new Error("No workflow selected.");
-            const data = await setWorkflowProductExternal(
-                projectId,
-                workflowId,
-                payload.productPuid,
-                protectedApi,
-                {
-                    isExternal: payload.isExternal,
-                    externalRate: payload.externalRate,
-                },
-            );
-            return coerceWorkflowChart(data);
+
+            if (payload.updates.length === 0) {
+                return chart;
+            }
+
+            let next = chart;
+            for (const update of payload.updates) {
+                const data = await setWorkflowProductExternal(
+                    projectId,
+                    workflowId,
+                    update.productPuid,
+                    protectedApi,
+                    {
+                        isExternal: update.isExternal,
+                        externalRate: update.externalRate,
+                    },
+                );
+                next = coerceWorkflowChart(data);
+            }
+            return next;
         },
         onSuccess: (next) => {
             setInteractionError(null);
@@ -845,7 +851,7 @@ export default function WorkflowPage() {
         saveTargetsMutation.isPending ||
         saveNodeMutation.isPending ||
         savePreferredRecipesMutation.isPending ||
-        saveExternalMutation.isPending;
+        saveExternalProductsMutation.isPending;
 
     const sortedProducts = useMemo(
         () => [...products].sort((a, b) => a.name.localeCompare(b.name)),
@@ -862,7 +868,7 @@ export default function WorkflowPage() {
         [modifiers],
     );
 
-    const TargetProductDropDown = ({
+    const ProductDropDown = ({
         value,
         onSelect,
         disabled,
@@ -990,83 +996,70 @@ export default function WorkflowPage() {
         });
     };
 
-    const onSaveExternal = () => {
-        if (!selectedProductNode) return;
-        if (!externalIsEnabled) {
-            saveExternalMutation.mutate({
-                productPuid: selectedProductNode.productPuid,
+    const onSaveExternalProducts = () => {
+        const desired = new Map<string, number>();
+
+        for (const draft of externalProductDrafts) {
+            const productPuid = draft.productPuid.trim();
+            const externalRate = parseNonNegative(draft.externalRate);
+
+            if (!productPuid) {
+                setInteractionError(
+                    "Each externally supplied product row must select a product.",
+                );
+                return;
+            }
+            if (desired.has(productPuid)) {
+                setInteractionError(
+                    "Externally supplied products cannot contain duplicates.",
+                );
+                return;
+            }
+            if (externalRate === null) {
+                setInteractionError(
+                    "External rates must be non-negative numbers.",
+                );
+                return;
+            }
+
+            desired.set(productPuid, externalRate);
+        }
+
+        const currentlyExternal = new Set(
+            chart.productNodes
+                .filter((node) => node.isExternal)
+                .map((node) => node.productPuid),
+        );
+
+        const updates: Array<{
+            productPuid: string;
+            isExternal: boolean;
+            externalRate: number | null;
+        }> = [];
+
+        for (const [productPuid, externalRate] of desired.entries()) {
+            updates.push({
+                productPuid,
+                isExternal: true,
+                externalRate,
+            });
+            currentlyExternal.delete(productPuid);
+        }
+
+        for (const productPuid of currentlyExternal) {
+            updates.push({
+                productPuid,
                 isExternal: false,
                 externalRate: null,
             });
-            return;
         }
 
-        const rate = parseNonNegative(externalRate);
-        if (rate === null) {
-            setInteractionError("External rate must be a non-negative number.");
-            return;
-        }
-
-        saveExternalMutation.mutate({
-            productPuid: selectedProductNode.productPuid,
-            isExternal: true,
-            externalRate: rate,
-        });
+        saveExternalProductsMutation.mutate({ updates });
     };
 
     return (
-        <ProjectPageLayout>
-            <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                    <div className="min-w-0">
-                        <h1 className="truncate text-2xl font-semibold text-slate-100">
-                            Workflow Chart
-                        </h1>
-                        <div className="mt-1 text-sm text-slate-400">
-                            {selectedWorkflow?.name?.trim() ||
-                                selectedWorkflow?.puid ||
-                                workflowRouteSegment}
-                            {routeProjectName ? (
-                                <span> • Project: {routeProjectName}</span>
-                            ) : null}
-                            {routeUsername ? (
-                                <span> • Owner: {routeUsername}</span>
-                            ) : null}
-                        </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                        <button
-                            type="button"
-                            className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/70 px-4 py-2 text-sm font-medium text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 disabled:cursor-not-allowed disabled:opacity-50"
-                            onClick={() => {
-                                setInteractionError(null);
-                                void chartQuery.refetch();
-                            }}
-                            disabled={
-                                !workflowId ||
-                                chartQuery.isFetching ||
-                                anyMutationPending
-                            }
-                        >
-                            <IconRefresh size={16} />
-                            Reload
-                        </button>
-                        <button
-                            type="button"
-                            className="inline-flex items-center gap-2 rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 disabled:cursor-not-allowed disabled:opacity-50"
-                            onClick={() => {
-                                setInteractionError(null);
-                                refreshMutation.mutate();
-                            }}
-                            disabled={!workflowId || anyMutationPending}
-                        >
-                            <IconArrowsShuffle size={16} />
-                            Rebuild Chart
-                        </button>
-                    </div>
-                </div>
-
+        <ProjectPageLayout padding={false}>
+            <div className="flex h-full min-h-0 flex-col gap-3">
                 <ProjectStatusGate>
                     {!isOwner ? (
                         <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-8 text-sm text-slate-300">
@@ -1105,395 +1098,730 @@ export default function WorkflowPage() {
                             {!chartQuery.isLoading &&
                                 !chartQuery.error &&
                                 workflowId && (
-                                    <div className="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1fr)_360px]">
-                                        <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-2">
-                                            <div className="h-[72dvh] min-h-130 w-full overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
-                                                <ReactFlow
-                                                    nodes={flowData.nodes}
-                                                    edges={flowData.edges}
-                                                    nodeTypes={nodeTypes}
-                                                    fitView
-                                                    fitViewOptions={{
-                                                        padding: 0.2,
-                                                        maxZoom: 1,
-                                                    }}
-                                                    minZoom={0.2}
-                                                    maxZoom={1.5}
-                                                    onNodeClick={(_, node) => {
-                                                        if (
-                                                            node.id.startsWith(
-                                                                "process:",
-                                                            )
-                                                        ) {
-                                                            setSelection({
-                                                                type: "process",
-                                                                puid: node.id.replace(
-                                                                    "process:",
-                                                                    "",
-                                                                ),
-                                                            });
-                                                        } else if (
-                                                            node.id.startsWith(
-                                                                "product:",
-                                                            )
-                                                        ) {
-                                                            setSelection({
-                                                                type: "product",
-                                                                puid: node.id.replace(
-                                                                    "product:",
-                                                                    "",
-                                                                ),
-                                                            });
-                                                        }
-                                                    }}
-                                                    onPaneClick={() =>
-                                                        setSelection(null)
-                                                    }
-                                                    nodesDraggable={false}
-                                                    nodesConnectable={false}
-                                                    elementsSelectable
-                                                    proOptions={{
-                                                        hideAttribution: true,
-                                                    }}
-                                                >
-                                                    <Background
-                                                        gap={24}
-                                                        size={1}
-                                                        color="#334155"
-                                                    />
-                                                    <MiniMap
-                                                        pannable
-                                                        zoomable
-                                                        className="bg-slate-900!"
-                                                        nodeStrokeWidth={3}
-                                                    />
-                                                    <Controls className="bg-slate-900!" />
-                                                </ReactFlow>
-                                            </div>
-                                        </div>
+                                    <div className="relative h-full min-h-155 w-full overflow-hidden bg-slate-950">
+                                        <ReactFlow
+                                            nodes={flowData.nodes}
+                                            edges={flowData.edges}
+                                            nodeTypes={nodeTypes}
+                                            fitView
+                                            fitViewOptions={{
+                                                padding: 0.2,
+                                                maxZoom: 1,
+                                            }}
+                                            minZoom={0.2}
+                                            maxZoom={1.5}
+                                            onNodeClick={(_, node) => {
+                                                if (
+                                                    node.id.startsWith(
+                                                        "process:",
+                                                    )
+                                                ) {
+                                                    setSelection({
+                                                        type: "process",
+                                                        puid: node.id.replace(
+                                                            "process:",
+                                                            "",
+                                                        ),
+                                                    });
+                                                } else if (
+                                                    node.id.startsWith(
+                                                        "product:",
+                                                    )
+                                                ) {
+                                                    setSelection({
+                                                        type: "product",
+                                                        puid: node.id.replace(
+                                                            "product:",
+                                                            "",
+                                                        ),
+                                                    });
+                                                }
+                                            }}
+                                            onPaneClick={() =>
+                                                setSelection(null)
+                                            }
+                                            nodesDraggable={false}
+                                            nodesConnectable={false}
+                                            elementsSelectable
+                                            proOptions={{
+                                                hideAttribution: true,
+                                            }}
+                                        >
+                                            <Background
+                                                gap={24}
+                                                size={1}
+                                                color="#334155"
+                                            />
+                                            <MiniMap
+                                                pannable
+                                                zoomable
+                                                className="bg-slate-900!"
+                                                nodeStrokeWidth={3}
+                                            />
+                                            <Controls className="bg-slate-900!" />
+                                        </ReactFlow>
 
-                                        <div className="flex flex-col gap-4">
-                                            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
-                                                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-                                                    <IconTargetArrow
-                                                        size={16}
-                                                    />
-                                                    Targets
+                                        <div className="pointer-events-none absolute inset-0 z-20">
+                                            <div className="pointer-events-auto flex items-start justify-between gap-4 p-4">
+                                                <div className="min-w-0 rounded-xl border border-slate-700/70 bg-slate-900/85 px-4 py-3 backdrop-blur">
+                                                    <h1 className="truncate text-xl font-semibold text-slate-100">
+                                                        {selectedWorkflow?.name?.trim() ||
+                                                            selectedWorkflow?.puid ||
+                                                            workflowRouteSegment}
+                                                    </h1>
+                                                    <div className="mt-1 truncate text-xs text-slate-300">
+                                                        {routeProjectName ? (
+                                                            <span>
+                                                                Project:{" "}
+                                                                {
+                                                                    routeProjectName
+                                                                }
+                                                            </span>
+                                                        ) : null}
+                                                        <span>
+                                                            {" "}
+                                                            • Workflow Chart
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <div className="mt-3 flex flex-col gap-2">
-                                                    {targetDrafts.map(
-                                                        (draft, index) => (
-                                                            <div
-                                                                key={`${draft.productPuid}-${index}`}
-                                                                className="grid grid-cols-[1fr_110px_auto] gap-2"
-                                                            >
-                                                                <TargetProductDropDown
-                                                                    value={
-                                                                        draft.productPuid
+
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/85 px-4 py-2 text-sm font-medium text-slate-200 backdrop-blur transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/90 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        onClick={() => {
+                                                            setInteractionError(
+                                                                null,
+                                                            );
+                                                            void chartQuery.refetch();
+                                                        }}
+                                                        disabled={
+                                                            !workflowId ||
+                                                            chartQuery.isFetching ||
+                                                            anyMutationPending
+                                                        }
+                                                    >
+                                                        <IconRefresh
+                                                            size={16}
+                                                        />
+                                                        Reload
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="inline-flex items-center gap-2 rounded-lg bg-purple-600/40 px-4 py-2 text-sm font-medium text-purple-100 backdrop-blur transition-colors cursor-pointer hover:bg-purple-600/55 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        onClick={() => {
+                                                            setInteractionError(
+                                                                null,
+                                                            );
+                                                            refreshMutation.mutate();
+                                                        }}
+                                                        disabled={
+                                                            !workflowId ||
+                                                            anyMutationPending
+                                                        }
+                                                    >
+                                                        <IconArrowsShuffle
+                                                            size={16}
+                                                        />
+                                                        Rebuild Chart
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="pointer-events-auto absolute left-4 top-24 flex max-h-[calc(100%-7rem)] items-start gap-3">
+                                                <div className="flex flex-col gap-2">
+                                                    <button
+                                                        type="button"
+                                                        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
+                                                            activeGlobalMenu ===
+                                                            "targets"
+                                                                ? "border-purple-500/70 bg-purple-700/35 text-purple-100"
+                                                                : "border-slate-700 bg-slate-900/85 text-slate-200 hover:border-purple-500/60 hover:bg-slate-800/90"
+                                                        }`}
+                                                        onClick={() =>
+                                                            setActiveGlobalMenu(
+                                                                (prev) =>
+                                                                    prev ===
+                                                                    "targets"
+                                                                        ? null
+                                                                        : "targets",
+                                                            )
+                                                        }
+                                                    >
+                                                        <IconTargetArrow
+                                                            size={14}
+                                                        />
+                                                        Targets
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
+                                                            activeGlobalMenu ===
+                                                            "preferredRecipes"
+                                                                ? "border-purple-500/70 bg-purple-700/35 text-purple-100"
+                                                                : "border-slate-700 bg-slate-900/85 text-slate-200 hover:border-purple-500/60 hover:bg-slate-800/90"
+                                                        }`}
+                                                        onClick={() =>
+                                                            setActiveGlobalMenu(
+                                                                (prev) =>
+                                                                    prev ===
+                                                                    "preferredRecipes"
+                                                                        ? null
+                                                                        : "preferredRecipes",
+                                                            )
+                                                        }
+                                                    >
+                                                        <IconChecklist
+                                                            size={14}
+                                                        />
+                                                        Preferred Recipes
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
+                                                            activeGlobalMenu ===
+                                                            "externalProducts"
+                                                                ? "border-purple-500/70 bg-purple-700/35 text-purple-100"
+                                                                : "border-slate-700 bg-slate-900/85 text-slate-200 hover:border-purple-500/60 hover:bg-slate-800/90"
+                                                        }`}
+                                                        onClick={() =>
+                                                            setActiveGlobalMenu(
+                                                                (prev) =>
+                                                                    prev ===
+                                                                    "externalProducts"
+                                                                        ? null
+                                                                        : "externalProducts",
+                                                            )
+                                                        }
+                                                    >
+                                                        <IconDatabaseImport
+                                                            size={14}
+                                                        />
+                                                        External Products
+                                                    </button>
+                                                </div>
+
+                                                {activeGlobalMenu && (
+                                                    <div className="max-h-[calc(100%-1rem)] w-95 overflow-y-auto rounded-xl border border-slate-700 bg-slate-900/92 p-4 shadow-xl backdrop-blur">
+                                                        {activeGlobalMenu ===
+                                                            "targets" && (
+                                                            <div className="flex flex-col gap-3">
+                                                                <div className="text-sm font-semibold text-slate-100">
+                                                                    Targets
+                                                                </div>
+                                                                {targetDrafts.map(
+                                                                    (
+                                                                        draft,
+                                                                        index,
+                                                                    ) => (
+                                                                        <div
+                                                                            key={`${draft.productPuid}-${index}`}
+                                                                            className="grid grid-cols-[1fr_110px_auto] gap-2"
+                                                                        >
+                                                                            <ProductDropDown
+                                                                                value={
+                                                                                    draft.productPuid
+                                                                                }
+                                                                                onSelect={(
+                                                                                    next,
+                                                                                ) => {
+                                                                                    setTargetDrafts(
+                                                                                        (
+                                                                                            prev,
+                                                                                        ) =>
+                                                                                            prev.map(
+                                                                                                (
+                                                                                                    item,
+                                                                                                    itemIndex,
+                                                                                                ) =>
+                                                                                                    itemIndex ===
+                                                                                                    index
+                                                                                                        ? {
+                                                                                                              ...item,
+                                                                                                              productPuid:
+                                                                                                                  next,
+                                                                                                          }
+                                                                                                        : item,
+                                                                                            ),
+                                                                                    );
+                                                                                }}
+                                                                                disabled={
+                                                                                    anyMutationPending
+                                                                                }
+                                                                            />
+                                                                            <input
+                                                                                type="number"
+                                                                                min="0"
+                                                                                step="any"
+                                                                                className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-xs text-slate-100 focus:border-purple-500/60 focus:outline-none"
+                                                                                value={
+                                                                                    draft.targetRate
+                                                                                }
+                                                                                onChange={(
+                                                                                    event,
+                                                                                ) => {
+                                                                                    const value =
+                                                                                        event
+                                                                                            .target
+                                                                                            .value;
+                                                                                    setTargetDrafts(
+                                                                                        (
+                                                                                            prev,
+                                                                                        ) =>
+                                                                                            prev.map(
+                                                                                                (
+                                                                                                    item,
+                                                                                                    itemIndex,
+                                                                                                ) =>
+                                                                                                    itemIndex ===
+                                                                                                    index
+                                                                                                        ? {
+                                                                                                              ...item,
+                                                                                                              targetRate:
+                                                                                                                  value,
+                                                                                                          }
+                                                                                                        : item,
+                                                                                            ),
+                                                                                    );
+                                                                                }}
+                                                                                disabled={
+                                                                                    anyMutationPending
+                                                                                }
+                                                                            />
+                                                                            <button
+                                                                                type="button"
+                                                                                className="rounded-lg border border-slate-700 px-2 text-xs text-slate-300 transition-colors cursor-pointer hover:border-red-500/50 hover:text-red-200"
+                                                                                onClick={() => {
+                                                                                    setTargetDrafts(
+                                                                                        (
+                                                                                            prev,
+                                                                                        ) =>
+                                                                                            prev.filter(
+                                                                                                (
+                                                                                                    _,
+                                                                                                    i,
+                                                                                                ) =>
+                                                                                                    i !==
+                                                                                                    index,
+                                                                                            ),
+                                                                                    );
+                                                                                }}
+                                                                                disabled={
+                                                                                    anyMutationPending
+                                                                                }
+                                                                            >
+                                                                                <IconTrash
+                                                                                    size={
+                                                                                        14
+                                                                                    }
+                                                                                />
+                                                                            </button>
+                                                                        </div>
+                                                                    ),
+                                                                )}
+
+                                                                <div className="flex gap-2 pt-1">
+                                                                    <button
+                                                                        type="button"
+                                                                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-xs text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60"
+                                                                        onClick={() => {
+                                                                            const used =
+                                                                                new Set(
+                                                                                    targetDrafts.map(
+                                                                                        (
+                                                                                            item,
+                                                                                        ) =>
+                                                                                            item.productPuid,
+                                                                                    ),
+                                                                                );
+                                                                            const next =
+                                                                                sortedProducts.find(
+                                                                                    (
+                                                                                        product,
+                                                                                    ) =>
+                                                                                        !used.has(
+                                                                                            product.puid,
+                                                                                        ),
+                                                                                ) ??
+                                                                                sortedProducts[0];
+
+                                                                            setTargetDrafts(
+                                                                                (
+                                                                                    prev,
+                                                                                ) => [
+                                                                                    ...prev,
+                                                                                    {
+                                                                                        productPuid:
+                                                                                            next?.puid ??
+                                                                                            "",
+                                                                                        targetRate:
+                                                                                            "0",
+                                                                                    },
+                                                                                ],
+                                                                            );
+                                                                        }}
+                                                                        disabled={
+                                                                            anyMutationPending ||
+                                                                            sortedProducts.length ===
+                                                                                0
+                                                                        }
+                                                                    >
+                                                                        Add
+                                                                        Target
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="rounded-lg bg-purple-600/30 px-3 py-2 text-xs font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                        onClick={
+                                                                            onSaveTargets
+                                                                        }
+                                                                        disabled={
+                                                                            anyMutationPending
+                                                                        }
+                                                                    >
+                                                                        Save
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {activeGlobalMenu ===
+                                                            "preferredRecipes" && (
+                                                            <div className="flex flex-col gap-3">
+                                                                <div className="text-sm font-semibold text-slate-100">
+                                                                    Preferred
+                                                                    Recipes
+                                                                </div>
+                                                                <DropDown
+                                                                    label={
+                                                                        <div className="truncate text-xs text-slate-200">
+                                                                            {preferredRecipePuids.length ===
+                                                                            0
+                                                                                ? "Select preferred recipes"
+                                                                                : preferredRecipePuids.length ===
+                                                                                    1
+                                                                                  ? (recipeNameByPuid.get(
+                                                                                        preferredRecipePuids[0],
+                                                                                    ) ??
+                                                                                    preferredRecipePuids[0])
+                                                                                  : `${preferredRecipePuids.length} recipes selected`}
+                                                                        </div>
                                                                     }
-                                                                    onSelect={(
+                                                                    mode="multi"
+                                                                    options={sortedRecipes.map(
+                                                                        (
+                                                                            r,
+                                                                        ) => ({
+                                                                            value: r.puid,
+                                                                            label: r.name,
+                                                                            searchText:
+                                                                                r.name,
+                                                                        }),
+                                                                    )}
+                                                                    values={
+                                                                        preferredRecipePuids
+                                                                    }
+                                                                    onChangeValues={(
                                                                         next,
-                                                                    ) => {
-                                                                        setTargetDrafts(
-                                                                            (
-                                                                                prev,
-                                                                            ) =>
-                                                                                prev.map(
-                                                                                    (
-                                                                                        item,
-                                                                                        itemIndex,
-                                                                                    ) =>
-                                                                                        itemIndex ===
-                                                                                        index
-                                                                                            ? {
-                                                                                                  ...item,
-                                                                                                  productPuid:
-                                                                                                      next,
-                                                                                              }
-                                                                                            : item,
-                                                                                ),
-                                                                        );
-                                                                    }}
+                                                                    ) =>
+                                                                        setPreferredRecipePuids(
+                                                                            uniqueTrimmedPuids(
+                                                                                next,
+                                                                            ),
+                                                                        )
+                                                                    }
                                                                     disabled={
                                                                         anyMutationPending
                                                                     }
+                                                                    matchTriggerWidth
+                                                                    className="w-full"
+                                                                    buttonClassName="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-left"
+                                                                    menuClassName="min-w-[250px]"
                                                                 />
-                                                                <input
-                                                                    type="number"
-                                                                    min="0"
-                                                                    step="any"
-                                                                    className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-xs text-slate-100 focus:border-purple-500/60 focus:outline-none"
-                                                                    value={
-                                                                        draft.targetRate
-                                                                    }
-                                                                    onChange={(
-                                                                        event,
-                                                                    ) => {
-                                                                        const value =
-                                                                            event
-                                                                                .target
-                                                                                .value;
-                                                                        setTargetDrafts(
-                                                                            (
-                                                                                prev,
-                                                                            ) =>
-                                                                                prev.map(
-                                                                                    (
-                                                                                        item,
-                                                                                        itemIndex,
-                                                                                    ) =>
-                                                                                        itemIndex ===
-                                                                                        index
-                                                                                            ? {
-                                                                                                  ...item,
-                                                                                                  targetRate:
-                                                                                                      value,
-                                                                                              }
-                                                                                            : item,
+
+                                                                {preferredRecipePuids.length >
+                                                                    0 && (
+                                                                    <div className="flex max-h-52 flex-col gap-2 overflow-y-auto pr-1">
+                                                                        {preferredRecipePuids
+                                                                            .slice()
+                                                                            .sort(
+                                                                                (
+                                                                                    a,
+                                                                                    b,
+                                                                                ) => {
+                                                                                    const an =
+                                                                                        recipeNameByPuid.get(
+                                                                                            a,
+                                                                                        ) ??
+                                                                                        a;
+                                                                                    const bn =
+                                                                                        recipeNameByPuid.get(
+                                                                                            b,
+                                                                                        ) ??
+                                                                                        b;
+                                                                                    return an.localeCompare(
+                                                                                        bn,
+                                                                                        undefined,
+                                                                                        {
+                                                                                            sensitivity:
+                                                                                                "base",
+                                                                                        },
+                                                                                    );
+                                                                                },
+                                                                            )
+                                                                            .map(
+                                                                                (
+                                                                                    puid,
+                                                                                ) => (
+                                                                                    <div
+                                                                                        key={
+                                                                                            puid
+                                                                                        }
+                                                                                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-1.5"
+                                                                                    >
+                                                                                        <div className="min-w-0 truncate text-[11px] text-slate-300">
+                                                                                            {recipeNameByPuid.get(
+                                                                                                puid,
+                                                                                            ) ??
+                                                                                                puid}
+                                                                                        </div>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            className="shrink-0 rounded-md border border-slate-700 bg-slate-900/60 p-1 text-slate-400 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100"
+                                                                                            onClick={() =>
+                                                                                                setPreferredRecipePuids(
+                                                                                                    (
+                                                                                                        prev,
+                                                                                                    ) =>
+                                                                                                        prev.filter(
+                                                                                                            (
+                                                                                                                p,
+                                                                                                            ) =>
+                                                                                                                p !==
+                                                                                                                puid,
+                                                                                                        ),
+                                                                                                )
+                                                                                            }
+                                                                                            disabled={
+                                                                                                anyMutationPending
+                                                                                            }
+                                                                                        >
+                                                                                            <IconTrash
+                                                                                                size={
+                                                                                                    12
+                                                                                                }
+                                                                                            />
+                                                                                        </button>
+                                                                                    </div>
                                                                                 ),
-                                                                        );
-                                                                    }}
-                                                                    disabled={
-                                                                        anyMutationPending
-                                                                    }
-                                                                />
+                                                                            )}
+                                                                    </div>
+                                                                )}
+
                                                                 <button
                                                                     type="button"
-                                                                    className="rounded-lg border border-slate-700 px-2 text-xs text-slate-300 transition-colors cursor-pointer hover:border-red-500/50 hover:text-red-200"
-                                                                    onClick={() => {
-                                                                        setTargetDrafts(
-                                                                            (
-                                                                                prev,
-                                                                            ) =>
-                                                                                prev.filter(
-                                                                                    (
-                                                                                        _,
-                                                                                        i,
-                                                                                    ) =>
-                                                                                        i !==
-                                                                                        index,
-                                                                                ),
-                                                                        );
-                                                                    }}
+                                                                    className="rounded-lg bg-purple-600/30 px-3 py-2 text-xs font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                    onClick={
+                                                                        onSavePreferredRecipes
+                                                                    }
                                                                     disabled={
                                                                         anyMutationPending
                                                                     }
                                                                 >
-                                                                    <IconTrash
-                                                                        size={
-                                                                            14
-                                                                        }
-                                                                    />
+                                                                    Save
                                                                 </button>
                                                             </div>
-                                                        ),
-                                                    )}
-
-                                                    <div className="flex gap-2 pt-1">
-                                                        <button
-                                                            type="button"
-                                                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-xs text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60"
-                                                            onClick={() => {
-                                                                const used =
-                                                                    new Set(
-                                                                        targetDrafts.map(
-                                                                            (
-                                                                                item,
-                                                                            ) =>
-                                                                                item.productPuid,
-                                                                        ),
-                                                                    );
-                                                                const next =
-                                                                    sortedProducts.find(
-                                                                        (
-                                                                            product,
-                                                                        ) =>
-                                                                            !used.has(
-                                                                                product.puid,
-                                                                            ),
-                                                                    ) ??
-                                                                    sortedProducts[0];
-
-                                                                setTargetDrafts(
-                                                                    (prev) => [
-                                                                        ...prev,
-                                                                        {
-                                                                            productPuid:
-                                                                                next?.puid ??
-                                                                                "",
-                                                                            targetRate:
-                                                                                "0",
-                                                                        },
-                                                                    ],
-                                                                );
-                                                            }}
-                                                            disabled={
-                                                                anyMutationPending ||
-                                                                sortedProducts.length ===
-                                                                    0
-                                                            }
-                                                        >
-                                                            Add Target
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            className="rounded-lg bg-purple-600/30 px-3 py-2 text-xs font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 disabled:cursor-not-allowed disabled:opacity-50"
-                                                            onClick={
-                                                                onSaveTargets
-                                                            }
-                                                            disabled={
-                                                                anyMutationPending
-                                                            }
-                                                        >
-                                                            Save Targets
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
-                                                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-                                                    <IconChecklist size={16} />
-                                                    Preferred Recipes
-                                                </div>
-                                                <div className="mt-3 flex flex-col gap-3">
-                                                    <DropDown
-                                                        label={
-                                                            <div className="truncate text-xs text-slate-200">
-                                                                {preferredRecipePuids.length ===
-                                                                0
-                                                                    ? "Select preferred recipes"
-                                                                    : preferredRecipePuids.length ===
-                                                                        1
-                                                                      ? recipeNameByPuid.get(
-                                                                            preferredRecipePuids[0],
-                                                                        ) ??
-                                                                        preferredRecipePuids[0]
-                                                                      : `${preferredRecipePuids.length} recipes selected`}
-                                                            </div>
-                                                        }
-                                                        mode="multi"
-                                                        options={sortedRecipes.map(
-                                                            (r) => ({
-                                                                value: r.puid,
-                                                                label: r.name,
-                                                                searchText:
-                                                                    r.name,
-                                                            }),
                                                         )}
-                                                        values={
-                                                            preferredRecipePuids
-                                                        }
-                                                        onChangeValues={(
-                                                            next,
-                                                        ) =>
-                                                            setPreferredRecipePuids(
-                                                                uniqueTrimmedPuids(
-                                                                    next,
-                                                                ),
-                                                            )
-                                                        }
-                                                        disabled={
-                                                            anyMutationPending
-                                                        }
-                                                        matchTriggerWidth
-                                                        className="w-full"
-                                                        buttonClassName="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-left"
-                                                        menuClassName="min-w-[250px]"
-                                                    />
 
-                                                    {preferredRecipePuids.length >
-                                                        0 && (
-                                                        <div className="flex flex-col gap-2">
-                                                            {preferredRecipePuids
-                                                                .slice()
-                                                                .sort((a, b) => {
-                                                                    const an =
-                                                                        recipeNameByPuid.get(
-                                                                            a,
-                                                                        ) ?? a;
-                                                                    const bn =
-                                                                        recipeNameByPuid.get(
-                                                                            b,
-                                                                        ) ?? b;
-                                                                    return an.localeCompare(
-                                                                        bn,
-                                                                        undefined,
-                                                                        {
-                                                                            sensitivity:
-                                                                                "base",
-                                                                        },
-                                                                    );
-                                                                })
-                                                                .map((puid) => (
-                                                                    <div
-                                                                        key={
-                                                                            puid
-                                                                        }
-                                                                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-1.5"
-                                                                    >
-                                                                        <div className="min-w-0 truncate text-[11px] text-slate-300">
-                                                                            {recipeNameByPuid.get(
-                                                                                puid,
-                                                                            ) ??
-                                                                                puid}
-                                                                        </div>
-                                                                        <button
-                                                                            type="button"
-                                                                            className="shrink-0 rounded-md border border-slate-700 bg-slate-900/60 p-1 text-slate-400 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100"
-                                                                            onClick={() =>
-                                                                                setPreferredRecipePuids(
-                                                                                    (
-                                                                                        prev,
-                                                                                    ) =>
-                                                                                        prev.filter(
-                                                                                            (
-                                                                                                p,
-                                                                                            ) =>
-                                                                                                p !==
-                                                                                                puid,
-                                                                                        ),
-                                                                                )
-                                                                            }
-                                                                            disabled={
-                                                                                anyMutationPending
-                                                                            }
+                                                        {activeGlobalMenu ===
+                                                            "externalProducts" && (
+                                                            <div className="flex flex-col gap-3">
+                                                                <div className="text-sm font-semibold text-slate-100">
+                                                                    Externally
+                                                                    Supplied
+                                                                    Products
+                                                                </div>
+                                                                {externalProductDrafts.map(
+                                                                    (
+                                                                        draft,
+                                                                        index,
+                                                                    ) => (
+                                                                        <div
+                                                                            key={`${draft.productPuid}-${index}`}
+                                                                            className="grid grid-cols-[1fr_110px_auto] gap-2"
                                                                         >
-                                                                            <IconTrash
-                                                                                size={
-                                                                                    12
+                                                                            <ProductDropDown
+                                                                                value={
+                                                                                    draft.productPuid
+                                                                                }
+                                                                                onSelect={(
+                                                                                    next,
+                                                                                ) => {
+                                                                                    setExternalProductDrafts(
+                                                                                        (
+                                                                                            prev,
+                                                                                        ) =>
+                                                                                            prev.map(
+                                                                                                (
+                                                                                                    item,
+                                                                                                    itemIndex,
+                                                                                                ) =>
+                                                                                                    itemIndex ===
+                                                                                                    index
+                                                                                                        ? {
+                                                                                                              ...item,
+                                                                                                              productPuid:
+                                                                                                                  next,
+                                                                                                          }
+                                                                                                        : item,
+                                                                                            ),
+                                                                                    );
+                                                                                }}
+                                                                                disabled={
+                                                                                    anyMutationPending
                                                                                 }
                                                                             />
-                                                                        </button>
-                                                                    </div>
-                                                                ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    className="mt-3 w-full rounded-lg bg-purple-600/30 px-3 py-2 text-xs font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 disabled:cursor-not-allowed disabled:opacity-50"
-                                                    onClick={
-                                                        onSavePreferredRecipes
-                                                    }
-                                                    disabled={
-                                                        anyMutationPending
-                                                    }
-                                                >
-                                                    Save Preferred Recipes
-                                                </button>
-                                            </div>
+                                                                            <input
+                                                                                type="number"
+                                                                                min="0"
+                                                                                step="any"
+                                                                                className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-xs text-slate-100 focus:border-purple-500/60 focus:outline-none"
+                                                                                value={
+                                                                                    draft.externalRate
+                                                                                }
+                                                                                onChange={(
+                                                                                    event,
+                                                                                ) => {
+                                                                                    const value =
+                                                                                        event
+                                                                                            .target
+                                                                                            .value;
+                                                                                    setExternalProductDrafts(
+                                                                                        (
+                                                                                            prev,
+                                                                                        ) =>
+                                                                                            prev.map(
+                                                                                                (
+                                                                                                    item,
+                                                                                                    itemIndex,
+                                                                                                ) =>
+                                                                                                    itemIndex ===
+                                                                                                    index
+                                                                                                        ? {
+                                                                                                              ...item,
+                                                                                                              externalRate:
+                                                                                                                  value,
+                                                                                                          }
+                                                                                                        : item,
+                                                                                            ),
+                                                                                    );
+                                                                                }}
+                                                                                disabled={
+                                                                                    anyMutationPending
+                                                                                }
+                                                                            />
+                                                                            <button
+                                                                                type="button"
+                                                                                className="rounded-lg border border-slate-700 px-2 text-xs text-slate-300 transition-colors cursor-pointer hover:border-red-500/50 hover:text-red-200"
+                                                                                onClick={() => {
+                                                                                    setExternalProductDrafts(
+                                                                                        (
+                                                                                            prev,
+                                                                                        ) =>
+                                                                                            prev.filter(
+                                                                                                (
+                                                                                                    _,
+                                                                                                    i,
+                                                                                                ) =>
+                                                                                                    i !==
+                                                                                                    index,
+                                                                                            ),
+                                                                                    );
+                                                                                }}
+                                                                                disabled={
+                                                                                    anyMutationPending
+                                                                                }
+                                                                            >
+                                                                                <IconTrash
+                                                                                    size={
+                                                                                        14
+                                                                                    }
+                                                                                />
+                                                                            </button>
+                                                                        </div>
+                                                                    ),
+                                                                )}
 
-                                            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
-                                                {!selection && (
-                                                    <div className="text-xs text-slate-400">
-                                                        Select a process or
-                                                        product node in the
-                                                        chart to edit it.
+                                                                <div className="flex gap-2 pt-1">
+                                                                    <button
+                                                                        type="button"
+                                                                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-xs text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60"
+                                                                        onClick={() => {
+                                                                            const used =
+                                                                                new Set(
+                                                                                    externalProductDrafts.map(
+                                                                                        (
+                                                                                            item,
+                                                                                        ) =>
+                                                                                            item.productPuid,
+                                                                                    ),
+                                                                                );
+                                                                            const next =
+                                                                                sortedProducts.find(
+                                                                                    (
+                                                                                        product,
+                                                                                    ) =>
+                                                                                        !used.has(
+                                                                                            product.puid,
+                                                                                        ),
+                                                                                ) ??
+                                                                                sortedProducts[0];
+
+                                                                            setExternalProductDrafts(
+                                                                                (
+                                                                                    prev,
+                                                                                ) => [
+                                                                                    ...prev,
+                                                                                    {
+                                                                                        productPuid:
+                                                                                            next?.puid ??
+                                                                                            "",
+                                                                                        externalRate:
+                                                                                            "0",
+                                                                                    },
+                                                                                ],
+                                                                            );
+                                                                        }}
+                                                                        disabled={
+                                                                            anyMutationPending ||
+                                                                            sortedProducts.length ===
+                                                                                0
+                                                                        }
+                                                                    >
+                                                                        Add
+                                                                        Product
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="rounded-lg bg-purple-600/30 px-3 py-2 text-xs font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                        onClick={
+                                                                            onSaveExternalProducts
+                                                                        }
+                                                                        disabled={
+                                                                            anyMutationPending
+                                                                        }
+                                                                    >
+                                                                        Save
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
+                                            </div>
 
-                                                {selectedProcessNode && (
+                                            {selectedProcessNode && (
+                                                <div className="pointer-events-auto absolute right-4 top-24 max-h-[calc(100%-7rem)] w-97.5 overflow-y-auto rounded-xl border border-slate-700 bg-slate-900/92 p-4 shadow-xl backdrop-blur">
                                                     <div className="flex flex-col gap-3">
                                                         <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
                                                             <IconSettings
@@ -1514,10 +1842,10 @@ export default function WorkflowPage() {
                                                                 label={
                                                                     <div className="truncate text-xs text-slate-200">
                                                                         {nodeMachinePuid
-                                                                            ? machineNameByPuid.get(
+                                                                            ? (machineNameByPuid.get(
                                                                                   nodeMachinePuid,
                                                                               ) ??
-                                                                              nodeMachinePuid
+                                                                              nodeMachinePuid)
                                                                             : "Select machine"}
                                                                     </div>
                                                                 }
@@ -1581,10 +1909,10 @@ export default function WorkflowPage() {
                                                                                 ? "Select modifiers"
                                                                                 : nodeModifierPuids.length ===
                                                                                     1
-                                                                                  ? modifierNameByPuid.get(
+                                                                                  ? (modifierNameByPuid.get(
                                                                                         nodeModifierPuids[0],
                                                                                     ) ??
-                                                                                    nodeModifierPuids[0]
+                                                                                    nodeModifierPuids[0])
                                                                                   : `${nodeModifierPuids.length} modifiers selected`}
                                                                         </div>
                                                                     }
@@ -1789,88 +2117,17 @@ export default function WorkflowPage() {
                                                             Save Node
                                                         </button>
                                                     </div>
-                                                )}
+                                                </div>
+                                            )}
 
-                                                {selectedProductNode && (
-                                                    <div className="flex flex-col gap-3">
-                                                        <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-                                                            <IconDatabaseImport
-                                                                size={16}
-                                                            />
-                                                            Product Node
-                                                        </div>
-                                                        <div className="text-xs text-slate-400">
-                                                            {productNameByPuid.get(
-                                                                selectedProductNode.productPuid,
-                                                            ) ??
-                                                                selectedProductNode.productPuid}
-                                                        </div>
-
-                                                        <label className="flex items-center gap-2 text-xs text-slate-200">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={
-                                                                    externalIsEnabled
-                                                                }
-                                                                onChange={(
-                                                                    event,
-                                                                ) =>
-                                                                    setExternalIsEnabled(
-                                                                        event
-                                                                            .target
-                                                                            .checked,
-                                                                    )
-                                                                }
-                                                                disabled={
-                                                                    anyMutationPending
-                                                                }
-                                                            />
-                                                            Mark as externally
-                                                            supplied
-                                                        </label>
-
-                                                        <label className="flex flex-col gap-1 text-xs text-slate-300">
-                                                            External Rate
-                                                            <input
-                                                                type="number"
-                                                                min="0"
-                                                                step="any"
-                                                                className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-xs text-slate-100 focus:border-purple-500/60 focus:outline-none"
-                                                                value={
-                                                                    externalRate
-                                                                }
-                                                                onChange={(
-                                                                    event,
-                                                                ) =>
-                                                                    setExternalRate(
-                                                                        event
-                                                                            .target
-                                                                            .value,
-                                                                    )
-                                                                }
-                                                                disabled={
-                                                                    anyMutationPending ||
-                                                                    !externalIsEnabled
-                                                                }
-                                                            />
-                                                        </label>
-
-                                                        <button
-                                                            type="button"
-                                                            className="rounded-lg bg-purple-600/30 px-3 py-2 text-xs font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 disabled:cursor-not-allowed disabled:opacity-50"
-                                                            onClick={
-                                                                onSaveExternal
-                                                            }
-                                                            disabled={
-                                                                anyMutationPending
-                                                            }
-                                                        >
-                                                            Save Product
-                                                            External State
-                                                        </button>
+                                            {selection?.type === "product" &&
+                                                !selectedProcessNode && (
+                                                    <div className="pointer-events-none absolute right-4 top-24 rounded-xl border border-slate-700/80 bg-slate-900/80 px-3 py-2 text-xs text-slate-300 backdrop-blur">
+                                                        Product node selected.
+                                                        Use External Products to
+                                                        edit global supply.
                                                     </div>
                                                 )}
-                                            </div>
                                         </div>
                                     </div>
                                 )}
