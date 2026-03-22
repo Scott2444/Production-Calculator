@@ -39,6 +39,7 @@ import {
     IconRefresh,
     IconSettings,
     IconTargetArrow,
+    IconTrash,
 } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
@@ -288,6 +289,10 @@ const nodeTypes = {
     productNode: ProductFlowNode,
 };
 
+function uniqueTrimmedPuids(values: string[]): string[] {
+    return Array.from(new Set(values.map((v) => v.trim()).filter(Boolean)));
+}
+
 export default function WorkflowPage() {
     const { routeProjectName, routeUsername, projectId, isOwner } =
         useProject();
@@ -381,6 +386,12 @@ export default function WorkflowPage() {
         for (const item of attributes) map.set(item.puid, item);
         return map;
     }, [attributes]);
+
+    const modifierNameByPuid = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const item of modifiers) map.set(item.puid, item.name);
+        return map;
+    }, [modifiers]);
 
     const targetByProduct = useMemo(() => {
         const map = new Map<string, number>();
@@ -1268,7 +1279,11 @@ export default function WorkflowPage() {
                                                                         anyMutationPending
                                                                     }
                                                                 >
-                                                                    Remove
+                                                                    <IconTrash
+                                                                        size={
+                                                                            14
+                                                                        }
+                                                                    />
                                                                 </button>
                                                             </div>
                                                         ),
@@ -1341,73 +1356,118 @@ export default function WorkflowPage() {
                                                     <IconChecklist size={16} />
                                                     Preferred Recipes
                                                 </div>
-                                                <div className="mt-3 max-h-40 space-y-1 overflow-y-auto pr-1">
-                                                    {sortedRecipes.map(
-                                                        (recipe) => {
-                                                            const checked =
-                                                                preferredRecipePuids.includes(
-                                                                    recipe.puid,
-                                                                );
-                                                            return (
-                                                                <label
-                                                                    key={
-                                                                        recipe.puid
-                                                                    }
-                                                                    className="flex items-center gap-2 rounded-md px-2 py-1 text-xs text-slate-200 hover:bg-slate-800/60"
-                                                                >
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={
-                                                                            checked
-                                                                        }
-                                                                        onChange={(
-                                                                            event,
-                                                                        ) => {
-                                                                            const isChecked =
-                                                                                event
-                                                                                    .target
-                                                                                    .checked;
-                                                                            setPreferredRecipePuids(
-                                                                                (
-                                                                                    prev,
-                                                                                ) => {
-                                                                                    if (
-                                                                                        isChecked
-                                                                                    ) {
-                                                                                        if (
-                                                                                            prev.includes(
-                                                                                                recipe.puid,
-                                                                                            )
-                                                                                        ) {
-                                                                                            return prev;
-                                                                                        }
-                                                                                        return [
-                                                                                            ...prev,
-                                                                                            recipe.puid,
-                                                                                        ];
-                                                                                    }
-                                                                                    return prev.filter(
-                                                                                        (
-                                                                                            puid,
-                                                                                        ) =>
-                                                                                            puid !==
-                                                                                            recipe.puid,
-                                                                                    );
-                                                                                },
-                                                                            );
-                                                                        }}
-                                                                        disabled={
-                                                                            anyMutationPending
-                                                                        }
-                                                                    />
-                                                                    <span className="truncate">
+                                                <div className="mt-3 flex flex-col gap-3">
+                                                    <DropDown
+                                                        label={
+                                                            <div className="truncate text-xs text-slate-200">
+                                                                {preferredRecipePuids.length ===
+                                                                0
+                                                                    ? "Select preferred recipes"
+                                                                    : preferredRecipePuids.length ===
+                                                                        1
+                                                                      ? recipeNameByPuid.get(
+                                                                            preferredRecipePuids[0],
+                                                                        ) ??
+                                                                        preferredRecipePuids[0]
+                                                                      : `${preferredRecipePuids.length} recipes selected`}
+                                                            </div>
+                                                        }
+                                                        mode="multi"
+                                                        options={sortedRecipes.map(
+                                                            (r) => ({
+                                                                value: r.puid,
+                                                                label: r.name,
+                                                                searchText:
+                                                                    r.name,
+                                                            }),
+                                                        )}
+                                                        values={
+                                                            preferredRecipePuids
+                                                        }
+                                                        onChangeValues={(
+                                                            next,
+                                                        ) =>
+                                                            setPreferredRecipePuids(
+                                                                uniqueTrimmedPuids(
+                                                                    next,
+                                                                ),
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            anyMutationPending
+                                                        }
+                                                        matchTriggerWidth
+                                                        className="w-full"
+                                                        buttonClassName="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-left"
+                                                        menuClassName="min-w-[250px]"
+                                                    />
+
+                                                    {preferredRecipePuids.length >
+                                                        0 && (
+                                                        <div className="flex flex-col gap-2">
+                                                            {preferredRecipePuids
+                                                                .slice()
+                                                                .sort((a, b) => {
+                                                                    const an =
+                                                                        recipeNameByPuid.get(
+                                                                            a,
+                                                                        ) ?? a;
+                                                                    const bn =
+                                                                        recipeNameByPuid.get(
+                                                                            b,
+                                                                        ) ?? b;
+                                                                    return an.localeCompare(
+                                                                        bn,
+                                                                        undefined,
                                                                         {
-                                                                            recipe.name
+                                                                            sensitivity:
+                                                                                "base",
+                                                                        },
+                                                                    );
+                                                                })
+                                                                .map((puid) => (
+                                                                    <div
+                                                                        key={
+                                                                            puid
                                                                         }
-                                                                    </span>
-                                                                </label>
-                                                            );
-                                                        },
+                                                                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-1.5"
+                                                                    >
+                                                                        <div className="min-w-0 truncate text-[11px] text-slate-300">
+                                                                            {recipeNameByPuid.get(
+                                                                                puid,
+                                                                            ) ??
+                                                                                puid}
+                                                                        </div>
+                                                                        <button
+                                                                            type="button"
+                                                                            className="shrink-0 rounded-md border border-slate-700 bg-slate-900/60 p-1 text-slate-400 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100"
+                                                                            onClick={() =>
+                                                                                setPreferredRecipePuids(
+                                                                                    (
+                                                                                        prev,
+                                                                                    ) =>
+                                                                                        prev.filter(
+                                                                                            (
+                                                                                                p,
+                                                                                            ) =>
+                                                                                                p !==
+                                                                                                puid,
+                                                                                        ),
+                                                                                )
+                                                                            }
+                                                                            disabled={
+                                                                                anyMutationPending
+                                                                            }
+                                                                        >
+                                                                            <IconTrash
+                                                                                size={
+                                                                                    12
+                                                                                }
+                                                                            />
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+                                                        </div>
                                                     )}
                                                 </div>
                                                 <button
@@ -1448,50 +1508,42 @@ export default function WorkflowPage() {
                                                                 selectedProcessNode.recipePuid}
                                                         </div>
 
-                                                        <label className="flex flex-col gap-1 text-xs text-slate-300">
+                                                        <div className="flex flex-col gap-1 text-xs text-slate-300">
                                                             Machine
-                                                            <select
-                                                                className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-2 text-xs text-slate-100 focus:border-purple-500/60 focus:outline-none"
+                                                            <DropDown
+                                                                label={
+                                                                    <div className="truncate text-xs text-slate-200">
+                                                                        {nodeMachinePuid
+                                                                            ? machineNameByPuid.get(
+                                                                                  nodeMachinePuid,
+                                                                              ) ??
+                                                                              nodeMachinePuid
+                                                                            : "Select machine"}
+                                                                    </div>
+                                                                }
+                                                                mode="single"
+                                                                options={compatibleMachines.map(
+                                                                    (m) => ({
+                                                                        value: m.puid,
+                                                                        label: m.name,
+                                                                        searchText:
+                                                                            m.name,
+                                                                    }),
+                                                                )}
                                                                 value={
                                                                     nodeMachinePuid
                                                                 }
-                                                                onChange={(
-                                                                    event,
-                                                                ) =>
-                                                                    setNodeMachinePuid(
-                                                                        event
-                                                                            .target
-                                                                            .value,
-                                                                    )
+                                                                onSelect={
+                                                                    setNodeMachinePuid
                                                                 }
                                                                 disabled={
                                                                     anyMutationPending
                                                                 }
-                                                            >
-                                                                <option value="">
-                                                                    Select
-                                                                    machine
-                                                                </option>
-                                                                {compatibleMachines.map(
-                                                                    (
-                                                                        machine,
-                                                                    ) => (
-                                                                        <option
-                                                                            key={
-                                                                                machine.puid
-                                                                            }
-                                                                            value={
-                                                                                machine.puid
-                                                                            }
-                                                                        >
-                                                                            {
-                                                                                machine.name
-                                                                            }
-                                                                        </option>
-                                                                    ),
-                                                                )}
-                                                            </select>
-                                                        </label>
+                                                                matchTriggerWidth
+                                                                className="w-full"
+                                                                buttonClassName="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-left"
+                                                            />
+                                                        </div>
 
                                                         <label className="flex flex-col gap-1 text-xs text-slate-300">
                                                             Actual Machine Count
@@ -1520,83 +1572,131 @@ export default function WorkflowPage() {
 
                                                         <div className="flex flex-col gap-1 text-xs text-slate-300">
                                                             Modifiers
-                                                            <div className="max-h-32 space-y-1 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/40 p-2">
-                                                                {sortedModifiers.length ===
+                                                            <div className="flex flex-col gap-2">
+                                                                <DropDown
+                                                                    label={
+                                                                        <div className="truncate text-xs text-slate-200">
+                                                                            {nodeModifierPuids.length ===
+                                                                            0
+                                                                                ? "Select modifiers"
+                                                                                : nodeModifierPuids.length ===
+                                                                                    1
+                                                                                  ? modifierNameByPuid.get(
+                                                                                        nodeModifierPuids[0],
+                                                                                    ) ??
+                                                                                    nodeModifierPuids[0]
+                                                                                  : `${nodeModifierPuids.length} modifiers selected`}
+                                                                        </div>
+                                                                    }
+                                                                    mode="multi"
+                                                                    options={sortedModifiers.map(
+                                                                        (
+                                                                            m,
+                                                                        ) => ({
+                                                                            value: m.puid,
+                                                                            label: m.name,
+                                                                            searchText:
+                                                                                m.name,
+                                                                        }),
+                                                                    )}
+                                                                    values={
+                                                                        nodeModifierPuids
+                                                                    }
+                                                                    onChangeValues={(
+                                                                        next,
+                                                                    ) =>
+                                                                        setNodeModifierPuids(
+                                                                            uniqueTrimmedPuids(
+                                                                                next,
+                                                                            ),
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        anyMutationPending
+                                                                    }
+                                                                    matchTriggerWidth
+                                                                    className="w-full"
+                                                                    buttonClassName="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-left"
+                                                                    menuClassName="min-w-[250px]"
+                                                                />
+
+                                                                {nodeModifierPuids.length >
                                                                     0 && (
-                                                                    <div className="text-xs text-slate-500">
-                                                                        No
-                                                                        modifiers
-                                                                        available.
-                                                                    </div>
-                                                                )}
-                                                                {sortedModifiers.map(
-                                                                    (
-                                                                        modifier,
-                                                                    ) => {
-                                                                        const checked =
-                                                                            nodeModifierPuids.includes(
-                                                                                modifier.puid,
-                                                                            );
-                                                                        return (
-                                                                            <label
-                                                                                key={
-                                                                                    modifier.puid
-                                                                                }
-                                                                                className="flex items-center gap-2 text-xs text-slate-200"
-                                                                            >
-                                                                                <input
-                                                                                    type="checkbox"
-                                                                                    checked={
-                                                                                        checked
-                                                                                    }
-                                                                                    onChange={(
-                                                                                        event,
-                                                                                    ) => {
-                                                                                        const isChecked =
-                                                                                            event
-                                                                                                .target
-                                                                                                .checked;
-                                                                                        setNodeModifierPuids(
-                                                                                            (
-                                                                                                prev,
-                                                                                            ) => {
-                                                                                                if (
-                                                                                                    isChecked
-                                                                                                ) {
-                                                                                                    if (
-                                                                                                        prev.includes(
-                                                                                                            modifier.puid,
-                                                                                                        )
-                                                                                                    ) {
-                                                                                                        return prev;
-                                                                                                    }
-                                                                                                    return [
-                                                                                                        ...prev,
-                                                                                                        modifier.puid,
-                                                                                                    ];
-                                                                                                }
-                                                                                                return prev.filter(
+                                                                    <div className="flex flex-col gap-2">
+                                                                        {nodeModifierPuids
+                                                                            .slice()
+                                                                            .sort(
+                                                                                (
+                                                                                    a,
+                                                                                    b,
+                                                                                ) => {
+                                                                                    const an =
+                                                                                        modifierNameByPuid.get(
+                                                                                            a,
+                                                                                        ) ??
+                                                                                        a;
+                                                                                    const bn =
+                                                                                        modifierNameByPuid.get(
+                                                                                            b,
+                                                                                        ) ??
+                                                                                        b;
+                                                                                    return an.localeCompare(
+                                                                                        bn,
+                                                                                        undefined,
+                                                                                        {
+                                                                                            sensitivity:
+                                                                                                "base",
+                                                                                        },
+                                                                                    );
+                                                                                },
+                                                                            )
+                                                                            .map(
+                                                                                (
+                                                                                    puid,
+                                                                                ) => (
+                                                                                    <div
+                                                                                        key={
+                                                                                            puid
+                                                                                        }
+                                                                                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-1.5"
+                                                                                    >
+                                                                                        <div className="min-w-0 truncate text-[11px] text-slate-300">
+                                                                                            {modifierNameByPuid.get(
+                                                                                                puid,
+                                                                                            ) ??
+                                                                                                puid}
+                                                                                        </div>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            className="shrink-0 rounded-md border border-slate-700 bg-slate-900/60 p-1 text-slate-400 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100"
+                                                                                            onClick={() =>
+                                                                                                setNodeModifierPuids(
                                                                                                     (
-                                                                                                        puid,
+                                                                                                        prev,
                                                                                                     ) =>
-                                                                                                        puid !==
-                                                                                                        modifier.puid,
-                                                                                                );
-                                                                                            },
-                                                                                        );
-                                                                                    }}
-                                                                                    disabled={
-                                                                                        anyMutationPending
-                                                                                    }
-                                                                                />
-                                                                                <span>
-                                                                                    {
-                                                                                        modifier.name
-                                                                                    }
-                                                                                </span>
-                                                                            </label>
-                                                                        );
-                                                                    },
+                                                                                                        prev.filter(
+                                                                                                            (
+                                                                                                                p,
+                                                                                                            ) =>
+                                                                                                                p !==
+                                                                                                                puid,
+                                                                                                        ),
+                                                                                                )
+                                                                                            }
+                                                                                            disabled={
+                                                                                                anyMutationPending
+                                                                                            }
+                                                                                        >
+                                                                                            <IconTrash
+                                                                                                size={
+                                                                                                    12
+                                                                                                }
+                                                                                            />
+                                                                                        </button>
+                                                                                    </div>
+                                                                                ),
+                                                                            )}
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         </div>
