@@ -1,24 +1,26 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Popup from "@/components/Popup";
 import { useProtectedApi } from "@/lib/api";
-import { postNewWorkflow, NewWorkflowPayload, Workflow } from "@/lib/workflow";
+import { updateWorkflow, NewWorkflowPayload, Workflow } from "@/lib/workflow";
 
-export interface CreateWorkflowProps {
+export interface EditWorkflowProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     projectId: string;
-    onCreated?: (workflow: Workflow) => void;
+    workflow: Workflow | null;
+    onUpdated?: (workflow: Workflow) => void;
 }
 
-export default function CreateWorkflow({
+export default function EditWorkflow({
     open,
     onOpenChange,
     projectId,
-    onCreated,
-}: CreateWorkflowProps): React.ReactElement {
+    workflow,
+    onUpdated,
+}: EditWorkflowProps): React.ReactElement {
     const queryClient = useQueryClient();
     const protectedApi = useProtectedApi();
 
@@ -27,53 +29,61 @@ export default function CreateWorkflow({
     const [error, setError] = useState<string | null>(null);
     const nameRef = useRef<HTMLInputElement>(null);
 
-    const createWorkflowMutation = useMutation({
+    useEffect(() => {
+        if (open && workflow) {
+            setName(workflow.name ?? "");
+            setDescription(workflow.description ?? "");
+            setError(null);
+        }
+    }, [open, workflow]);
+
+    const editWorkflowMutation = useMutation({
         mutationFn: async (payload: NewWorkflowPayload) => {
-            const response = await postNewWorkflow(
+            if (!workflow) throw new Error("No workflow selected.");
+            const response = await updateWorkflow(
                 projectId,
+                workflow.puid,
                 protectedApi,
                 payload,
             );
             return response as Workflow;
         },
-        onSuccess: async (workflow) => {
+        onSuccess: async (updatedWorkflow) => {
             setError(null);
-            setName("");
-            setDescription("");
             onOpenChange(false);
 
             await queryClient.invalidateQueries({
                 queryKey: ["workflows", projectId],
             });
 
-            if (onCreated) {
-                onCreated(workflow);
+            if (onUpdated) {
+                onUpdated(updatedWorkflow);
             }
         },
         onError: (err) => {
             setError(
                 err instanceof Error
                     ? err.message
-                    : "Failed to create workflow.",
+                    : "Failed to update workflow.",
             );
         },
     });
 
-    const isPending = createWorkflowMutation.isPending;
+    const isPending = editWorkflowMutation.isPending;
 
     return (
         <Popup
             open={open}
             onOpenChange={(next) => {
                 onOpenChange(next);
-                if (next) {
+                if (next && workflow) {
                     setError(null);
-                    setName("");
-                    setDescription("");
+                    setName(workflow.name ?? "");
+                    setDescription(workflow.description ?? "");
                 }
             }}
-            title="Create workflow"
-            description="Create a new workflow for your project."
+            title="Edit workflow"
+            description="Update the details of your workflow."
             initialFocusRef={nameRef}
             footer={
                 <div className="flex items-center justify-end gap-2">
@@ -93,14 +103,14 @@ export default function CreateWorkflow({
                                 setError("Name is required.");
                                 return;
                             }
-                            createWorkflowMutation.mutate({
+                            editWorkflowMutation.mutate({
                                 name: name.trim(),
                                 description: description.trim() || null,
                             });
                         }}
                         disabled={isPending}
                     >
-                        {isPending ? "Creating..." : "Create Workflow"}
+                        {isPending ? "Updating..." : "Update Workflow"}
                     </button>
                 </div>
             }
@@ -113,14 +123,14 @@ export default function CreateWorkflow({
                 )}
                 <div className="flex flex-col gap-1.5">
                     <label
-                        htmlFor="workflow-name"
+                        htmlFor="edit-workflow-name"
                         className="text-xs font-medium text-slate-400"
                     >
                         Name
                     </label>
                     <input
                         ref={nameRef}
-                        id="workflow-name"
+                        id="edit-workflow-name"
                         type="text"
                         className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-purple-500/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
                         placeholder="My Workflow"
@@ -131,13 +141,13 @@ export default function CreateWorkflow({
                 </div>
                 <div className="flex flex-col gap-1.5">
                     <label
-                        htmlFor="workflow-description"
+                        htmlFor="edit-workflow-description"
                         className="text-xs font-medium text-slate-400"
                     >
                         Description (Optional)
                     </label>
                     <textarea
-                        id="workflow-description"
+                        id="edit-workflow-description"
                         rows={3}
                         className="w-full resize-none rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-purple-500/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
                         placeholder="Explain what this workflow is for..."

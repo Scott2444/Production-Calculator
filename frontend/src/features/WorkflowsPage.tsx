@@ -4,6 +4,8 @@ import ProjectPageLayout from "@/components/ProjectPageLayout";
 import ProjectStatusGate from "@/components/ProjectStatusGate";
 import SearchBar from "@/components/SearchBar";
 import CreateWorkflow from "@/components/CreateWorkflow";
+import EditWorkflow from "@/components/EditWorkflow";
+import DeleteWorkflow from "@/components/DeleteWorkflow";
 import { useProject } from "@/context/ProjectContext";
 import { type Workflow } from "@/lib/workflow";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -11,6 +13,7 @@ import { useMemo, useState } from "react";
 import { useSearch } from "@/hooks/Search";
 import { formatTimestamp } from "@/lib/timestamp";
 import { useWorkflowsQuery } from "@/hooks/useQueries";
+import { IconPencil, IconTrash } from "@tabler/icons-react";
 
 function coerceWorkflows(value: unknown): Workflow[] {
     if (!value) return [];
@@ -33,6 +36,11 @@ export default function WorkflowsPage() {
     const navigate = useNavigate();
 
     const [createOpen, setCreateOpen] = useState(false);
+    const [editOpen, setEditOpen] = useState(false);
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(
+        null,
+    );
 
     const workflowsQuery = useWorkflowsQuery(projectId, { enabled: isOwner });
 
@@ -141,47 +149,83 @@ export default function WorkflowsPage() {
                                         const workflowHref = `/${encodeURIComponent(routeUsername ?? "")}/${encodeURIComponent(routeProjectName ?? "")}/workflows/${encodeURIComponent(getWorkflowRouteSegment(workflow))}`;
 
                                         return (
-                                            <Link
+                                            <div
                                                 key={workflow.puid}
-                                                to={workflowHref}
-                                                className="group rounded-xl border border-slate-800 bg-slate-900/40 p-4 transition-colors hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                                className="group relative rounded-xl border border-slate-800 bg-slate-900/40 p-4 transition-colors hover:border-purple-500/60 hover:bg-slate-800/60 focus-within:ring-2 focus-within:ring-purple-500/40"
                                             >
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <div className="min-w-0">
-                                                        <div className="truncate text-base font-semibold text-slate-100 group-hover:text-white">
-                                                            {workflowLabel}
+                                                <Link
+                                                    to={workflowHref}
+                                                    className="block focus:outline-none"
+                                                >
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div className="min-w-0">
+                                                            <div className="truncate text-base font-semibold text-slate-100 group-hover:text-white">
+                                                                {workflowLabel}
+                                                            </div>
+                                                            {workflow.description ? (
+                                                                <div className="mt-1 line-clamp-3 text-sm text-slate-300">
+                                                                    {
+                                                                        workflow.description
+                                                                    }
+                                                                </div>
+                                                            ) : (
+                                                                <div className="mt-1 text-sm text-slate-500">
+                                                                    No
+                                                                    description
+                                                                </div>
+                                                            )}
+                                                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                                                                <span>
+                                                                    Updated{" "}
+                                                                    {formatTimestamp(
+                                                                        workflow.updatedAt,
+                                                                    )}
+                                                                </span>
+                                                                <span>
+                                                                    Created{" "}
+                                                                    {formatTimestamp(
+                                                                        workflow.createdAt,
+                                                                    )}
+                                                                </span>
+                                                            </div>
                                                         </div>
-                                                        {workflow.description ? (
-                                                            <div className="mt-1 line-clamp-3 text-sm text-slate-300">
-                                                                {
-                                                                    workflow.description
-                                                                }
-                                                            </div>
-                                                        ) : (
-                                                            <div className="mt-1 text-sm text-slate-500">
-                                                                No description
-                                                            </div>
-                                                        )}
-                                                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                                                            <span>
-                                                                Updated{" "}
-                                                                {formatTimestamp(
-                                                                    workflow.updatedAt,
-                                                                )}
-                                                            </span>
-                                                            <span>
-                                                                Created{" "}
-                                                                {formatTimestamp(
-                                                                    workflow.createdAt,
-                                                                )}
-                                                            </span>
+                                                        <div className="rounded-md border border-slate-700 bg-slate-900/70 px-2 py-1 text-xs text-slate-400">
+                                                            Open
                                                         </div>
                                                     </div>
-                                                    <div className="rounded-md border border-slate-700 bg-slate-900/70 px-2 py-1 text-xs text-slate-400">
-                                                        Open
-                                                    </div>
+                                                </Link>
+
+                                                <div className="mt-4 flex items-center justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                                                    <button
+                                                        type="button"
+                                                        className="inline-flex size-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/60 text-slate-400 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                                                        title="Edit Workflow"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedWorkflow(
+                                                                workflow,
+                                                            );
+                                                            setEditOpen(true);
+                                                        }}
+                                                    >
+                                                        <IconPencil className="size-4" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="inline-flex size-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/60 text-slate-400 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-red-950/30 hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-500/40"
+                                                        title="Delete Workflow"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedWorkflow(
+                                                                workflow,
+                                                            );
+                                                            setDeleteOpen(true);
+                                                        }}
+                                                    >
+                                                        <IconTrash className="size-4" />
+                                                    </button>
                                                 </div>
-                                            </Link>
+                                            </div>
                                         );
                                     })}
                                 </div>
@@ -199,6 +243,21 @@ export default function WorkflowsPage() {
                             to: `/${encodeURIComponent(routeUsername ?? "")}/${encodeURIComponent(routeProjectName ?? "")}/workflows/${encodeURIComponent(getWorkflowRouteSegment(workflow))}`,
                         });
                     }}
+                />
+
+                <EditWorkflow
+                    open={editOpen}
+                    onOpenChange={setEditOpen}
+                    projectId={projectId}
+                    workflow={selectedWorkflow}
+                />
+
+                <DeleteWorkflow
+                    open={deleteOpen}
+                    onOpenChange={setDeleteOpen}
+                    projectId={projectId}
+                    workflow={selectedWorkflow}
+                    onDeleted={() => setSelectedWorkflow(null)}
                 />
             </div>
         </ProjectPageLayout>

@@ -716,7 +716,10 @@ export default function ProjectPage() {
                 open={deleteOpen}
                 onOpenChange={(next) => {
                     setDeleteOpen(next);
-                    if (next) setDeleteError(null);
+                    if (next) {
+                        setDeleteError(null);
+                        setDeleteConfirmText("");
+                    }
                 }}
                 title="Delete project"
                 description="This action cannot be undone."
@@ -733,67 +736,65 @@ export default function ProjectPage() {
                         </button>
                         <button
                             type="button"
-                            className="rounded-lg bg-red-600/30 px-4 py-2 text-sm font-medium text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="rounded-lg bg-red-600/30 px-4 py-2 text-sm font-medium text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:opacity-50"
                             onClick={() => {
-                                setDeleteError(null);
-                                if (deleteConfirmText.trim() !== "DELETE") {
-                                    setDeleteError(
-                                        'Type "DELETE" to confirm deletion.',
-                                    );
+                                if (
+                                    deleteConfirmText.trim().toUpperCase() !==
+                                    "DELETE"
+                                )
                                     return;
-                                }
                                 deleteProjectMutation.mutate();
                             }}
                             disabled={
                                 deleteProjectMutation.isPending ||
-                                deleteConfirmText.trim() !== "DELETE"
+                                deleteConfirmText.trim().toUpperCase() !==
+                                    "DELETE"
                             }
                         >
                             {deleteProjectMutation.isPending
-                                ? "Deleting…"
-                                : "Delete"}
+                                ? "Deleting..."
+                                : "Delete Project"}
                         </button>
                     </div>
                 }
             >
-                <div className="flex flex-col gap-4">
-                    <ErrorDisplay
-                        errors={
-                            deleteError
-                                ? [
-                                      {
-                                          id: "delete-error",
-                                          message: deleteError,
-                                          onDismiss: () => setDeleteError(null),
-                                      },
-                                  ]
-                                : []
-                        }
-                    />
-
+                <div className="flex flex-col gap-4 py-2">
+                    {deleteError && (
+                        <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+                            {deleteError}
+                        </div>
+                    )}
                     <div className="text-sm text-slate-300">
-                        Deleting{" "}
-                        <span className="font-semibold text-slate-100">
+                        Are you sure you want to delete{" "}
+                        <span className="font-semibold text-slate-100 italic">
                             {currentProject?.name ??
                                 routeProjectName ??
                                 "this project"}
-                        </span>{" "}
-                        will remove all associated data.
+                        </span>
+                        ? All components and workflows associated with this
+                        project will be permanently removed.
                     </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Type <span className="font-mono">DELETE</span> to
-                            confirm
+                    <div className="flex flex-col gap-1.5">
+                        <label
+                            htmlFor="delete-project-confirm"
+                            className="text-xs font-medium text-slate-400"
+                        >
+                            Type{" "}
+                            <span className="text-red-400 font-bold">
+                                DELETE
+                            </span>{" "}
+                            to confirm
                         </label>
                         <input
                             ref={deleteConfirmRef}
+                            id="delete-project-confirm"
+                            type="text"
+                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-red-500/60 focus:outline-none focus:ring-2 focus:ring-red-500/40"
+                            placeholder="DELETE"
                             value={deleteConfirmText}
                             onChange={(e) =>
                                 setDeleteConfirmText(e.target.value)
                             }
-                            placeholder="DELETE"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500/40"
                             disabled={deleteProjectMutation.isPending}
                         />
                     </div>

@@ -20,6 +20,7 @@ import {
     type WorkflowChart,
 } from "@/lib/workflowChart";
 import { buildWorkflowLayout } from "@/lib/workflowLayout";
+import { calculateWorkflowAttributes } from "@/lib/workflowAttributes";
 import {
     Background,
     Controls,
@@ -34,6 +35,8 @@ import {
 } from "@xyflow/react";
 import {
     IconArrowsShuffle,
+    IconChevronDown,
+    IconChevronUp,
     IconChecklist,
     IconDatabaseImport,
     IconRefresh,
@@ -71,6 +74,12 @@ interface ProcessNodeData {
     calculatedActualRate: number | null;
     modifierCount: number;
     preferredRecipe: boolean;
+    attributes: Array<{
+        puid: string;
+        name: string;
+        unit: string | null;
+        value: number;
+    }>;
 }
 
 interface ProductFlowNodeData {
@@ -215,6 +224,36 @@ function ProcessFlowNode({
                     </span>
                 ) : null}
             </div>
+            <div className="mt-2 rounded-md border border-slate-700/70 bg-slate-950/60 p-2">
+                <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                    Attributes
+                </div>
+                {data.attributes.length === 0 ? (
+                    <div className="mt-1 text-[11px] text-slate-500">None</div>
+                ) : (
+                    <div className="mt-1 flex max-h-22.5 flex-col gap-1 overflow-y-auto pr-1 text-[11px] text-slate-300">
+                        {data.attributes.map((attribute) => {
+                            const unit = attribute.unit?.trim()
+                                ? ` ${attribute.unit}`
+                                : "";
+                            return (
+                                <div
+                                    key={attribute.puid}
+                                    className="flex items-center justify-between gap-2"
+                                >
+                                    <span className="truncate text-slate-300">
+                                        {attribute.name}
+                                    </span>
+                                    <span className="shrink-0 text-slate-200">
+                                        {formatRate(attribute.value)}
+                                        {unit}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
@@ -274,8 +313,7 @@ function uniqueTrimmedPuids(values: string[]): string[] {
 }
 
 export default function WorkflowPage() {
-    const { routeProjectName, routeUsername, projectId, isOwner } =
-        useProject();
+    const { routeProjectName, projectId, isOwner } = useProject();
     const protectedApi = useProtectedApi();
     const queryClient = useQueryClient();
 
@@ -367,6 +405,33 @@ export default function WorkflowPage() {
         return map;
     }, [attributes]);
 
+    const nodeAttributeValues = useMemo(
+        () => calculateWorkflowAttributes(chart.nodes),
+        [chart.nodes],
+    );
+
+    const globalAttributeTotals = useMemo(() => {
+        const totals = new Map<string, number>();
+
+        for (const attributesByNode of nodeAttributeValues.values()) {
+            for (const [attributeId, value] of attributesByNode.entries()) {
+                totals.set(attributeId, (totals.get(attributeId) ?? 0) + value);
+            }
+        }
+
+        return [...totals.entries()]
+            .map(([puid, value]) => {
+                const attribute = attributeByPuid.get(puid);
+                return {
+                    puid,
+                    name: attribute?.name ?? puid,
+                    unit: attribute?.unit ?? null,
+                    value,
+                };
+            })
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }, [nodeAttributeValues, attributeByPuid]);
+
     const modifierNameByPuid = useMemo(() => {
         const map = new Map<string, string>();
         for (const item of modifiers) map.set(item.puid, item.name);
@@ -449,6 +514,7 @@ export default function WorkflowPage() {
     }, [chart.productNodes]);
 
     const [activeGlobalMenu, setActiveGlobalMenu] = useState<GlobalMenu>(null);
+    const [globalStatsCollapsed, setGlobalStatsCollapsed] = useState(false);
 
     const compatibleMachines = useMemo(() => {
         if (!selectedProcessNode) return [];
@@ -706,6 +772,21 @@ export default function WorkflowPage() {
         const nodes: FlowNode<FlowNodeData>[] = [
             ...chart.nodes.map((node) => {
                 const id = `process:${node.puid}`;
+                const attributeValues = nodeAttributeValues.get(node.puid);
+                const attributes = attributeValues
+                    ? [...attributeValues.entries()]
+                          .map(([puid, value]) => {
+                              const attribute = attributeByPuid.get(puid);
+                              return {
+                                  puid,
+                                  name: attribute?.name ?? puid,
+                                  unit: attribute?.unit ?? null,
+                                  value,
+                              };
+                          })
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                    : [];
+
                 return {
                     id,
                     type: "processNode",
@@ -727,6 +808,7 @@ export default function WorkflowPage() {
                         preferredRecipe: chart.preferredRecipes.includes(
                             node.recipePuid,
                         ),
+                        attributes,
                     } satisfies ProcessNodeData,
                 } as FlowNode<FlowNodeData>;
             }),
@@ -817,6 +899,8 @@ export default function WorkflowPage() {
         chart.targets,
         chart.productNodes,
         chart.preferredRecipes,
+        nodeAttributeValues,
+        attributeByPuid,
         machineNameByPuid,
         productNameByPuid,
         productNodeByPuid,
@@ -2106,6 +2190,86 @@ export default function WorkflowPage() {
                                                         edit global supply.
                                                     </div>
                                                 )}
+
+                                            <div className="pointer-events-auto absolute bottom-4 left-1/2 w-95 -translate-x-1/2 rounded-xl border border-slate-700/90 bg-slate-900/92 p-3 shadow-xl backdrop-blur">
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-200">
+                                                        Global Attribute Totals
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900/70 px-2 py-1 text-[11px] text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/90"
+                                                        onClick={() =>
+                                                            setGlobalStatsCollapsed(
+                                                                (prev) => !prev,
+                                                            )
+                                                        }
+                                                    >
+                                                        {globalStatsCollapsed ? (
+                                                            <>
+                                                                <IconChevronUp
+                                                                    size={12}
+                                                                />
+                                                                Expand
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <IconChevronDown
+                                                                    size={12}
+                                                                />
+                                                                Collapse
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                </div>
+
+                                                {!globalStatsCollapsed && (
+                                                    <div className="mt-2 max-h-44 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/50 p-2">
+                                                        {globalAttributeTotals.length ===
+                                                        0 ? (
+                                                            <div className="text-xs text-slate-500">
+                                                                No attribute
+                                                                totals yet.
+                                                            </div>
+                                                        ) : (
+                                                            <div className="grid gap-1 text-xs text-slate-300">
+                                                                {globalAttributeTotals.map(
+                                                                    (
+                                                                        attribute,
+                                                                    ) => {
+                                                                        const unit =
+                                                                            attribute.unit?.trim()
+                                                                                ? ` ${attribute.unit}`
+                                                                                : "";
+                                                                        return (
+                                                                            <div
+                                                                                key={
+                                                                                    attribute.puid
+                                                                                }
+                                                                                className="flex items-center justify-between gap-2"
+                                                                            >
+                                                                                <span className="truncate text-slate-300">
+                                                                                    {
+                                                                                        attribute.name
+                                                                                    }
+                                                                                </span>
+                                                                                <span className="shrink-0 text-slate-100">
+                                                                                    {formatRate(
+                                                                                        attribute.value,
+                                                                                    )}
+                                                                                    {
+                                                                                        unit
+                                                                                    }
+                                                                                </span>
+                                                                            </div>
+                                                                        );
+                                                                    },
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 )}
