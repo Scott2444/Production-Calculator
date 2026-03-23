@@ -1,5 +1,10 @@
 import { Node } from "./workflowChart";
 
+export interface NodeAttributeValues {
+    demand: Map<string, number>;
+    supply: Map<string, number>;
+}
+
 function asFiniteNumber(value: number | null | undefined): number {
     if (typeof value !== "number" || !Number.isFinite(value)) {
         return 0;
@@ -9,25 +14,18 @@ function asFiniteNumber(value: number | null | undefined): number {
 
 /**
  * Performs the attribute calculations per node, for all nodes in the workflow
- * @returns Returns a map of Map<NodeId, Map<AttributeId, AttributeValue>>
+ * @returns Returns a map of Map<NodeId, { demand: Map<AttributeId, AttributeValue>, supply: Map<AttributeId, AttributeValue> }>
  */
 export function calculateWorkflowAttributes(
     nodes: Node[],
-): Map<string, Map<string, number>> {
-    const workflowAttributes = new Map<string, Map<string, number>>();
+): Map<string, NodeAttributeValues> {
+    const workflowAttributes = new Map<string, NodeAttributeValues>();
 
-    for (const node of nodes) {
-        const machineCount = Math.max(
-            0,
-            asFiniteNumber(node.actualMachineCount) ||
-                asFiniteNumber(node.calculatedMachineCount),
-        );
-        const recipeCount = Math.max(
-            0,
-            asFiniteNumber(node.calculatedActualRate) ||
-                asFiniteNumber(node.calculatedTargetRate),
-        );
-
+    function calculateNodeAttributes(
+        node: Node,
+        machineCount: number,
+        recipeCount: number,
+    ): Map<string, number> {
         const baseByAttribute = new Map<string, number>();
         const percentByAttribute = new Map<string, number>();
         const multiplicativeByAttribute = new Map<string, number>();
@@ -91,7 +89,39 @@ export function calculateWorkflowAttributes(
             );
         }
 
-        workflowAttributes.set(node.puid, nodeAttributeValues);
+        return nodeAttributeValues;
+    }
+
+    for (const node of nodes) {
+        const demandMachineCount = Math.max(
+            0,
+            asFiniteNumber(node.calculatedMachineCount),
+        );
+        const supplyMachineCount = Math.max(
+            0,
+            asFiniteNumber(node.actualMachineCount),
+        );
+        const demandRecipeRate = Math.max(
+            0,
+            asFiniteNumber(node.calculatedTargetRate),
+        );
+        const supplyRecipeRate = Math.max(
+            0,
+            asFiniteNumber(node.calculatedActualRate),
+        );
+
+        workflowAttributes.set(node.puid, {
+            demand: calculateNodeAttributes(
+                node,
+                demandMachineCount,
+                demandRecipeRate,
+            ),
+            supply: calculateNodeAttributes(
+                node,
+                supplyMachineCount,
+                supplyRecipeRate,
+            ),
+        });
     }
 
     return workflowAttributes;

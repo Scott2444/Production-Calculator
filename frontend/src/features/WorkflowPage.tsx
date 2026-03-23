@@ -68,17 +68,18 @@ interface ProcessNodeData {
     puid: string;
     recipeName: string;
     machineName: string;
-    calculatedMachineCount: number | null;
-    actualMachineCount: number | null;
-    calculatedTargetRate: number | null;
-    calculatedActualRate: number | null;
-    modifierCount: number;
+    demandMachineCount: number;
+    supplyMachineCount: number;
+    demandRecipeRate: number;
+    supplyRecipeRate: number;
+    modifierNames: string[];
     preferredRecipe: boolean;
     attributes: Array<{
         puid: string;
         name: string;
         unit: string | null;
-        value: number;
+        demand: number;
+        supply: number;
     }>;
 }
 
@@ -170,6 +171,11 @@ function formatRate(value: number | null | undefined): string {
     return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(3);
 }
 
+function asNonNegativeFinite(value: number | null | undefined): number {
+    if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+    return Math.max(0, value);
+}
+
 function parseNonNegative(value: string): number | null {
     const trimmed = value.trim();
     if (!trimmed) return null;
@@ -210,19 +216,44 @@ function ProcessFlowNode({
             <div className="mt-2 text-xs text-slate-300">
                 Machine: {data.machineName}
             </div>
-            <div className="mt-1 grid grid-cols-2 gap-2 text-xs text-slate-300">
-                <div>Need: {formatRate(data.calculatedMachineCount)}</div>
-                <div>Built: {formatRate(data.actualMachineCount)}</div>
-                <div>Target: {formatRate(data.calculatedTargetRate)}</div>
-                <div>Actual: {formatRate(data.calculatedActualRate)}</div>
+            <div className="mt-1 grid grid-cols-[1fr_auto] gap-x-2 gap-y-1 text-xs text-slate-300">
+                <div>Machine count (Demand)</div>
+                <div className="text-slate-100">
+                    {formatRate(data.demandMachineCount)}
+                </div>
+                <div>Machine count (Supply)</div>
+                <div className="text-slate-100">
+                    {formatRate(data.supplyMachineCount)}
+                </div>
+                <div>Recipe rate (Demand)</div>
+                <div className="text-slate-100">
+                    {formatRate(data.demandRecipeRate)}/s
+                </div>
+                <div>Recipe rate (Supply)</div>
+                <div className="text-slate-100">
+                    {formatRate(data.supplyRecipeRate)}/s
+                </div>
             </div>
             <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
-                <span>Modifiers: {data.modifierCount}</span>
+                <span>Modifiers applied</span>
                 {data.preferredRecipe ? (
                     <span className="rounded-md border border-amber-600/50 bg-amber-700/20 px-2 py-0.5 text-amber-200">
                         Preferred
                     </span>
                 ) : null}
+            </div>
+            <div className="mt-1 rounded-md border border-slate-700/70 bg-slate-950/60 p-2">
+                {data.modifierNames.length === 0 ? (
+                    <div className="text-[11px] text-slate-500">None</div>
+                ) : (
+                    <div className="flex max-h-16 flex-col gap-1 overflow-y-auto pr-1 text-[11px] text-slate-300">
+                        {data.modifierNames.map((modifierName) => (
+                            <div key={modifierName} className="truncate">
+                                {modifierName}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
             <div className="mt-2 rounded-md border border-slate-700/70 bg-slate-950/60 p-2">
                 <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
@@ -245,7 +276,8 @@ function ProcessFlowNode({
                                         {attribute.name}
                                     </span>
                                     <span className="shrink-0 text-slate-200">
-                                        {formatRate(attribute.value)}
+                                        D {formatRate(attribute.demand)} | S{" "}
+                                        {formatRate(attribute.supply)}
                                         {unit}
                                     </span>
                                 </div>
@@ -411,11 +443,35 @@ export default function WorkflowPage() {
     );
 
     const globalAttributeTotals = useMemo(() => {
-        const totals = new Map<string, number>();
+        const totals = new Map<string, { demand: number; supply: number }>();
 
         for (const attributesByNode of nodeAttributeValues.values()) {
-            for (const [attributeId, value] of attributesByNode.entries()) {
-                totals.set(attributeId, (totals.get(attributeId) ?? 0) + value);
+            for (const [
+                attributeId,
+                value,
+            ] of attributesByNode.demand.entries()) {
+                const existing = totals.get(attributeId) ?? {
+                    demand: 0,
+                    supply: 0,
+                };
+                totals.set(attributeId, {
+                    demand: existing.demand + value,
+                    supply: existing.supply,
+                });
+            }
+
+            for (const [
+                attributeId,
+                value,
+            ] of attributesByNode.supply.entries()) {
+                const existing = totals.get(attributeId) ?? {
+                    demand: 0,
+                    supply: 0,
+                };
+                totals.set(attributeId, {
+                    demand: existing.demand,
+                    supply: existing.supply + value,
+                });
             }
         }
 
@@ -426,7 +482,8 @@ export default function WorkflowPage() {
                     puid,
                     name: attribute?.name ?? puid,
                     unit: attribute?.unit ?? null,
-                    value,
+                    demand: value.demand,
+                    supply: value.supply,
                 };
             })
             .sort((a, b) => a.name.localeCompare(b.name));
@@ -772,20 +829,36 @@ export default function WorkflowPage() {
         const nodes: FlowNode<FlowNodeData>[] = [
             ...chart.nodes.map((node) => {
                 const id = `process:${node.puid}`;
-                const attributeValues = nodeAttributeValues.get(node.puid);
-                const attributes = attributeValues
-                    ? [...attributeValues.entries()]
-                          .map(([puid, value]) => {
-                              const attribute = attributeByPuid.get(puid);
-                              return {
-                                  puid,
-                                  name: attribute?.name ?? puid,
-                                  unit: attribute?.unit ?? null,
-                                  value,
-                              };
-                          })
-                          .sort((a, b) => a.name.localeCompare(b.name))
-                    : [];
+                const nodeAttributes = nodeAttributeValues.get(node.puid);
+                const attributeIds = nodeAttributes
+                    ? new Set<string>([
+                          ...nodeAttributes.demand.keys(),
+                          ...nodeAttributes.supply.keys(),
+                      ])
+                    : new Set<string>();
+
+                const attributes = [...attributeIds]
+                    .map((puid) => {
+                        const attribute = attributeByPuid.get(puid);
+                        return {
+                            puid,
+                            name: attribute?.name ?? puid,
+                            unit: attribute?.unit ?? null,
+                            demand: nodeAttributes?.demand.get(puid) ?? 0,
+                            supply: nodeAttributes?.supply.get(puid) ?? 0,
+                        };
+                    })
+                    .sort((a, b) => a.name.localeCompare(b.name));
+
+                const modifierNames = node.modifiers
+                    .map(
+                        (modifier) =>
+                            modifierNameByPuid.get(modifier.puid) ??
+                            modifier.puid,
+                    )
+                    .sort((a, b) =>
+                        a.localeCompare(b, undefined, { sensitivity: "base" }),
+                    );
 
                 return {
                     id,
@@ -800,11 +873,19 @@ export default function WorkflowPage() {
                             ? (machineNameByPuid.get(node.machinePuid) ??
                               node.machinePuid)
                             : "Unassigned",
-                        calculatedMachineCount: node.calculatedMachineCount,
-                        actualMachineCount: node.actualMachineCount,
-                        calculatedTargetRate: node.calculatedTargetRate,
-                        calculatedActualRate: node.calculatedActualRate,
-                        modifierCount: node.modifiers.length,
+                        demandMachineCount: asNonNegativeFinite(
+                            node.calculatedMachineCount,
+                        ),
+                        supplyMachineCount: asNonNegativeFinite(
+                            node.actualMachineCount,
+                        ),
+                        demandRecipeRate: asNonNegativeFinite(
+                            node.calculatedTargetRate,
+                        ),
+                        supplyRecipeRate: asNonNegativeFinite(
+                            node.calculatedActualRate,
+                        ),
+                        modifierNames,
                         preferredRecipe: chart.preferredRecipes.includes(
                             node.recipePuid,
                         ),
@@ -901,6 +982,7 @@ export default function WorkflowPage() {
         chart.preferredRecipes,
         nodeAttributeValues,
         attributeByPuid,
+        modifierNameByPuid,
         machineNameByPuid,
         productNameByPuid,
         productNodeByPuid,
@@ -2254,8 +2336,17 @@ export default function WorkflowPage() {
                                                                                     }
                                                                                 </span>
                                                                                 <span className="shrink-0 text-slate-100">
+                                                                                    D{" "}
                                                                                     {formatRate(
-                                                                                        attribute.value,
+                                                                                        attribute.demand,
+                                                                                    )}
+                                                                                    {
+                                                                                        " | "
+                                                                                    }
+
+                                                                                    S{" "}
+                                                                                    {formatRate(
+                                                                                        attribute.supply,
                                                                                     )}
                                                                                     {
                                                                                         unit
