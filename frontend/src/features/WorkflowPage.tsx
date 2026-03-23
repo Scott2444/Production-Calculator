@@ -40,7 +40,11 @@ import {
     IconChecklist,
     IconDatabaseImport,
     IconRefresh,
+    IconRotateClockwise2,
     IconSettings,
+    IconBolt,
+    IconCpu,
+    IconTools,
     IconTargetArrow,
     IconTrash,
 } from "@tabler/icons-react";
@@ -188,101 +192,166 @@ function ProcessFlowNode({
     data,
     selected,
 }: NodeProps<FlowNode<ProcessNodeData>>) {
+    const isUnderSupplied =
+        data.supplyMachineCount < data.demandMachineCount * 0.99;
+    const isOverSupplied =
+        data.supplyMachineCount > data.demandMachineCount * 1.01;
+
+    const machineColor = isUnderSupplied
+        ? "text-amber-400"
+        : isOverSupplied
+          ? "text-cyan-400"
+          : "text-emerald-400";
+    const rateColor =
+        data.supplyRecipeRate < data.demandRecipeRate * 0.99
+            ? "text-amber-400"
+            : "text-emerald-400";
+
     return (
         <div
-            className={`w-65 rounded-xl border p-3 shadow-sm ${
+            className={`w-72 rounded-xl border p-4 shadow-lg transition-all ${
                 selected
-                    ? "border-purple-400 bg-slate-800"
-                    : "border-slate-700 bg-slate-900"
+                    ? "border-purple-500/80 bg-slate-800 ring-2 ring-purple-500/20"
+                    : "border-slate-700/80 bg-slate-900/95"
             }`}
         >
             <Handle
                 type="target"
                 position={Position.Left}
-                className="h-2! w-2! bg-slate-200"
+                className="h-3! w-3! border-2 border-slate-900 bg-purple-500"
             />
             <Handle
                 type="source"
                 position={Position.Right}
-                className="h-2!w-2 bg-slate-200"
+                className="h-3! w-3! border-2 border-slate-900 bg-purple-500"
             />
 
-            <div className="text-xs uppercase tracking-wide text-slate-400">
-                Recipe
-            </div>
-            <div className="truncate text-sm font-semibold text-slate-100">
-                {data.recipeName}
-            </div>
-            <div className="mt-2 text-xs text-slate-300">
-                Machine: {data.machineName}
-            </div>
-            <div className="mt-1 grid grid-cols-[1fr_auto] gap-x-2 gap-y-1 text-xs text-slate-300">
-                <div>Machine count (Demand)</div>
-                <div className="text-slate-100">
-                    {formatRate(data.demandMachineCount)}
+            <div className="mb-3">
+                <div className="truncate text-base font-bold text-slate-100">
+                    {data.recipeName}
                 </div>
-                <div>Machine count (Supply)</div>
-                <div className="text-slate-100">
-                    {formatRate(data.supplyMachineCount)}
-                </div>
-                <div>Recipe rate (Demand)</div>
-                <div className="text-slate-100">
-                    {formatRate(data.demandRecipeRate)}/s
-                </div>
-                <div>Recipe rate (Supply)</div>
-                <div className="text-slate-100">
-                    {formatRate(data.supplyRecipeRate)}/s
+                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
+                    <IconCpu size={14} className="shrink-0" />
+                    <span className="truncate">{data.machineName}</span>
                 </div>
             </div>
-            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
-                <span>Modifiers applied</span>
-                {data.preferredRecipe ? (
-                    <span className="rounded-md border border-amber-600/50 bg-amber-700/20 px-2 py-0.5 text-amber-200">
-                        Preferred
-                    </span>
-                ) : null}
-            </div>
-            <div className="mt-1 rounded-md border border-slate-700/70 bg-slate-950/60 p-2">
-                {data.modifierNames.length === 0 ? (
-                    <div className="text-[11px] text-slate-500">None</div>
-                ) : (
-                    <div className="flex max-h-16 flex-col gap-1 overflow-y-auto pr-1 text-[11px] text-slate-300">
-                        {data.modifierNames.map((modifierName) => (
-                            <div key={modifierName} className="truncate">
-                                {modifierName}
-                            </div>
-                        ))}
+
+            <div className="space-y-2 rounded-lg bg-slate-950/40 p-3">
+                <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 text-slate-400 font-medium">
+                        <IconTools size={14} className="shrink-0" />
+                        <span>Machines</span>
                     </div>
-                )}
-            </div>
-            <div className="mt-2 rounded-md border border-slate-700/70 bg-slate-950/60 p-2">
-                <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                    Attributes
+                    <div className="font-mono">
+                        <span className={machineColor}>
+                            {formatRate(data.supplyMachineCount)}
+                        </span>
+                        <span className="mx-1 text-slate-600">/</span>
+                        <span className="text-slate-300">
+                            {formatRate(data.demandMachineCount)}
+                        </span>
+                        <span className="ml-1 text-[10px] text-slate-500">
+                            &nbsp;&nbsp;&nbsp;&nbsp;
+                        </span>
+                    </div>
                 </div>
-                {data.attributes.length === 0 ? (
-                    <div className="mt-1 text-[11px] text-slate-500">None</div>
-                ) : (
-                    <div className="mt-1 flex max-h-22.5 flex-col gap-1 overflow-y-auto pr-1 text-[11px] text-slate-300">
-                        {data.attributes.map((attribute) => {
-                            const unit = attribute.unit?.trim()
-                                ? ` ${attribute.unit}`
+
+                <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 text-slate-400 font-medium">
+                        <IconRotateClockwise2 size={14} className="shrink-0" />
+                        <span>Rate</span>
+                    </div>
+                    <div className="font-mono">
+                        <span className={rateColor}>
+                            {formatRate(data.supplyRecipeRate)}
+                        </span>
+                        <span className="mx-1 text-slate-600">/</span>
+                        <span className="text-slate-300 font-medium">
+                            {formatRate(data.demandRecipeRate)}
+                        </span>
+                        <span className="ml-1 text-[10px] text-slate-500">
+                            r/s
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {data.attributes.length > 0 && (
+                <div className="mt-3 space-y-2 border-t border-slate-800/60 pt-3">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Attributes
+                    </div>
+                    <div className="space-y-1.5">
+                        {data.attributes.map((attr) => {
+                            const isAtTarget =
+                                attr.supply >= attr.demand * 0.99;
+                            const attrColor = isAtTarget
+                                ? "text-slate-100"
+                                : "text-amber-400/90";
+                            const unit = attr.unit?.trim()
+                                ? ` ${attr.unit}`
                                 : "";
+
                             return (
                                 <div
-                                    key={attribute.puid}
-                                    className="flex items-center justify-between gap-2"
+                                    key={attr.puid}
+                                    className="flex items-center justify-between text-[11px]"
                                 >
-                                    <span className="truncate text-slate-300">
-                                        {attribute.name}
-                                    </span>
-                                    <span className="shrink-0 text-slate-200">
-                                        D {formatRate(attribute.demand)} | S{" "}
-                                        {formatRate(attribute.supply)}
-                                        {unit}
-                                    </span>
+                                    <div className="flex items-center gap-2 text-slate-400 truncate pr-2">
+                                        <IconBolt
+                                            size={12}
+                                            className="shrink-0 text-slate-500"
+                                        />
+                                        <span className="truncate">
+                                            {attr.name}
+                                        </span>
+                                    </div>
+                                    <div className="font-mono shrink-0">
+                                        <span className={attrColor}>
+                                            {formatRate(attr.supply)}
+                                        </span>
+                                        <span className="mx-1 text-slate-600">
+                                            /
+                                        </span>
+                                        <span className="text-slate-400">
+                                            {formatRate(attr.demand)}
+                                        </span>
+                                        <span className="ml-0.5 text-[9px] text-slate-600">
+                                            {unit}
+                                        </span>
+                                    </div>
                                 </div>
                             );
                         })}
+                    </div>
+                </div>
+            )}
+
+            <div className="mt-3 border-t border-slate-800/60 pt-3">
+                <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Modifiers
+                    </span>
+                    {data.preferredRecipe && (
+                        <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-500 ring-1 ring-inset ring-amber-500/20">
+                            PREFERRED
+                        </span>
+                    )}
+                </div>
+                {data.modifierNames.length === 0 ? (
+                    <div className="text-[10px] italic text-slate-600">
+                        No modifiers applied
+                    </div>
+                ) : (
+                    <div className="flex flex-wrap gap-1">
+                        {data.modifierNames.map((name) => (
+                            <span
+                                key={name}
+                                className="rounded bg-slate-800/80 px-2 py-0.5 text-[10px] text-slate-300 ring-1 ring-slate-700/50"
+                            >
+                                {name}
+                            </span>
+                        ))}
                     </div>
                 )}
             </div>
