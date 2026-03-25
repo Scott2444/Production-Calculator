@@ -38,35 +38,9 @@ namespace ProductionCalculator.Business.Services
                     CalculatedMachineCount = fullNode.Node.Calculated_Machine_Count,
                     CalculatedTargetRate = fullNode.Node.Calculated_Target_Rate,
                     CalculatedActualRate = fullNode.Node.Calculated_Actual_Rate,
-                    Modifiers = fullNode.Modifiers
-                        .Select(fullModifier => new WorkflowModifierExchange
-                        {
-                            Puid = projectObjects.Modifiers
-                                .FirstOrDefault(m => m.Modifier_Id == fullModifier.Modifier.Modifier_Id)?.Puid ?? throw new ArgumentException($"Modifier with id {fullModifier.Modifier.Modifier_Id} not found in project objects"),
-                            Attributes = fullModifier.ModifierAttributes
-                                .Select(a => new WorkflowModifierAttributeExchange
-                                {
-                                    AttributePuid = projectObjects.Attributes.FirstOrDefault(attr => attr.Attribute_Id == a.Attribute_Id)?.Puid ?? throw new ArgumentException($"Attribute with id {a.Attribute_Id} not found in project objects"),
-                                    FlatBonus = a.Flat_Bonus,
-                                    PercentBonus = a.Percent_Bonus,
-                                    MultiplicativeBonus = a.Multiplicative_Bonus
-                                })
-                                .ToList()
-                        })
-                        .ToList(),
-                    RecipeAttributes = fullNode.RecipeAttributes
-                        .Select(a => new AttributeRateRequest
-                        {
-                            Puid = projectObjects.Attributes.FirstOrDefault(attr => attr.Attribute_Id == a.Attribute_Id)?.Puid ?? throw new ArgumentException($"Attribute with id {a.Attribute_Id} not found in project objects"),
-                            Rate = a.Rate
-                        })
-                        .ToList(),
-                    MachineAttributes = fullNode.MachineAttributes
-                        .Select(a => new AttributeRateRequest
-                        {
-                            Puid = projectObjects.Attributes.FirstOrDefault(attr => attr.Attribute_Id == a.Attribute_Id)?.Puid ?? throw new ArgumentException($"Attribute with id {a.Attribute_Id} not found in project objects"),
-                            Rate = a.Rate
-                        })
+                    ModifierPuids = fullNode.Modifiers
+                        .Select(workflowModifier => projectObjects.Modifiers
+                            .FirstOrDefault(m => m.Modifier_Id == workflowModifier.Modifier_Id)?.Puid ?? throw new ArgumentException($"Modifier with id {workflowModifier.Modifier_Id} not found in project objects"))
                         .ToList()
                 };
                 response.Nodes.Add(nodeResponse);

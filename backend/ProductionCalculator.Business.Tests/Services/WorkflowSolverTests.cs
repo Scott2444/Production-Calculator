@@ -122,18 +122,14 @@ public class WorkflowSolverTests
 		};
 	}
 
-	private static FullWorkflowModifier WorkflowNodeModifier(int id, int nodeId, int modifierId)
+	private static WorkflowNodeModifier WorkflowNodeModifier(int id, int nodeId, int modifierId)
 	{
-		return new FullWorkflowModifier
+		return new WorkflowNodeModifier
 		{
-			Modifier = new WorkflowNodeModifier
-			{
-				Workflow_Node_Modifier_Id = id,
-				Workflow_Node_Id = nodeId,
-				Modifier_Id = modifierId,
-				Modifier_Version = 1
-			},
-			ModifierAttributes = []
+			Workflow_Node_Modifier_Id = id,
+			Workflow_Node_Id = nodeId,
+			Modifier_Id = modifierId,
+			Modifier_Version = 1
 		};
 	}
 

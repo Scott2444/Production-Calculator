@@ -200,7 +200,7 @@ namespace ProductionCalculator.Business.Services
                     fullNode.Node.Actual_Machine_Count ?? 0.0, 
                     recipe, 
                     projectObjects.Machines.First(m => m.Machine_Id == fullNode.Node.Machine_Id), 
-                    fullNode.Modifiers.Select(m => projectObjects.Modifiers.First(mod => mod.Modifier_Id == m.Modifier.Modifier_Id)).ToList()
+                    fullNode.Modifiers.Select(m => projectObjects.Modifiers.First(mod => mod.Modifier_Id == m.Modifier_Id)).ToList()
                     );
                 var variable = solver.MakeNumVar(0.0, maxRate, recipe.Name);
                 recipeVarMap[recipe.Recipe_Id] = variable;
@@ -366,7 +366,7 @@ namespace ProductionCalculator.Business.Services
 
                 foreach (var workflowModifier in node.Modifiers)
                 {
-                    var modifier = projectObjects.Modifiers.First(m => m.Modifier_Id == workflowModifier.Modifier.Modifier_Id);
+                    var modifier = projectObjects.Modifiers.First(m => m.Modifier_Id == workflowModifier.Modifier_Id);
                     inputPercent += modifier.Input_Percent;
                     outputPercent += modifier.Output_Percent;
                 }

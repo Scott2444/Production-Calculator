@@ -55,9 +55,7 @@ public class WorkflowServiceTests
         {
             MachinePuid = "m1",
             ActualMachineCount = 1,
-            Modifiers = [],
-            RecipeAttributes = [],
-            MachineAttributes = []
+            ModifierPuids = [],
         };
     }
 
@@ -836,3 +834,4 @@ public class WorkflowServiceTests
         Assert.Equal(response, result.Data);
     }
 }
+

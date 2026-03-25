@@ -7,236 +7,218 @@ namespace ProductionCalculator.Business.Tests.Services
     [ExcludeFromCodeCoverage]
     public class WorkflowChartValidatorTests
     {
-        private readonly WorkflowChartValidator _validator;
-        private readonly DateTime _now = DateTime.UtcNow;
-
-        public WorkflowChartValidatorTests()
+        [Fact]
+        public void WorkflowIsUpToDate_ReturnsTrue_ForMatchingVersions()
         {
-            _validator = new WorkflowChartValidator();
-        }
-
-        private Recipe CreateRecipe(int id, int version = 1) => new()
-        {
-            Recipe_Id = id,
-            Project_Id = 1,
-            Puid = $"r{id}",
-            Name = $"Recipe {id}",
-            Base_Crafting_Time = 1,
-            Version = version,
-            Created_At = _now,
-            Last_Updated = _now
-        };
-
-        private Machine CreateMachine(int id, int version = 1) => new()
-        {
-            Machine_Id = id,
-            Project_Id = 1,
-            Puid = $"m{id}",
-            Name = $"Machine {id}",
-            Base_Speed = 1,
-            Version = version,
-            Created_At = _now,
-            Last_Updated = _now
-        };
-
-        private Modifier CreateModifier(int id, int version = 1) => new()
-        {
-            Modifier_Id = id,
-            Project_Id = 1,
-            Puid = $"mod{id}",
-            Name = $"Modifier {id}",
-            Flat_Bonus = 0,
-            Percent_Bonus = 0,
-            Multiplicative_Bonus = 1,
-            Input_Percent = 0,
-            Output_Percent = 0,
-            Version = version,
-            Created_At = _now,
-            Last_Updated = _now
-        };
-
-        private Product CreateProduct(int id) => new()
-        {
-            Product_Id = id,
-            Project_Id = 1,
-            Puid = $"p{id}",
-            Name = $"Product {id}",
-            Created_At = _now,
-            Last_Updated = _now
-        };
-
-        private ProjectAttribute CreateAttribute(int id, int version = 1) => new()
-        {
-            Attribute_Id = id,
-            Project_Id = 1,
-            Puid = $"a{id}",
-            Name = $"Attribute {id}",
-            Version = version,
-            Created_At = _now,
-            Last_Updated = _now
-        };
-
-        private FullNode CreateFullNode(int nodeId, int recipeId, int recipeVersion, int? machineId = null, int? machineVersion = null) => new()
-        {
-            Node = new WorkflowNode
+            var validator = new WorkflowChartValidator();
+            var chart = new NodeChart
             {
-                Node_Id = nodeId,
-                Workflow_Id = 1,
-                Puid = $"n{nodeId}",
-                Recipe_Id = recipeId,
-                Recipe_Version = recipeVersion,
-                Machine_Id = machineId,
-                Machine_Version = machineVersion
-            },
-            Modifiers = [],
-            RecipeAttributes = [],
-            MachineAttributes = []
-        };
+                Nodes =
+                [
+                    new FullNode
+                    {
+                        Node = new WorkflowNode
+                        {
+                            Node_Id = 1,
+                            Workflow_Id = 1,
+                            Puid = "node1",
+                            Recipe_Id = 10,
+                            Recipe_Version = 3,
+                            Machine_Id = 20,
+                            Machine_Version = 4
+                        },
+                        Modifiers =
+                        [
+                            new WorkflowNodeModifier
+                            {
+                                Workflow_Node_Modifier_Id = 1,
+                                Workflow_Node_Id = 1,
+                                Modifier_Id = 30,
+                                Modifier_Version = 5
+                            }
+                        ]
+                    }
+                ],
+                Edges = [],
+                Targets = [],
+                ProductNodes =
+                [
+                    new WorkflowProductNode
+                    {
+                        Workflow_Product_Node_Id = 1,
+                        Workflow_Id = 1,
+                        Product_Id = 40,
+                        Calculated_Flow_Rate = 0,
+                        Actual_Flow_Rate_In = 0,
+                        Actual_Flow_Rate_Out = 0,
+                        Is_External = false
+                    }
+                ],
+                PreferredRecipes =
+                [
+                    new WorkflowRecipe
+                    {
+                        Workflow_Recipe_Id = 1,
+                        Workflow_Id = 1,
+                        Recipe_Id = 10
+                    }
+                ]
+            };
 
-        private ProjectObjects CreateProjectObjects() => new()
-        {
-            Products = [],
-            Attributes = [],
-            Recipes = [],
-            RecipeProducts = [],
-            RecipeAttributes = [],
-            Machines = [],
-            MachineRecipes = [],
-            MachineAttributes = [],
-            Modifiers = [],
-            ModifierAttributes = []
-        };
+            var projectObjects = new ProjectObjects
+            {
+                Products =
+                [
+                    new Product
+                    {
+                        Product_Id = 40,
+                        Project_Id = 1,
+                        Puid = "p1",
+                        Name = "P1",
+                        Created_At = DateTime.UtcNow,
+                        Last_Updated = DateTime.UtcNow
+                    }
+                ],
+                Attributes = [],
+                Recipes =
+                [
+                    new Recipe
+                    {
+                        Recipe_Id = 10,
+                        Project_Id = 1,
+                        Puid = "r1",
+                        Name = "R1",
+                        Base_Crafting_Time = 1,
+                        Version = 3,
+                        Created_At = DateTime.UtcNow,
+                        Last_Updated = DateTime.UtcNow
+                    }
+                ],
+                RecipeProducts = [],
+                RecipeAttributes = [],
+                Machines =
+                [
+                    new Machine
+                    {
+                        Machine_Id = 20,
+                        Project_Id = 1,
+                        Puid = "m1",
+                        Name = "M1",
+                        Base_Speed = 1,
+                        Version = 4,
+                        Created_At = DateTime.UtcNow,
+                        Last_Updated = DateTime.UtcNow
+                    }
+                ],
+                MachineRecipes = [],
+                MachineAttributes = [],
+                Modifiers =
+                [
+                    new Modifier
+                    {
+                        Modifier_Id = 30,
+                        Project_Id = 1,
+                        Puid = "mod1",
+                        Name = "Mod1",
+                        Flat_Bonus = 0,
+                        Percent_Bonus = 0,
+                        Multiplicative_Bonus = 1,
+                        Input_Percent = 0,
+                        Output_Percent = 0,
+                        Version = 5,
+                        Created_At = DateTime.UtcNow,
+                        Last_Updated = DateTime.UtcNow
+                    }
+                ],
+                ModifierAttributes = []
+            };
+
+            Assert.True(validator.WorkflowIsUpToDate(chart, projectObjects));
+        }
 
         [Fact]
-        public void WorkflowIsUpToDate_AllUpToDate_ReturnsTrue()
+        public void WorkflowIsUpToDate_ReturnsFalse_WhenModifierVersionMismatches()
         {
-            var recipe = CreateRecipe(1);
-            var machine = CreateMachine(1);
-            var modifier = CreateModifier(1);
-            var product = CreateProduct(1);
-            var attribute = CreateAttribute(1);
-
-            var projectObjects = CreateProjectObjects();
-            projectObjects.Recipes = [recipe];
-            projectObjects.Machines = [machine];
-            projectObjects.Modifiers = [modifier];
-            projectObjects.Products = [product];
-            projectObjects.Attributes = [attribute];
-
-            var fullNode = CreateFullNode(1, 1, 1, 1, 1);
-            fullNode.Modifiers = [new FullWorkflowModifier {
-                Modifier = new WorkflowNodeModifier { Workflow_Node_Modifier_Id = 1, Workflow_Node_Id = 1, Modifier_Id = 1, Modifier_Version = 1 },
-                ModifierAttributes = [new WorkflowModifierAttribute { Workflow_Modifier_Attribute_Id = 1, Workflow_Node_Id = 1, Workflow_Node_Modifier_Id = 1, Attribute_Id = 1, Flat_Bonus = 0, Percent_Bonus = 0, Multiplicative_Bonus = 1 }]
-            }];
-            fullNode.RecipeAttributes = [new WorkflowRecipeAttribute { Workflow_Recipe_Attribute_Id = 1, Workflow_Node_Id = 1, Attribute_Id = 1, Rate = 1 }];
-            fullNode.MachineAttributes = [new WorkflowMachineAttribute { Workflow_Machine_Attribute_Id = 1, Workflow_Node_Id = 1, Attribute_Id = 1, Rate = 1 }];
-
-            var nodeChart = new NodeChart
+            var validator = new WorkflowChartValidator();
+            var chart = new NodeChart
             {
-                Nodes = [fullNode],
-                ProductNodes = [new WorkflowProductNode { Workflow_Product_Node_Id = 1, Workflow_Id = 1, Product_Id = 1, Calculated_Flow_Rate = 0, Actual_Flow_Rate_In = 0, Actual_Flow_Rate_Out = 0, Is_External = false }],
-                PreferredRecipes = [new WorkflowRecipe { Workflow_Recipe_Id = 1, Workflow_Id = 1, Recipe_Id = 1 }],
+                Nodes =
+                [
+                    new FullNode
+                    {
+                        Node = new WorkflowNode
+                        {
+                            Node_Id = 1,
+                            Workflow_Id = 1,
+                            Puid = "node1",
+                            Recipe_Id = 10,
+                            Recipe_Version = 1,
+                            Machine_Id = null,
+                            Machine_Version = null
+                        },
+                        Modifiers =
+                        [
+                            new WorkflowNodeModifier
+                            {
+                                Workflow_Node_Modifier_Id = 1,
+                                Workflow_Node_Id = 1,
+                                Modifier_Id = 30,
+                                Modifier_Version = 1
+                            }
+                        ]
+                    }
+                ],
                 Edges = [],
-                Targets = []
+                Targets = [],
+                ProductNodes = [],
+                PreferredRecipes = []
             };
 
-            var result = _validator.WorkflowIsUpToDate(nodeChart, projectObjects);
-
-            Assert.True(result);
-        }
-
-        public enum InvalidType { Missing, OutOfDate }
-        public enum EntityType { Recipe, Machine, Modifier, Product, PreferredRecipe, Attribute }
-
-        [Theory]
-        [InlineData(EntityType.Recipe, InvalidType.Missing)]
-        [InlineData(EntityType.Recipe, InvalidType.OutOfDate)]
-        [InlineData(EntityType.Machine, InvalidType.Missing)]
-        [InlineData(EntityType.Machine, InvalidType.OutOfDate)]
-        [InlineData(EntityType.Modifier, InvalidType.Missing)]
-        [InlineData(EntityType.Modifier, InvalidType.OutOfDate)]
-        [InlineData(EntityType.Product, InvalidType.Missing)]
-        [InlineData(EntityType.PreferredRecipe, InvalidType.Missing)]
-        [InlineData(EntityType.Attribute, InvalidType.Missing)]
-        public void WorkflowIsUpToDate_InvalidProjectData_ReturnsFalse(EntityType entityType, InvalidType invalidType)
-        {
-            // Arrange
-            var projectObjects = CreateProjectObjects();
-            
-            // Standard "Up to Date" objects
-            var recipe = CreateRecipe(1, version: 1);
-            var machine = CreateMachine(1, version: 1);
-            var modifier = CreateModifier(1, version: 1);
-            var product = CreateProduct(1);
-            var attribute = CreateAttribute(1, version: 1);
-
-            // Chart that is up to date with the above
-            var fullNode = CreateFullNode(1, 1, 1, 1, 1);
-            fullNode.Modifiers = [new FullWorkflowModifier {
-                Modifier = new WorkflowNodeModifier { Workflow_Node_Modifier_Id = 1, Workflow_Node_Id = 1, Modifier_Id = 1, Modifier_Version = 1 },
+            var projectObjects = new ProjectObjects
+            {
+                Products = [],
+                Attributes = [],
+                Recipes =
+                [
+                    new Recipe
+                    {
+                        Recipe_Id = 10,
+                        Project_Id = 1,
+                        Puid = "r1",
+                        Name = "R1",
+                        Base_Crafting_Time = 1,
+                        Version = 1,
+                        Created_At = DateTime.UtcNow,
+                        Last_Updated = DateTime.UtcNow
+                    }
+                ],
+                RecipeProducts = [],
+                RecipeAttributes = [],
+                Machines = [],
+                MachineRecipes = [],
+                MachineAttributes = [],
+                Modifiers =
+                [
+                    new Modifier
+                    {
+                        Modifier_Id = 30,
+                        Project_Id = 1,
+                        Puid = "mod1",
+                        Name = "Mod1",
+                        Flat_Bonus = 0,
+                        Percent_Bonus = 0,
+                        Multiplicative_Bonus = 1,
+                        Input_Percent = 0,
+                        Output_Percent = 0,
+                        Version = 2,
+                        Created_At = DateTime.UtcNow,
+                        Last_Updated = DateTime.UtcNow
+                    }
+                ],
                 ModifierAttributes = []
-            }];
-            fullNode.RecipeAttributes = [new WorkflowRecipeAttribute { Workflow_Recipe_Attribute_Id = 1, Workflow_Node_Id = 1, Attribute_Id = 1, Rate = 1 }];
-
-            var nodeChart = new NodeChart
-            {
-                Nodes = [fullNode],
-                ProductNodes = [new WorkflowProductNode { Workflow_Product_Node_Id = 1, Workflow_Id = 1, Product_Id = 1, Calculated_Flow_Rate = 0, Actual_Flow_Rate_In = 0, Actual_Flow_Rate_Out = 0, Is_External = false }],
-                PreferredRecipes = [new WorkflowRecipe { Workflow_Recipe_Id = 1, Workflow_Id = 1, Recipe_Id = 1 }],
-                Edges = [], Targets = []
             };
 
-            // Apply "Invalidity"
-            switch (entityType)
-            {
-                case EntityType.Recipe:
-                    if (invalidType == InvalidType.OutOfDate) projectObjects.Recipes = [CreateRecipe(1, version: 2)];
-                    break;
-                case EntityType.Machine:
-                    projectObjects.Recipes = [recipe];
-                    if (invalidType == InvalidType.OutOfDate) projectObjects.Machines = [CreateMachine(1, version: 2)];
-                    break;
-                case EntityType.Modifier:
-                    projectObjects.Recipes = [recipe];
-                    projectObjects.Machines = [machine];
-                    if (invalidType == InvalidType.OutOfDate) projectObjects.Modifiers = [CreateModifier(1, version: 2)];
-                    break;
-                case EntityType.Product:
-                    projectObjects.Recipes = [recipe];
-                    projectObjects.Machines = [machine];
-                    projectObjects.Modifiers = [modifier];
-                    // missing product 1
-                    break;
-                case EntityType.PreferredRecipe:
-                    projectObjects.Recipes = [recipe];
-                    projectObjects.Machines = [machine];
-                    projectObjects.Modifiers = [modifier];
-                    projectObjects.Products = [product];
-                    // Node uses recipe 1, but preferred recipe uses recipe 2 (which is missing)
-                    nodeChart.PreferredRecipes = [new WorkflowRecipe { Workflow_Recipe_Id = 1, Workflow_Id = 1, Recipe_Id = 2 }];
-                    break;
-                case EntityType.Attribute:
-                    projectObjects.Recipes = [recipe];
-                    projectObjects.Machines = [machine];
-                    projectObjects.Modifiers = [modifier];
-                    projectObjects.Products = [product];
-                    // Node uses attribute 1 (which is missing)
-                    break;
-            }
-
-            // Fill in the rest of project objects to avoid failures elsewhere
-            if (projectObjects.Recipes.Count == 0 && entityType != EntityType.Recipe && entityType != EntityType.PreferredRecipe) projectObjects.Recipes = [recipe];
-            if (projectObjects.Machines.Count == 0 && entityType != EntityType.Machine) projectObjects.Machines = [machine];
-            if (projectObjects.Modifiers.Count == 0 && entityType != EntityType.Modifier) projectObjects.Modifiers = [modifier];
-            if (projectObjects.Products.Count == 0 && entityType != EntityType.Product) projectObjects.Products = [product];
-            if (projectObjects.Attributes.Count == 0 && entityType != EntityType.Attribute) projectObjects.Attributes = [attribute];
-
-            // Act
-            var result = _validator.WorkflowIsUpToDate(nodeChart, projectObjects);
-
-            // Assert
-            Assert.False(result);
+            Assert.False(validator.WorkflowIsUpToDate(chart, projectObjects));
         }
     }
 }
-

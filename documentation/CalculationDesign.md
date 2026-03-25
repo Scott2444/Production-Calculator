@@ -89,7 +89,7 @@ Yield has these fields:
 Attributes can attach to Recipes, Machines, and Modifiers.<br>
 Attribute links to Recipes and Machines can only store the base value.<br>
 Modifiers can attach to machines.<br>
-Attaching attributes can be defined in the project data or workflow specific, so a machine could have a power attribute of 10MW in the project data, but also get a 3x modifier to the power attribute due to overclocking in the workflow.<br>
+Attaching attributes is defined in the project data.<br>
 
 ### Calculations
 

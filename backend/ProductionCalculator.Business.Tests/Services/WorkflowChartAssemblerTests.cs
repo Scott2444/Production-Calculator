@@ -63,8 +63,6 @@ namespace ProductionCalculator.Business.Tests.Services
                     {
                         Node = new WorkflowNode { Node_Id = 100, Workflow_Id = 1, Puid = "existing-puid", Recipe_Id = recipeId, Recipe_Version = 1 },
                         Modifiers = [],
-                        RecipeAttributes = [],
-                        MachineAttributes = []
                     }
                 },
                 Targets = [],
@@ -208,8 +206,6 @@ namespace ProductionCalculator.Business.Tests.Services
                     { 
                         Node = new WorkflowNode { Node_Id = 1000, Workflow_Id = 1, Puid = "N1", Recipe_Id = 10, Recipe_Version = 1, Calculated_Target_Rate = 10 },
                         Modifiers = [],
-                        RecipeAttributes = [],
-                        MachineAttributes = []
                     }
                 },
                 ProductNodes = new List<WorkflowProductNode>
@@ -250,8 +246,6 @@ namespace ProductionCalculator.Business.Tests.Services
                     { 
                         Node = new WorkflowNode { Node_Id = 1, Workflow_Id = 1, Puid = "N1", Recipe_Id = 10, Recipe_Version = 1 },
                         Modifiers = [],
-                        RecipeAttributes = [],
-                        MachineAttributes = []
                     }
                 },
                 Edges = new List<WorkflowEdge>
@@ -365,3 +359,4 @@ namespace ProductionCalculator.Business.Tests.Services
         }
     }
 }
+

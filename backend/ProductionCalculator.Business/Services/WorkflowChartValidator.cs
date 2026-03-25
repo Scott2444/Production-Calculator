@@ -39,8 +39,8 @@ namespace ProductionCalculator.Business.Services
                 // Modifiers - Check that modifier versions are up to date with latest project version
                 foreach (var workflowModifier in fullNode.Modifiers)
                 {
-                    var modifier = projectObjects.Modifiers.FirstOrDefault(m => m.Modifier_Id == workflowModifier.Modifier.Modifier_Id);
-                    if (modifier == null || workflowModifier.Modifier.Modifier_Version != modifier.Version)
+                    var modifier = projectObjects.Modifiers.FirstOrDefault(m => m.Modifier_Id == workflowModifier.Modifier_Id);
+                    if (modifier == null || workflowModifier.Modifier_Version != modifier.Version)
                     {
                         return false;
                     }
@@ -64,38 +64,6 @@ namespace ProductionCalculator.Business.Services
                 if (recipe == null)
                 {
                     return false;
-                }
-            }
-
-            // Attributes - Check that all attributes still exist
-            foreach (var fullNode in nodeChart.Nodes)
-            {
-                foreach (var recipeAttribute in fullNode.RecipeAttributes)
-                {
-                    var attribute = projectObjects.Attributes.FirstOrDefault(a => a.Attribute_Id == recipeAttribute.Attribute_Id);
-                    if (attribute == null)
-                    {
-                        return false;
-                    }
-                }
-                foreach (var machineAttribute in fullNode.MachineAttributes)
-                {
-                    var attribute = projectObjects.Attributes.FirstOrDefault(a => a.Attribute_Id == machineAttribute.Attribute_Id);
-                    if (attribute == null)
-                    {
-                        return false;
-                    }
-                }
-                foreach (var workflowModifier in fullNode.Modifiers)
-                {
-                    foreach (var modifierAttribute in workflowModifier.ModifierAttributes!)
-                    {
-                        var attribute = projectObjects.Attributes.FirstOrDefault(a => a.Attribute_Id == modifierAttribute.Attribute_Id);
-                        if (attribute == null)
-                        {
-                            return false;
-                        }
-                    }
                 }
             }
 

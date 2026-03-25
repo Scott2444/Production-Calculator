@@ -52,15 +52,26 @@ namespace ProductionCalculator.Business.Services
 
                 // Reuse node id if it uses this recipe (still create new object to avoid modifying existing chart)
                 var nodeUsingRecipe = currentChart.Nodes.FirstOrDefault(n => n.Node.Recipe_Id == recipeId);
+                // Get modifiers for this node if it exists
+                var modifiers = new List<WorkflowNodeModifier>();
+                foreach (var modifier in nodeUsingRecipe?.Modifiers ?? [])
+                {
+                    var projectModifier = projectObjects.Modifiers.FirstOrDefault(m => m.Modifier_Id == modifier.Modifier_Id);
+                    if (projectModifier != null)
+                    {
+                        modifier.Modifier_Version = projectModifier.Version;
+                        modifiers.Add(modifier);
+                    }
+                }
+
+
                 if (nodeUsingRecipe != null)
                 {
                     var machine = nodeUsingRecipe.Node.Machine_Id.HasValue ? projectObjects.Machines.First(m => m.Machine_Id == nodeUsingRecipe.Node.Machine_Id.Value) : null;
                     var updatedNode = new FullNode
                     {
                         Node = nodeUsingRecipe.Node,
-                        Modifiers = nodeUsingRecipe.Modifiers,
-                        RecipeAttributes = nodeUsingRecipe.RecipeAttributes,
-                        MachineAttributes = nodeUsingRecipe.MachineAttributes
+                        Modifiers = modifiers
                     };
                     updatedNode.Node.Recipe_Version = recipe.Version;
                     updatedNode.Node.Machine_Id = machine?.Machine_Id;
@@ -93,9 +104,7 @@ namespace ProductionCalculator.Business.Services
                             Calculated_Target_Rate = rate,
                             Calculated_Actual_Rate = null
                         },
-                        Modifiers = [],
-                        RecipeAttributes = BuildDefaultRecipeAttributes(recipeId, projectObjects),
-                        MachineAttributes = machine != null ? BuildDefaultMachineAttributes(machine.Machine_Id, projectObjects) : []
+                        Modifiers = []
                     };
                     updatedChart.Nodes.Add(newNode);
                 }
@@ -212,7 +221,7 @@ namespace ProductionCalculator.Business.Services
                             fullNode.Node.Calculated_Target_Rate.GetValueOrDefault(0.0), 
                             projectObjects.Recipes.First(r => r.Recipe_Id == recipeId), 
                             projectObjects.Machines.First(m => m.Machine_Id == fullNode.Node.Machine_Id.Value), 
-                            fullNode.Modifiers.Select(m => projectObjects.Modifiers.First(mod => mod.Modifier_Id == m.Modifier.Modifier_Id)).ToList()
+                            fullNode.Modifiers.Select(m => projectObjects.Modifiers.First(mod => mod.Modifier_Id == m.Modifier_Id)).ToList()
                             )
                         : null;
                 if (recipeRates.ContainsKey(recipeId))
@@ -427,65 +436,5 @@ namespace ProductionCalculator.Business.Services
             return machine;
         }
 
-        /// <summary>
-        /// Overwrites and builds a new list of recipe attributes for the node based on the request.
-        /// Workflow_Node_Id will be assigned later once the node is saved and has its ID.
-        /// </summary>
-        private static List<WorkflowRecipeAttribute> BuildDefaultRecipeAttributes(int recipeId, ProjectObjects projectObjects)
-        {
-            return projectObjects.RecipeAttributes
-                .Where(a => a.Recipe_Id == recipeId)
-                .Select(a => new WorkflowRecipeAttribute
-                {
-                    Workflow_Recipe_Attribute_Id = 0,
-                    Workflow_Node_Id = 0, // Will be set in WorkflowChartDataService after node is saved and has its ID
-                    Attribute_Id = a.Attribute_Id,
-                    Rate = a.Rate
-                })
-                .ToList();
-        }
-
-        /// <summary>
-        /// Overwrites and builds a new list of machine attributes for the node based on the request.
-        /// Workflow_Node_Id will be assigned later once the node is saved and has its ID.
-        /// </summary>
-        private static List<WorkflowMachineAttribute> BuildDefaultMachineAttributes(int machineId, ProjectObjects projectObjects)
-        {
-            return projectObjects.MachineAttributes
-                .Where(a => a.Machine_Id == machineId)
-                .Select(a => new WorkflowMachineAttribute
-                {
-                    Workflow_Machine_Attribute_Id = 0,
-                    Workflow_Node_Id = 0, // Will be set in WorkflowChartDataService after node is saved and has its ID
-                    Attribute_Id = a.Attribute_Id,
-                    Rate = a.Rate
-                })
-                .ToList();
-        }
-
-        /// <summary>
-        /// Overwrites and builds a new list of modifier attributes for the node based on the request.
-        /// Workflow_Node_Id will be assigned later once the node is saved and has its ID.
-        /// </summary>
-        public static List<WorkflowModifierAttribute> BuildDefaultModifierAttributes(
-            List<WorkflowNodeModifier> workflowNodeModifiers,
-            ProjectObjects projectObjects)
-        {
-            var modifierIds = workflowNodeModifiers.Select(m => m.Modifier_Id).ToHashSet();
-            return projectObjects.ModifierAttributes
-                .Where(a => modifierIds.Contains(a.Modifier_Id))
-                .Select(a => new WorkflowModifierAttribute
-                {
-                    Workflow_Modifier_Attribute_Id = 0,
-                    Workflow_Node_Id = 0, // Will be set in WorkflowChartDataService after node is saved and has its ID
-                    Workflow_Node_Modifier_Id = 0, // Will be set in WorkflowChartDataService after node is saved and has its ID
-                    Modifier_Id = a.Modifier_Id,
-                    Attribute_Id = a.Attribute_Id,
-                    Flat_Bonus = a.Flat_Bonus,
-                    Percent_Bonus = a.Percent_Bonus,
-                    Multiplicative_Bonus = a.Multiplicative_Bonus
-                })
-                .ToList();
-        }
     }
 }

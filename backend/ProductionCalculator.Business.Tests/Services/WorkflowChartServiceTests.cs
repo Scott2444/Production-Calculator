@@ -55,29 +55,14 @@ public class WorkflowChartServiceTests
                 },
                 Modifiers =
                 [
-                    new FullWorkflowModifier
+                    new WorkflowNodeModifier
                     {
-                        Modifier = new WorkflowNodeModifier
-                        {
-                            Workflow_Node_Modifier_Id = 500,
-                            Workflow_Node_Id = 10,
-                            Modifier_Id = 300,
-                            Modifier_Version = 1
-                        },
-                        ModifierAttributes = []
-                    }
-                ],
-                RecipeAttributes =
-                [
-                    new WorkflowRecipeAttribute
-                    {
-                        Workflow_Recipe_Attribute_Id = 1,
+                        Workflow_Node_Modifier_Id = 500,
                         Workflow_Node_Id = 10,
-                        Attribute_Id = 400,
-                        Rate = 1
+                        Modifier_Id = 300,
+                        Modifier_Version = 1
                     }
-                ],
-                MachineAttributes = []
+                ]
             }
         ],
         Edges = [],
@@ -391,9 +376,7 @@ public class WorkflowChartServiceTests
         { 
             MachinePuid = "", 
             ActualMachineCount = 1, 
-            Modifiers = [], 
-            RecipeAttributes = [], 
-            MachineAttributes = [] 
+            ModifierPuids = [], 
         });
 
         // Assert
@@ -413,9 +396,7 @@ public class WorkflowChartServiceTests
         { 
             MachinePuid = "", 
             ActualMachineCount = 1, 
-            Modifiers = [], 
-            RecipeAttributes = [], 
-            MachineAttributes = [] 
+            ModifierPuids = [], 
         };
         var impact = new NodeUpdateImpact(false, false);
 
@@ -447,9 +428,7 @@ public class WorkflowChartServiceTests
         { 
             MachinePuid = "", 
             ActualMachineCount = 1, 
-            Modifiers = [], 
-            RecipeAttributes = [], 
-            MachineAttributes = [] 
+            ModifierPuids = [], 
         };
         var impact = new NodeUpdateImpact(true, true);
 
@@ -689,3 +668,4 @@ public class WorkflowChartServiceTests
         A.CallTo(() => _workflowChartAssembler.PruneDeletedComponents(nodeChart, projectObjects)).MustHaveHappened();
     }
 }
+
