@@ -189,8 +189,9 @@ namespace ProductionCalculator.Business.Services
 
         /// <summary>
         /// Updates the node chart with calculated recipe rates. This should be used after RebuildChartNodes.
-        /// Updates the Calculated_Actual_Rate and Calculated_Machine_Count for nodes
-        /// Updates Calculated_Flow_Rate for edges and product nodes based on the new recipe rates.
+        /// Updates the Calculated_Actual_Rate for nodes
+        /// Updates Actual_Flow_Rate for edges and product nodes based on the new recipe rates.
+        /// Calculations include the modifier effects on machine count
         /// </summary>
         /// <param name="chart">Updated node chart</param>
         /// <param name="recipeRates">Supply recipe rates from workflow solver</param>
@@ -204,6 +205,16 @@ namespace ProductionCalculator.Business.Services
             foreach (var fullNode in chart.Nodes)
             {
                 var recipeId = fullNode.Node.Recipe_Id;
+                // Recalculate machine count since modifiers may have changed since RebuildChartNotes()
+                var recipe = projectObjects.Recipes.FirstOrDefault(r => r.Recipe_Id == recipeId);
+                fullNode.Node.Calculated_Machine_Count = fullNode.Node.Machine_Id.HasValue 
+                        ? _machineCalculator.CalculateMachineCount(
+                            fullNode.Node.Calculated_Target_Rate.GetValueOrDefault(0.0), 
+                            projectObjects.Recipes.First(r => r.Recipe_Id == recipeId), 
+                            projectObjects.Machines.First(m => m.Machine_Id == fullNode.Node.Machine_Id.Value), 
+                            fullNode.Modifiers.Select(m => projectObjects.Modifiers.First(mod => mod.Modifier_Id == m.Modifier.Modifier_Id)).ToList()
+                            )
+                        : null;
                 if (recipeRates.ContainsKey(recipeId))
                 {
                     fullNode.Node.Calculated_Actual_Rate = recipeRates[recipeId];
@@ -215,7 +226,7 @@ namespace ProductionCalculator.Business.Services
             }
 
             // Update edges
-            var productFlowRateIn = new Dictionary<int, double>();
+            var productFlowRateIn = new Dictionary<int, double>(); // Used for updating product nodes later
             var productFlowRateOut = new Dictionary<int, double>();
             foreach (var fullNode in chart.Nodes)
             {
@@ -226,24 +237,24 @@ namespace ProductionCalculator.Business.Services
                     var productNode = chart.ProductNodes.First(pn => pn.Workflow_Product_Node_Id == edge.Product_Node_Id);
                     var rp = relatedRecipeProducts.First(rp => rp.Product_Id == productNode.Product_Id);
                     double flow = rp.Quantity * (recipeRates.ContainsKey(recipeId) ? recipeRates[recipeId] : 0.0);
-                    edge.Calculated_Flow_Rate = flow;
+                    edge.Actual_Flow_Rate = flow;
 
                     // Accumulate flow rates for product nodes to update them later
                     if (edge.Producer_Node_Id.HasValue)
-                    {
-                        if (!productFlowRateOut.ContainsKey(productNode.Workflow_Product_Node_Id))
-                        {
-                            productFlowRateOut[productNode.Workflow_Product_Node_Id] = 0.0;
-                        }
-                        productFlowRateOut[productNode.Workflow_Product_Node_Id] += flow;
-                    }
-                    if (edge.Consumer_Node_Id.HasValue)
                     {
                         if (!productFlowRateIn.ContainsKey(productNode.Workflow_Product_Node_Id))
                         {
                             productFlowRateIn[productNode.Workflow_Product_Node_Id] = 0.0;
                         }
                         productFlowRateIn[productNode.Workflow_Product_Node_Id] += flow;
+                    }
+                    if (edge.Consumer_Node_Id.HasValue)
+                    {
+                        if (!productFlowRateOut.ContainsKey(productNode.Workflow_Product_Node_Id))
+                        {
+                            productFlowRateOut[productNode.Workflow_Product_Node_Id] = 0.0;
+                        }
+                        productFlowRateOut[productNode.Workflow_Product_Node_Id] += flow;
                     }
                 }
             }
@@ -367,6 +378,7 @@ namespace ProductionCalculator.Business.Services
                 var relatedRecipeProducts = projectObjects.RecipeProducts.Where(rp => rp.Recipe_Id == recipeId);
                 foreach (var rp in relatedRecipeProducts)
                 {
+                    // Only calculate flow from outputs of recipes
                     if (rp.Is_Input && rate == 0.0)
                         continue;
                     double flow = rp.Quantity * rate;

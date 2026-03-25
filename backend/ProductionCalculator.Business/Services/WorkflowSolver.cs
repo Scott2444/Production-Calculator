@@ -7,13 +7,18 @@ namespace ProductionCalculator.Business.Services
 {
     public class WorkflowSolver : IWorkflowSolver
     {
+        private readonly IMachineCalculator _machineCalculator;
+
         private const double EXTERNAL_IMPORT = 0.0001; // Very low cost for externally provided products
         private const double PREFERRED_RECIPE = 0.01;
         private const double DEFAULT_COST = 1.0; // Default cost for recipes
         private const double TARGET_BONUS = 100000.0; // Bonus to encourage meeting target supply
         private const double OVERFLOW_BONUS = 1000.0; // Bonus to encourage producing this product
 
-        public WorkflowSolver() {}
+        public WorkflowSolver(IMachineCalculator machineCalculator)
+        {
+            _machineCalculator = machineCalculator;
+        }
 
         /// <summary>
         /// Uses a linear solver for demand calculation based on the provided project objects and node chart.
@@ -187,28 +192,16 @@ namespace ProductionCalculator.Business.Services
             Solver solver = Solver.CreateSolver("GLOP");
             Objective objective = solver.Objective();
 
-            double GetMaxRecipeRate(FullNode fullNode)
-            {
-                var machineCount = fullNode.Node.Actual_Machine_Count
-                    ?? fullNode.Node.Calculated_Machine_Count
-                    ?? 0.0;
-                
-                var targetCount = fullNode.Node.Calculated_Machine_Count ?? 0.0;
-                var targetRate = fullNode.Node.Calculated_Target_Rate ?? 0.0;
-
-                if (machineCount <= 0.0 || targetCount <= 0.0 || targetRate <= 0.0)
-                {
-                    return 0.0;
-                }
-
-                return machineCount / targetCount * targetRate;
-            }
-
             // Real recipe variables (bounded by machine capacity)
             foreach (var fullNode in nodeChart.Nodes)
             {
                 var recipe = projectObjects.Recipes.First(r => r.Recipe_Id == fullNode.Node.Recipe_Id);
-                var maxRate = GetMaxRecipeRate(fullNode);
+                var maxRate = _machineCalculator.CalculateRecipeRate(
+                    fullNode.Node.Actual_Machine_Count ?? 0.0, 
+                    recipe, 
+                    projectObjects.Machines.First(m => m.Machine_Id == fullNode.Node.Machine_Id), 
+                    fullNode.Modifiers.Select(m => projectObjects.Modifiers.First(mod => mod.Modifier_Id == m.Modifier.Modifier_Id)).ToList()
+                    );
                 var variable = solver.MakeNumVar(0.0, maxRate, recipe.Name);
                 recipeVarMap[recipe.Recipe_Id] = variable;
                 objective.SetCoefficient(variable, 1.0);

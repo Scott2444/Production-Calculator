@@ -61,11 +61,32 @@ public class WorkflowSolverTests
 		};
 	}
 
+	private static Machine Machine(int id, string name, double baseSpeed = 10.0)
+	{
+		return new Machine
+		{
+			Machine_Id = id,
+			Project_Id = 1,
+			Puid = $"machine{id}",
+			Name = name,
+			Base_Speed = baseSpeed,
+			Version = 1,
+			Created_At = StaticNow,
+			Last_Updated = StaticNow
+		};
+	}
+
+	private static WorkflowSolver CreateSolver()
+	{
+		return new WorkflowSolver(new MachineCalculator());
+	}
+
 	private static ProjectObjects BuildProjectObjects(
 		List<Product> products,
 		List<Recipe> recipes,
 		List<RecipeProduct> recipeProducts,
-		List<Modifier>? modifiers = null)
+		List<Modifier>? modifiers = null,
+		List<Machine>? machines = null)
 	{
 		return new ProjectObjects
 		{
@@ -74,7 +95,7 @@ public class WorkflowSolverTests
 			Recipes = recipes,
 			RecipeProducts = recipeProducts,
 			RecipeAttributes = [],
-			Machines = [],
+			Machines = machines ?? [Machine(1, "Default")],
 			MachineRecipes = [],
 			MachineAttributes = [],
 			Modifiers = modifiers ?? [],
@@ -92,7 +113,7 @@ public class WorkflowSolverTests
 			Name = name,
 			Flat_Bonus = 0,
 			Percent_Bonus = 0,
-			Multiplicative_Bonus = 0,
+			Multiplicative_Bonus = 1,
 			Input_Percent = inputMult,
 			Output_Percent = outputMult,
 			Version = 1,
@@ -152,7 +173,7 @@ public class WorkflowSolverTests
 		};
 	}
 
-	private static FullNode BuildNode(int recipeId, double? actualMachineCount, double? calculatedMachineCount, double? calculatedTargetRate)
+	private static FullNode BuildNode(int recipeId, double? actualMachineCount, double? calculatedMachineCount, double? calculatedTargetRate, int? machineId = 1)
 	{
 		return new FullNode
 		{
@@ -163,6 +184,7 @@ public class WorkflowSolverTests
 				Puid = $"node-{recipeId}",
 				Recipe_Id = recipeId,
 				Recipe_Version = 1,
+				Machine_Id = machineId,
 				Actual_Machine_Count = actualMachineCount,
 				Calculated_Machine_Count = calculatedMachineCount,
 				Calculated_Target_Rate = calculatedTargetRate
@@ -234,7 +256,7 @@ public class WorkflowSolverTests
 
 		var nodeChart = BuildDemandNodeChart([(2, 10.0)], externalProductIds: [1]);
 
-		var result = new WorkflowSolver().SolveDemand(projectObjects, nodeChart);
+		var result = CreateSolver().SolveDemand(projectObjects, nodeChart);
 
 		Assert.Single(result);
 		AssertRate(result, 10, 10.0);
@@ -260,7 +282,7 @@ public class WorkflowSolverTests
 
 		var nodeChart = BuildDemandNodeChart([(2, 5.0), (4, 7.0)], externalProductIds: [1, 3]);
 
-		var result = new WorkflowSolver().SolveDemand(projectObjects, nodeChart);
+		var result = CreateSolver().SolveDemand(projectObjects, nodeChart);
 
 		Assert.Equal(2, result.Count);
 		AssertRate(result, 10, 5.0);
@@ -286,7 +308,7 @@ public class WorkflowSolverTests
 
 		var nodeChart = BuildDemandNodeChart([(3, 4.0)], externalProductIds: [1]);
 
-		var result = new WorkflowSolver().SolveDemand(projectObjects, nodeChart);
+		var result = CreateSolver().SolveDemand(projectObjects, nodeChart);
 
 		Assert.Equal(2, result.Count);
 		AssertRate(result, 20, 4.0);
@@ -320,7 +342,7 @@ public class WorkflowSolverTests
 
 		var nodeChart = BuildDemandNodeChart(targets, externalProductIds: [1, 2]);
 
-		var result = new WorkflowSolver().SolveDemand(projectObjects, nodeChart);
+		var result = CreateSolver().SolveDemand(projectObjects, nodeChart);
 
 		Assert.Single(result);
 		AssertRate(result, 10, expectedRate);
@@ -344,7 +366,7 @@ public class WorkflowSolverTests
 
 		var nodeChart = BuildDemandNodeChart([(2, 10.0)], externalProductIds: [1]);
 
-		var result = new WorkflowSolver().SolveDemand(projectObjects, nodeChart);
+		var result = CreateSolver().SolveDemand(projectObjects, nodeChart);
 
 		AssertRate(result, 10, 10.0);
 		Assert.False(result.ContainsKey(20));
@@ -357,7 +379,7 @@ public class WorkflowSolverTests
 		var projectObjects = BuildProjectObjects([externalOnly], [], []);
 		var nodeChart = BuildDemandNodeChart([(1, 6.0)], externalProductIds: [1]);
 
-		var result = new WorkflowSolver().SolveDemand(projectObjects, nodeChart);
+		var result = CreateSolver().SolveDemand(projectObjects, nodeChart);
 
 		Assert.Empty(result);
 	}
@@ -376,7 +398,7 @@ public class WorkflowSolverTests
 
 		var nodeChart = BuildDemandNodeChart([(2, 5.0)], externalProductIds: [1]);
 
-		var result = new WorkflowSolver().SolveDemand(projectObjects, nodeChart);
+		var result = CreateSolver().SolveDemand(projectObjects, nodeChart);
 
 		Assert.Single(result);
 		AssertRate(result, 10, 5.0);
@@ -400,7 +422,7 @@ public class WorkflowSolverTests
 
 		var nodeChart = BuildDemandNodeChart([(2, 10.0)], externalProductIds: [1], preferredRecipeIds: [20]);
 
-		var result = new WorkflowSolver().SolveDemand(projectObjects, nodeChart);
+		var result = CreateSolver().SolveDemand(projectObjects, nodeChart);
 
 		AssertRate(result, 20, 10.0);
 		Assert.False(result.ContainsKey(10));
@@ -427,7 +449,7 @@ public class WorkflowSolverTests
 
 		var nodeChart = BuildDemandNodeChart([(3, 10.0)], externalProductIds: [1]);
 
-		var result = new WorkflowSolver().SolveDemand(projectObjects, nodeChart);
+		var result = CreateSolver().SolveDemand(projectObjects, nodeChart);
 
 		AssertRate(result, 10, 10.0);
 		Assert.False(result.ContainsKey(20));
@@ -448,7 +470,7 @@ public class WorkflowSolverTests
 
 		var nodeChart = BuildDemandNodeChart([(2, 0.0)], externalProductIds: [1]);
 
-		var result = new WorkflowSolver().SolveDemand(projectObjects, nodeChart);
+		var result = CreateSolver().SolveDemand(projectObjects, nodeChart);
 
 		Assert.Empty(result);
 	}
@@ -460,7 +482,7 @@ public class WorkflowSolverTests
 		var projectObjects = BuildProjectObjects([final], [], []);
 		var nodeChart = BuildDemandNodeChart([(1, -1.0)]);
 
-		Assert.Throws<ArgumentOutOfRangeException>(() => new WorkflowSolver().SolveDemand(projectObjects, nodeChart));
+		Assert.Throws<ArgumentOutOfRangeException>(() => CreateSolver().SolveDemand(projectObjects, nodeChart));
 	}
 
 	[Fact]
@@ -470,7 +492,7 @@ public class WorkflowSolverTests
 		var projectObjects = BuildProjectObjects([target], [], []);
 		var nodeChart = BuildDemandNodeChart([(1, 1.0)]);
 
-		Assert.Throws<InvalidOperationException>(() => new WorkflowSolver().SolveDemand(projectObjects, nodeChart));
+		Assert.Throws<InvalidOperationException>(() => CreateSolver().SolveDemand(projectObjects, nodeChart));
 	}
 
 	[Fact]
@@ -491,7 +513,7 @@ public class WorkflowSolverTests
 
 		var nodeChart = BuildDemandNodeChart([(2, 4.0)], externalProductIds: [1]);
 
-		var result = new WorkflowSolver().SolveDemand(projectObjects, nodeChart);
+		var result = CreateSolver().SolveDemand(projectObjects, nodeChart);
 
 		AssertRate(result, 20, 4.0);
 		Assert.False(result.ContainsKey(10));
@@ -511,7 +533,7 @@ public class WorkflowSolverTests
 
 		var nodeChart = BuildDemandNodeChart([(2, 0.3)], externalProductIds: [1]);
 
-		var result = new WorkflowSolver().SolveDemand(projectObjects, nodeChart);
+		var result = CreateSolver().SolveDemand(projectObjects, nodeChart);
 
 		AssertRate(result, 10, 3.0, 1e-5);
 	}
@@ -533,7 +555,7 @@ public class WorkflowSolverTests
 			targets: [(2, 10.0)],
 			externalImports: [(1, 10.0)]);
 
-		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
+		var result = CreateSolver().SolveSupply(projectObjects, nodeChart);
 
         Assert.Single(result.RecipeRates);
         AssertRate(result.RecipeRates.ToDictionary(), 10, 10.0);
@@ -558,7 +580,7 @@ public class WorkflowSolverTests
 			targets: [(2, 10.0)],
 			externalImports: []);
 
-		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
+		var result = CreateSolver().SolveSupply(projectObjects, nodeChart);
 
         Assert.Empty(result.RecipeRates);
         Assert.Empty(result.ProductOutFlowRates);
@@ -581,7 +603,7 @@ public class WorkflowSolverTests
 			targets: [(2, 5.0)],
 			externalImports: [(1, 20.0)]);
 
-		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
+		var result = CreateSolver().SolveSupply(projectObjects, nodeChart);
 
 		Assert.Single(result.RecipeRates);
         AssertRate(result.RecipeRates.ToDictionary(), 10, 20.0);
@@ -606,7 +628,7 @@ public class WorkflowSolverTests
 			targets: [(2, 20.0)],
 			externalImports: [(1, 7.0)]);
 
-		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
+		var result = CreateSolver().SolveSupply(projectObjects, nodeChart);
 
 		Assert.Single(result.RecipeRates);
         AssertRate(result.RecipeRates.ToDictionary(), 10, 7.0);
@@ -640,7 +662,7 @@ public class WorkflowSolverTests
 			targets: [(2, 5.0), (4, 8.0)],
 			externalImports: [(1, 5.0), (3, 8.0)]);
 
-		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
+		var result = CreateSolver().SolveSupply(projectObjects, nodeChart);
 
 		Assert.Equal(2, result.RecipeRates.Count);
         AssertRate(result.RecipeRates.ToDictionary(), 10, 5.0);
@@ -666,7 +688,7 @@ public class WorkflowSolverTests
 			targets: [(2, 10.0)],
 			externalImports: [(1, 10.0)]);
 
-		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
+		var result = CreateSolver().SolveSupply(projectObjects, nodeChart);
 
 		Assert.Empty(result.RecipeRates);
     }
@@ -688,7 +710,7 @@ public class WorkflowSolverTests
 			targets: [(2, 10.0)],
 			externalImports: [(1, 10.0)]);
 
-		Assert.Throws<ArgumentOutOfRangeException>(() => new WorkflowSolver().SolveSupply(projectObjects, nodeChart));
+		Assert.Throws<ArgumentOutOfRangeException>(() => CreateSolver().SolveSupply(projectObjects, nodeChart));
 	}
 
 	[Fact]
@@ -708,7 +730,7 @@ public class WorkflowSolverTests
 			targets: [(2, 5.0)],
 			externalImports: [(1, 20.0)]);
 
-		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
+		var result = CreateSolver().SolveSupply(projectObjects, nodeChart);
 
 		Assert.Single(result.RecipeRates);
         AssertRate(result.RecipeRates.ToDictionary(), 10, 20.0);
@@ -740,7 +762,7 @@ public class WorkflowSolverTests
 			targets: [(2, 10.0)],
 			externalImports: [(1, 10.0)]);
 
-		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
+		var result = CreateSolver().SolveSupply(projectObjects, nodeChart);
 
 		AssertRate(result.RecipeRates.ToDictionary(), 10, 10.0);
         Assert.False(result.RecipeRates.TryGetValue(20, out var cycleRate) && cycleRate > 1e-5);
@@ -768,7 +790,7 @@ public class WorkflowSolverTests
 			targets: [(3, 20.0), (4, 5.0)],
 			externalImports: [(1, 20.0), (2, 15.0)]);
 
-		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
+		var result = CreateSolver().SolveSupply(projectObjects, nodeChart);
 
 		Assert.Single(result.RecipeRates);
         AssertRate(result.RecipeRates.ToDictionary(), 10, 5.0);
@@ -795,7 +817,7 @@ public class WorkflowSolverTests
 
 		var nodeChart = BuildDemandNodeChart([(2, 15.0)], externalProductIds: [1], nodes: [node]);
 
-		var result = new WorkflowSolver().SolveDemand(projectObjects, nodeChart);
+		var result = CreateSolver().SolveDemand(projectObjects, nodeChart);
 
 		// 1.0 * (1 + 0.5) = 1.5 per run. Need 15.0 units. Rate = 15.0 / 1.5 = 10.0.
 		AssertRate(result, 10, 10.0);
@@ -830,7 +852,7 @@ public class WorkflowSolverTests
 
 		var nodeChart = BuildDemandNodeChart([(3, 10.0)], externalProductIds: [1], nodes: [node2]);
 
-		var result = new WorkflowSolver().SolveDemand(projectObjects, nodeChart);
+		var result = CreateSolver().SolveDemand(projectObjects, nodeChart);
 
 		AssertRate(result, 20, 10.0);
 		AssertRate(result, 10, 5.0);
@@ -862,10 +884,10 @@ public class WorkflowSolverTests
 			targets: [(2, 25.0)],
 			externalImports: [(1, 100.0)]);
 
-		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
+		var result = CreateSolver().SolveSupply(projectObjects, nodeChart);
 
-		AssertRate(result.RecipeRates.ToDictionary(), 10, 10.0);
-        AssertFlow(result.ProductOutFlowRates, 2, 20.0);
+		AssertRate(result.RecipeRates.ToDictionary(), 10, 100.0);
+        AssertFlow(result.ProductOutFlowRates, 2, 200.0);
     }
 
 	[Fact]
@@ -895,10 +917,10 @@ public class WorkflowSolverTests
 			targets: [(2, 100.0)],
 			externalImports: [(1, 100.0)]);
 
-		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
+		var result = CreateSolver().SolveSupply(projectObjects, nodeChart);
 
-		AssertRate(result.RecipeRates.ToDictionary(), 10, 10.0);
-        AssertFlow(result.ProductOutFlowRates, 2, 17.0);
+		AssertRate(result.RecipeRates.ToDictionary(), 10, 100.0);
+        AssertFlow(result.ProductOutFlowRates, 2, 170.0);
     }
 
 	[Fact]
@@ -929,10 +951,11 @@ public class WorkflowSolverTests
 			targets: [(2, 100.0)],
 			externalImports: [(1, 5.0)]);
 
-		var result = new WorkflowSolver().SolveSupply(projectObjects, nodeChart);
+		var result = CreateSolver().SolveSupply(projectObjects, nodeChart);
 
 		AssertRate(result.RecipeRates.ToDictionary(), 10, 10.0);
         AssertFlow(result.ProductInFlowRates, 1, 5.0);
         AssertFlow(result.ProductOutFlowRates, 2, 10.0);
     }
 }
+

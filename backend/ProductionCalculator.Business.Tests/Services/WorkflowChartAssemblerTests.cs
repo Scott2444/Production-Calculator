@@ -271,8 +271,8 @@ namespace ProductionCalculator.Business.Tests.Services
 
             // Assert
             Assert.Equal(50.0, result.Nodes[0].Node.Calculated_Actual_Rate);
-            Assert.Equal(100.0, result.Edges[0].Calculated_Flow_Rate); // 2 * 50
-            Assert.Equal(100.0, result.ProductNodes[0].Actual_Flow_Rate_Out);
+            Assert.Equal(100.0, result.Edges[0].Actual_Flow_Rate); // 2 * 50
+            Assert.Equal(100.0, result.ProductNodes[0].Actual_Flow_Rate_In);
         }
 
         [Fact]
