@@ -13,8 +13,6 @@ import {
     updateWorkflowNode,
     updateWorkflowPreferredRecipes,
     updateWorkflowTargets,
-    type AttributeRate,
-    type WorkflowModifier,
     type ProductNode,
     type Target,
     type WorkflowChart,
@@ -61,9 +59,9 @@ import {
     useWorkflowsQuery,
 } from "@/hooks/useQueries";
 import { type ProductSummary } from "@/types/products";
-import { type RecipeSummary } from "@/types/recipes";
-import { type MachineSummary } from "@/types/machines";
-import { type ModifierSummary } from "@/types/modifiers";
+import { type Recipe } from "@/types/recipes";
+import { type Machine } from "@/types/machines";
+import { type Modifier } from "@/types/modifiers";
 import { type AttributeSummary } from "@/types/attributes";
 import "@xyflow/react/dist/style.css";
 
@@ -466,15 +464,15 @@ export default function WorkflowPage() {
         [productsQuery.data],
     );
     const recipes = useMemo(
-        () => coerceItems<RecipeSummary>(recipesQuery.data),
+        () => coerceItems<Recipe>(recipesQuery.data),
         [recipesQuery.data],
     );
     const machines = useMemo(
-        () => coerceItems<MachineSummary>(machinesQuery.data),
+        () => coerceItems<Machine>(machinesQuery.data),
         [machinesQuery.data],
     );
     const modifiers = useMemo(
-        () => coerceItems<ModifierSummary>(modifiersQuery.data),
+        () => coerceItems<Modifier>(modifiersQuery.data),
         [modifiersQuery.data],
     );
     const attributes = useMemo(
@@ -507,8 +505,14 @@ export default function WorkflowPage() {
     }, [attributes]);
 
     const nodeAttributeValues = useMemo(
-        () => calculateWorkflowAttributes(chart.nodes),
-        [chart.nodes],
+        () =>
+            calculateWorkflowAttributes(
+                chart.nodes,
+                recipes,
+                machines,
+                modifiers,
+            ),
+        [chart.nodes, recipes, machines, modifiers],
     );
 
     const globalAttributeTotals = useMemo(() => {
@@ -586,6 +590,25 @@ export default function WorkflowPage() {
         if (!selection || selection.type !== "process") return null;
         return chart.nodes.find((node) => node.puid === selection.puid) ?? null;
     }, [selection, chart.nodes]);
+
+    const selectedProcessRecipe = useMemo(() => {
+        if (!selectedProcessNode) return null;
+        return (
+            recipes.find(
+                (recipe) => recipe.puid === selectedProcessNode.recipePuid,
+            ) ?? null
+        );
+    }, [recipes, selectedProcessNode]);
+
+    const selectedProcessMachine = useMemo(() => {
+        if (!selectedProcessNode || !selectedProcessNode.machinePuid)
+            return null;
+        return (
+            machines.find(
+                (machine) => machine.puid === selectedProcessNode.machinePuid,
+            ) ?? null
+        );
+    }, [machines, selectedProcessNode]);
 
     useEffect(() => {
         if (!selection) return;
@@ -671,9 +694,7 @@ export default function WorkflowPage() {
             selectedProcessNode.calculatedMachineCount ??
             0;
         setNodeActualMachineCount(`${count}`);
-        setNodeModifierPuids(
-            selectedProcessNode.modifiers.map((modifier) => modifier.puid),
-        );
+        setNodeModifierPuids(selectedProcessNode.modifierPuids ?? []);
     }, [selectedProcessNode, compatibleMachines]);
 
     const [interactionError, setInteractionError] = useState<string | null>(
@@ -741,9 +762,7 @@ export default function WorkflowPage() {
             nodePuid: string;
             machinePuid: string;
             actualMachineCount: number;
-            modifiers: WorkflowModifier[];
-            recipeAttributes: AttributeRate[];
-            machineAttributes: AttributeRate[];
+            modifierPuids: string[];
         }) => {
             if (!projectId || !workflowId)
                 throw new Error("No workflow selected.");
@@ -755,9 +774,7 @@ export default function WorkflowPage() {
                 {
                     machinePuid: payload.machinePuid,
                     actualMachineCount: payload.actualMachineCount,
-                    modifiers: payload.modifiers,
-                    recipeAttributes: payload.recipeAttributes,
-                    machineAttributes: payload.machineAttributes,
+                    modifierPuids: payload.modifierPuids,
                 },
             );
             return coerceWorkflowChart(data);
@@ -919,11 +936,11 @@ export default function WorkflowPage() {
                     })
                     .sort((a, b) => a.name.localeCompare(b.name));
 
-                const modifierNames = node.modifiers
+                const modifierNames = node.modifierPuids
                     .map(
-                        (modifier) =>
-                            modifierNameByPuid.get(modifier.puid) ??
-                            modifier.puid,
+                        (modifierPuid) =>
+                            modifierNameByPuid.get(modifierPuid) ??
+                            modifierPuid,
                     )
                     .sort((a, b) =>
                         a.localeCompare(b, undefined, { sensitivity: "base" }),
@@ -1148,26 +1165,11 @@ export default function WorkflowPage() {
             return;
         }
 
-        const existingModifierByPuid = new Map<string, WorkflowModifier>();
-        for (const modifier of selectedProcessNode.modifiers) {
-            existingModifierByPuid.set(modifier.puid, modifier);
-        }
-
-        const modifierPayload = nodeModifierPuids.map(
-            (puid) =>
-                existingModifierByPuid.get(puid) ?? {
-                    puid,
-                    attributes: [],
-                },
-        );
-
         saveNodeMutation.mutate({
             nodePuid: selectedProcessNode.puid,
             machinePuid: nodeMachinePuid,
             actualMachineCount: count,
-            modifiers: modifierPayload,
-            recipeAttributes: selectedProcessNode.recipeAttributes,
-            machineAttributes: selectedProcessNode.machineAttributes,
+            modifierPuids: nodeModifierPuids,
         });
     };
 
@@ -2246,77 +2248,73 @@ export default function WorkflowPage() {
                                                             <div>
                                                                 Recipe
                                                                 attributes:{" "}
-                                                                {
-                                                                    selectedProcessNode
-                                                                        .recipeAttributes
-                                                                        .length
-                                                                }
+                                                                {selectedProcessRecipe
+                                                                    ?.attributes
+                                                                    .length ??
+                                                                    0}
                                                             </div>
-                                                            {selectedProcessNode.recipeAttributes.map(
-                                                                (item) => {
-                                                                    const attr =
-                                                                        attributeByPuid.get(
-                                                                            item.puid,
-                                                                        );
-                                                                    const unit =
-                                                                        attr?.unit?.trim()
-                                                                            ? ` ${attr.unit}`
-                                                                            : "";
-                                                                    return (
-                                                                        <div
-                                                                            key={`r-${item.puid}`}
-                                                                            className="truncate"
-                                                                        >
-                                                                            {attr?.name ??
-                                                                                item.puid}
-                                                                            :{" "}
-                                                                            {formatRate(
-                                                                                item.rate,
-                                                                            )}
-                                                                            {
-                                                                                unit
-                                                                            }
-                                                                        </div>
+                                                            {(
+                                                                selectedProcessRecipe?.attributes ??
+                                                                []
+                                                            ).map((item) => {
+                                                                const attr =
+                                                                    attributeByPuid.get(
+                                                                        item.puid,
                                                                     );
-                                                                },
-                                                            )}
+                                                                const unit =
+                                                                    attr?.unit?.trim()
+                                                                        ? ` ${attr.unit}`
+                                                                        : "";
+                                                                return (
+                                                                    <div
+                                                                        key={`r-${item.puid}`}
+                                                                        className="truncate"
+                                                                    >
+                                                                        {attr?.name ??
+                                                                            item.puid}
+                                                                        :{" "}
+                                                                        {formatRate(
+                                                                            item.rate,
+                                                                        )}
+                                                                        {unit}
+                                                                    </div>
+                                                                );
+                                                            })}
                                                             <div className="mt-2">
                                                                 Machine
                                                                 attributes:{" "}
-                                                                {
-                                                                    selectedProcessNode
-                                                                        .machineAttributes
-                                                                        .length
-                                                                }
+                                                                {selectedProcessMachine
+                                                                    ?.attributes
+                                                                    .length ??
+                                                                    0}
                                                             </div>
-                                                            {selectedProcessNode.machineAttributes.map(
-                                                                (item) => {
-                                                                    const attr =
-                                                                        attributeByPuid.get(
-                                                                            item.puid,
-                                                                        );
-                                                                    const unit =
-                                                                        attr?.unit?.trim()
-                                                                            ? ` ${attr.unit}`
-                                                                            : "";
-                                                                    return (
-                                                                        <div
-                                                                            key={`m-${item.puid}`}
-                                                                            className="truncate"
-                                                                        >
-                                                                            {attr?.name ??
-                                                                                item.puid}
-                                                                            :{" "}
-                                                                            {formatRate(
-                                                                                item.rate,
-                                                                            )}
-                                                                            {
-                                                                                unit
-                                                                            }
-                                                                        </div>
+                                                            {(
+                                                                selectedProcessMachine?.attributes ??
+                                                                []
+                                                            ).map((item) => {
+                                                                const attr =
+                                                                    attributeByPuid.get(
+                                                                        item.puid,
                                                                     );
-                                                                },
-                                                            )}
+                                                                const unit =
+                                                                    attr?.unit?.trim()
+                                                                        ? ` ${attr.unit}`
+                                                                        : "";
+                                                                return (
+                                                                    <div
+                                                                        key={`m-${item.puid}`}
+                                                                        className="truncate"
+                                                                    >
+                                                                        {attr?.name ??
+                                                                            item.puid}
+                                                                        :{" "}
+                                                                        {formatRate(
+                                                                            item.rate,
+                                                                        )}
+                                                                        {unit}
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </div>
 
                                                         <button

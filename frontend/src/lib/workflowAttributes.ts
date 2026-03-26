@@ -1,4 +1,7 @@
 import { Node } from "./workflowChart";
+import { Machine } from "@/types/machines";
+import { Modifier } from "@/types/modifiers";
+import { Recipe } from "@/types/recipes";
 
 export interface NodeAttributeValues {
     demand: Map<string, number>;
@@ -18,8 +21,20 @@ function asFiniteNumber(value: number | null | undefined): number {
  */
 export function calculateWorkflowAttributes(
     nodes: Node[],
+    recipes: Recipe[],
+    machines: Machine[],
+    modifiers: Modifier[],
 ): Map<string, NodeAttributeValues> {
     const workflowAttributes = new Map<string, NodeAttributeValues>();
+    const recipeByPuid = new Map(
+        recipes.map((recipe) => [recipe.puid, recipe]),
+    );
+    const machineByPuid = new Map(
+        machines.map((machine) => [machine.puid, machine]),
+    );
+    const modifierByPuid = new Map(
+        modifiers.map((modifier) => [modifier.puid, modifier]),
+    );
 
     function calculateNodeAttributes(
         node: Node,
@@ -30,15 +45,8 @@ export function calculateWorkflowAttributes(
         const percentByAttribute = new Map<string, number>();
         const multiplicativeByAttribute = new Map<string, number>();
 
-        for (const item of node.machineAttributes) {
-            if (!item.puid) continue;
-            const nextBase =
-                (baseByAttribute.get(item.puid) ?? 0) +
-                asFiniteNumber(item.rate) * machineCount;
-            baseByAttribute.set(item.puid, nextBase);
-        }
-
-        for (const item of node.recipeAttributes) {
+        const recipe = recipeByPuid.get(node.recipePuid);
+        for (const item of recipe?.attributes ?? []) {
             if (!item.puid) continue;
             const nextBase =
                 (baseByAttribute.get(item.puid) ?? 0) +
@@ -46,11 +54,23 @@ export function calculateWorkflowAttributes(
             baseByAttribute.set(item.puid, nextBase);
         }
 
-        for (const modifier of node.modifiers) {
-            for (const attribute of modifier.attributes) {
-                if (!attribute.attributePuid) continue;
+        const machine = node.machinePuid
+            ? machineByPuid.get(node.machinePuid)
+            : undefined;
+        for (const item of machine?.attributes ?? []) {
+            if (!item.puid) continue;
+            const nextBase =
+                (baseByAttribute.get(item.puid) ?? 0) +
+                asFiniteNumber(item.rate) * machineCount;
+            baseByAttribute.set(item.puid, nextBase);
+        }
 
-                const attributeId = attribute.attributePuid;
+        for (const modifierPuid of node.modifierPuids) {
+            const modifier = modifierByPuid.get(modifierPuid);
+            for (const attribute of modifier?.attributes ?? []) {
+                if (!attribute.puid) continue;
+
+                const attributeId = attribute.puid;
                 baseByAttribute.set(
                     attributeId,
                     (baseByAttribute.get(attributeId) ?? 0) +

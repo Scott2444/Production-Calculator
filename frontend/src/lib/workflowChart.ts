@@ -1,20 +1,3 @@
-export interface ModifierAttribute {
-    attributePuid: string;
-    flatBonus: number;
-    percentBonus: number; // Additive bonus (scalar, not percent)
-    multiplicativeBonus: number;
-}
-
-export interface WorkflowModifier {
-    puid: string;
-    attributes: ModifierAttribute[];
-}
-
-export interface AttributeRate {
-    puid: string;
-    rate: number;
-}
-
 export interface Node {
     puid: string;
     recipePuid: string;
@@ -23,9 +6,7 @@ export interface Node {
     calculatedMachineCount: number | null;
     calculatedTargetRate: number | null;
     calculatedActualRate: number | null;
-    modifiers: WorkflowModifier[];
-    recipeAttributes: AttributeRate[];
-    machineAttributes: AttributeRate[];
+    modifierPuids: string[];
 }
 
 export interface Edge {
@@ -119,9 +100,7 @@ export async function updateWorkflowTargets(
 export interface UpdateWorkflowChartPayload {
     machinePuid: string;
     actualMachineCount: number;
-    modifiers: WorkflowModifier[];
-    recipeAttributes: AttributeRate[];
-    machineAttributes: AttributeRate[];
+    modifierPuids: string[];
 }
 
 export async function updateWorkflowNode(
