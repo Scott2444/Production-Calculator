@@ -174,7 +174,7 @@ function formatRate(value: number | null | undefined): string {
     if (value === null || value === undefined || Number.isNaN(value))
         return "-";
     const rounded = Math.round(value * 1000) / 1000;
-    return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(3);
+    return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(2);
 }
 
 function asNonNegativeFinite(value: number | null | undefined): number {
@@ -396,45 +396,126 @@ function ProductFlowNode({
     data,
     selected,
 }: NodeProps<FlowNode<ProductFlowNodeData>>) {
+    const demandRate = asNonNegativeFinite(data.calculatedFlowRate);
+    const supplyInRate = asNonNegativeFinite(data.actualFlowRateIn);
+    const supplyOutRate = asNonNegativeFinite(data.actualFlowRateOut);
+
+    const getSupplyColor = (supplyRate: number): string => {
+        if (demandRate <= 0) {
+            return supplyRate > 0 ? "text-cyan-400" : "text-slate-300";
+        }
+        if (supplyRate < demandRate * 0.99) return "text-amber-400";
+        if (supplyRate > demandRate * 1.01) return "text-cyan-400";
+        return "text-emerald-400";
+    };
+
+    const supplyInColor = getSupplyColor(supplyInRate);
+    const supplyOutColor = getSupplyColor(supplyOutRate);
+
+    const netFlow = supplyInRate - supplyOutRate;
+    const netTolerance = Math.max(demandRate * 0.01, 0.001);
+    const netFlowColor =
+        Math.abs(netFlow) <= netTolerance
+            ? "text-emerald-400"
+            : netFlow > 0
+              ? "text-cyan-400"
+              : "text-amber-400";
+
     return (
         <div
-            className={`w-55 rounded-xl border p-3 shadow-sm ${
+            className={`w-72 rounded-xl border p-4 shadow-lg transition-all ${
                 selected
-                    ? "border-cyan-400 bg-slate-800"
-                    : "border-cyan-900/70 bg-slate-900"
+                    ? "border-cyan-500/80 bg-slate-800 ring-2 ring-cyan-500/20"
+                    : "border-slate-700/80 bg-slate-900/95"
             }`}
         >
             <Handle
                 id={getIncomingHandleId(data.handleProductPuid)}
                 type="target"
                 position={Position.Left}
-                className="h-2 w-2 bg-cyan-200"
+                className="h-3! w-3! border-2 border-slate-900 bg-cyan-400"
             />
             <Handle
                 id={getOutgoingHandleId(data.handleProductPuid)}
                 type="source"
                 position={Position.Right}
-                className="h-2 w-2 bg-cyan-200"
+                className="h-3! w-3! border-2 border-slate-900 bg-cyan-400"
             />
 
-            <div className="truncate text-sm font-semibold text-cyan-100">
-                {data.productName}
-            </div>
-            <div className="mt-1 text-xs text-cyan-200/80">
-                Flow: {formatRate(data.calculatedFlowRate)}/s
-            </div>
-            <div className="mt-1 grid grid-cols-2 gap-2 text-xs text-slate-300">
-                <div>In: {formatRate(data.actualFlowRateIn)}</div>
-                <div>Out: {formatRate(data.actualFlowRateOut)}</div>
-            </div>
-            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
-                <span>{data.isExternal ? "External" : "Internal"}</span>
-                {data.targetRate !== null ? (
-                    <span className="rounded-md border border-purple-600/50 bg-purple-700/20 px-2 py-0.5 text-purple-100">
-                        Target {formatRate(data.targetRate)}/s
+            <div className="mb-3 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                    <div className="truncate text-base font-bold text-slate-100">
+                        {data.productName}
+                    </div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Product Flow
+                    </div>
+                </div>
+                {data.isExternal && (
+                    <span className="rounded px-1.5 py-0.5 text-[9px] font-bold ring-1 ring-inset bg-cyan-500/10 text-cyan-300 ring-cyan-400/30">
+                        EXTERNAL
                     </span>
-                ) : null}
+                )}
             </div>
+
+            <div className="space-y-2 rounded-lg bg-slate-950/40 p-3">
+                <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 text-slate-400 font-medium">
+                        <IconTargetArrow size={14} className="shrink-0" />
+                        <span>Demand (In = Out)</span>
+                    </div>
+                    <div className="font-mono text-slate-100">
+                        {formatRate(demandRate)}
+                        <span className="ml-1 text-[10px] text-slate-500">
+                            /s
+                        </span>
+                    </div>
+                </div>
+
+                <div className="border-t border-slate-800/70 pt-2 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-400">
+                            {data.isExternal
+                                ? "Supply In (External)"
+                                : "Supply In"}
+                        </span>
+                        <div className="font-mono">
+                            <span className={supplyInColor}>
+                                {formatRate(supplyInRate)}
+                            </span>
+                            <span className="ml-1 text-[10px] text-slate-500">
+                                /s
+                            </span>
+                        </div>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-400">Supply Out</span>
+                        <div className="font-mono">
+                            <span className={supplyOutColor}>
+                                {formatRate(supplyOutRate)}
+                            </span>
+                            <span className="ml-1 text-[10px] text-slate-500">
+                                /s
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between border-t border-slate-800/60 pt-3 text-[11px]">
+                <span className="text-slate-500">Net Flow (In - Out)</span>
+                <span className={`font-mono ${netFlowColor}`}>
+                    {netFlow > 0 ? "+" : ""}
+                    {formatRate(netFlow)}
+                    <span className="ml-1 text-[10px] text-slate-500">/s</span>
+                </span>
+            </div>
+
+            {data.targetRate !== null ? (
+                <div className="mt-2 rounded-md border border-purple-600/50 bg-purple-700/20 px-2 py-1 text-[11px] text-purple-100">
+                    Target demand: {formatRate(data.targetRate)}/s
+                </div>
+            ) : null}
         </div>
     );
 }
@@ -2450,15 +2531,6 @@ export default function WorkflowPage() {
                                                     </div>
                                                 </div>
                                             )}
-
-                                            {selection?.type === "product" &&
-                                                !selectedProcessNode && (
-                                                    <div className="pointer-events-none absolute right-4 top-24 rounded-xl border border-slate-700/80 bg-slate-900/80 px-3 py-2 text-xs text-slate-300 backdrop-blur">
-                                                        Product node selected.
-                                                        Use External Products to
-                                                        edit global supply.
-                                                    </div>
-                                                )}
 
                                             <div className="pointer-events-auto absolute bottom-4 left-1/2 w-95 -translate-x-1/2 rounded-xl border border-slate-700/90 bg-slate-900/92 p-3 shadow-xl backdrop-blur">
                                                 <div className="flex items-center justify-between gap-3">
