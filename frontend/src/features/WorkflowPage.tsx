@@ -704,6 +704,11 @@ export default function WorkflowPage() {
 
     const [selection, setSelection] = useState<UiSelection>(null);
 
+    const selectedNodeId = useMemo(() => {
+        if (!selection) return null;
+        return `${selection.type}:${selection.puid}`;
+    }, [selection]);
+
     const selectedProcessNode = useMemo(() => {
         if (!selection || selection.type !== "process") return null;
         return chart.nodes.find((node) => node.puid === selection.puid) ?? null;
@@ -1237,25 +1242,101 @@ export default function WorkflowPage() {
             })
             .filter((edge): edge is FlowEdge => edge !== null);
 
+        const attachedEdgeIds = new Set<string>();
+        const connectedNodeIds = new Set<string>();
+        if (selectedNodeId) {
+            connectedNodeIds.add(selectedNodeId);
+
+            for (const edge of edges) {
+                if (
+                    edge.source !== selectedNodeId &&
+                    edge.target !== selectedNodeId
+                ) {
+                    continue;
+                }
+                attachedEdgeIds.add(edge.id);
+                connectedNodeIds.add(edge.source);
+                connectedNodeIds.add(edge.target);
+            }
+        }
+
         const measuredNodes: FlowNode<FlowNodeData>[] = nodes.map((node) => {
             const measured = measuredNodeSizes[node.id];
-            if (!measured) return node;
+            const isSelectedNode = selectedNodeId === node.id;
+            const isConnectedNode = selectedNodeId
+                ? connectedNodeIds.has(node.id)
+                : true;
+
+            const baseNode = !selectedNodeId
+                ? node
+                : {
+                      ...node,
+                      selected: isSelectedNode,
+                      zIndex: isSelectedNode ? 12 : isConnectedNode ? 8 : 1,
+                      style: {
+                          ...(node.style ?? {}),
+                          opacity: isConnectedNode ? 1 : 0.28,
+                          filter: isConnectedNode
+                              ? "grayscale(0)"
+                              : "grayscale(0.88)",
+                      },
+                  };
+
+            if (!measured) return baseNode;
 
             if (
-                node.width === measured.width &&
-                node.height === measured.height
+                baseNode.width === measured.width &&
+                baseNode.height === measured.height
             ) {
-                return node;
+                return baseNode;
             }
 
             return {
-                ...node,
+                ...baseNode,
                 width: measured.width,
                 height: measured.height,
             };
         });
 
-        return getLayoutedWorkflowElements(measuredNodes, edges, {
+        const styledEdges = !selectedNodeId
+            ? edges
+            : edges.map((edge) => {
+                  const isAttached = attachedEdgeIds.has(edge.id);
+                  const edgeColor = isAttached ? "#38bdf8" : "#475569";
+                  const markerEnd =
+                      edge.markerEnd && typeof edge.markerEnd === "object"
+                          ? {
+                                ...edge.markerEnd,
+                                color: edgeColor,
+                            }
+                          : edge.markerEnd;
+
+                  return {
+                      ...edge,
+                      animated: isAttached,
+                      zIndex: isAttached ? 20 : 1,
+                      style: {
+                          ...(edge.style ?? {}),
+                          stroke: edgeColor,
+                          strokeWidth: isAttached ? 3.5 : 1.5,
+                          opacity: isAttached ? 1 : 0.2,
+                      },
+                      markerEnd,
+                      labelStyle: {
+                          ...(edge.labelStyle ?? {}),
+                          fill: isAttached ? "#e0f2fe" : "#94a3b8",
+                          fontWeight: isAttached ? 600 : 500,
+                          opacity: isAttached ? 1 : 0.35,
+                      },
+                      labelBgStyle: {
+                          ...(edge.labelBgStyle ?? {}),
+                          fill: isAttached ? "#082f49" : "#0f172a",
+                          fillOpacity: isAttached ? 0.85 : 0.35,
+                      },
+                  } as FlowEdge;
+              });
+
+        return getLayoutedWorkflowElements(measuredNodes, styledEdges, {
             productNodeIds: [...productIds],
             targetProductNodeIds,
         });
@@ -1273,6 +1354,7 @@ export default function WorkflowPage() {
         productNodeByPuid,
         recipeNameByPuid,
         measuredNodeSizes,
+        selectedNodeId,
         targetByProduct,
     ]);
 
