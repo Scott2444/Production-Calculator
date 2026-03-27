@@ -17,7 +17,7 @@ import {
     type Target,
     type WorkflowChart,
 } from "@/lib/workflowChart";
-import { buildWorkflowLayout } from "@/lib/workflowLayout";
+import { getLayoutedWorkflowElements } from "@/lib/workflowLayout";
 import { calculateWorkflowAttributes } from "@/lib/workflowAttributes";
 import {
     Background,
@@ -862,7 +862,6 @@ export default function WorkflowPage() {
     });
 
     const flowData = useMemo(() => {
-        const processIds = chart.nodes.map((node) => `process:${node.puid}`);
         const productIds = new Set<string>();
 
         for (const productNode of chart.productNodes) {
@@ -880,37 +879,9 @@ export default function WorkflowPage() {
             }
         }
 
-        const layoutNodes = [
-            ...processIds.map((id) => ({ id, kind: "node" as const })),
-            ...[...productIds].map((id) => ({ id, kind: "product" as const })),
-        ];
-
-        const layoutEdges = chart.edges
-            .map((edge) => {
-                const source =
-                    edge.producerNodePuid === null ||
-                    edge.producerNodePuid === undefined
-                        ? `product:${edge.productPuid}`
-                        : `process:${edge.producerNodePuid}`;
-                const target =
-                    edge.consumerNodePuid === null ||
-                    edge.consumerNodePuid === undefined
-                        ? `product:${edge.productPuid}`
-                        : `process:${edge.consumerNodePuid}`;
-                return { source, target };
-            })
-            .filter((edge) => edge.source !== edge.target);
-
         const targetProductNodeIds = chart.targets.map(
             (target) => `product:${target.productPuid}`,
         );
-
-        const positions = buildWorkflowLayout({
-            nodes: layoutNodes,
-            edges: layoutEdges,
-            productNodeIds: [...productIds],
-            targetProductNodeIds,
-        });
 
         const nodes: FlowNode<FlowNodeData>[] = [
             ...chart.nodes.map((node) => {
@@ -949,7 +920,7 @@ export default function WorkflowPage() {
                 return {
                     id,
                     type: "processNode",
-                    position: positions.get(id) ?? { x: 0, y: 0 },
+                    position: { x: 0, y: 0 },
                     data: {
                         puid: node.puid,
                         recipeName:
@@ -994,7 +965,7 @@ export default function WorkflowPage() {
                 return {
                     id,
                     type: "productNode",
-                    position: positions.get(id) ?? { x: 0, y: 0 },
+                    position: { x: 0, y: 0 },
                     data: {
                         puid,
                         productName: productNameByPuid.get(puid) ?? puid,
@@ -1059,7 +1030,10 @@ export default function WorkflowPage() {
             })
             .filter((edge): edge is FlowEdge => edge !== null);
 
-        return { nodes, edges };
+        return getLayoutedWorkflowElements(nodes, edges, {
+            productNodeIds: [...productIds],
+            targetProductNodeIds,
+        });
     }, [
         chart.nodes,
         chart.edges,

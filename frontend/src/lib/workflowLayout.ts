@@ -1,27 +1,5 @@
 import dagre from "dagre";
-
-export type WorkflowLayoutNodeKind = "node" | "product";
-
-export interface WorkflowLayoutNode {
-    id: string;
-    kind?: WorkflowLayoutNodeKind;
-    width?: number;
-    height?: number;
-}
-
-export interface WorkflowLayoutEdge {
-    source: string;
-    target: string;
-    weight?: number;
-    minLen?: number;
-}
-
-export interface WorkflowLayoutGraph {
-    nodes: WorkflowLayoutNode[];
-    edges: WorkflowLayoutEdge[];
-    productNodeIds?: string[];
-    targetProductNodeIds?: string[];
-}
+import type { Edge, Node } from "@xyflow/react";
 
 export interface WorkflowLayoutOptions {
     horizontalSpacing?: number;
@@ -29,11 +7,12 @@ export interface WorkflowLayoutOptions {
     marginX?: number;
     marginY?: number;
     ranker?: "network-simplex" | "tight-tree" | "longest-path";
-}
-
-export interface WorkflowLayoutPoint {
-    x: number;
-    y: number;
+    processNodeWidth?: number;
+    processNodeHeight?: number;
+    productNodeWidth?: number;
+    productNodeHeight?: number;
+    productNodeIds?: string[];
+    targetProductNodeIds?: string[];
 }
 
 const DEFAULT_HORIZONTAL_SPACING = 180;
@@ -63,21 +42,32 @@ function makeTargetSinkNodeId(nodeIds: Set<string>): string {
 }
 
 /**
- * Computes deterministic node positions using Dagre for a workflow graph.
- * Input may include both machine nodes and product nodes, plus a list of target products.
+ * Computes deterministic node positions using Dagre for React Flow elements.
+ * Layout is horizontal (left-to-right) to match workflow chart expectations.
  */
-export function buildWorkflowLayout(
-    graph: WorkflowLayoutGraph,
+export function getLayoutedWorkflowElements<
+    TNode extends Node,
+    TEdge extends Edge & { weight?: number; minLen?: number },
+>(
+    nodes: TNode[],
+    edges: TEdge[],
     options: WorkflowLayoutOptions = {},
-): Map<string, WorkflowLayoutPoint> {
+): { nodes: TNode[]; edges: TEdge[] } {
     const horizontalSpacing =
         options.horizontalSpacing ?? DEFAULT_HORIZONTAL_SPACING;
     const verticalSpacing = options.verticalSpacing ?? DEFAULT_VERTICAL_SPACING;
     const marginX = options.marginX ?? DEFAULT_MARGIN_X;
     const marginY = options.marginY ?? DEFAULT_MARGIN_Y;
 
-    const nodeById = new Map<string, WorkflowLayoutNode>();
-    for (const node of graph.nodes) {
+    const processNodeWidth = options.processNodeWidth ?? DEFAULT_NODE_WIDTH;
+    const processNodeHeight = options.processNodeHeight ?? DEFAULT_NODE_HEIGHT;
+    const productNodeWidth =
+        options.productNodeWidth ?? DEFAULT_PRODUCT_NODE_WIDTH;
+    const productNodeHeight =
+        options.productNodeHeight ?? DEFAULT_PRODUCT_NODE_HEIGHT;
+
+    const nodeById = new Map<string, TNode>();
+    for (const node of nodes) {
         nodeById.set(node.id, node);
     }
 
@@ -85,10 +75,12 @@ export function buildWorkflowLayout(
     const nodeIdSet = new Set(nodeIds);
 
     const productNodeIds = new Set<string>();
-    for (const node of graph.nodes) {
-        if (node.kind === "product") productNodeIds.add(node.id);
+    for (const node of nodes) {
+        if (node.type === "productNode" || node.id.startsWith("product:")) {
+            productNodeIds.add(node.id);
+        }
     }
-    for (const productNodeId of graph.productNodeIds ?? []) {
+    for (const productNodeId of options.productNodeIds ?? []) {
         if (nodeIdSet.has(productNodeId)) productNodeIds.add(productNodeId);
     }
 
@@ -108,16 +100,14 @@ export function buildWorkflowLayout(
         const node = nodeById.get(nodeId);
         const isProduct = productNodeIds.has(nodeId);
         const width =
-            node?.width ??
-            (isProduct ? DEFAULT_PRODUCT_NODE_WIDTH : DEFAULT_NODE_WIDTH);
+            node?.width ?? (isProduct ? productNodeWidth : processNodeWidth);
         const height =
-            node?.height ??
-            (isProduct ? DEFAULT_PRODUCT_NODE_HEIGHT : DEFAULT_NODE_HEIGHT);
+            node?.height ?? (isProduct ? productNodeHeight : processNodeHeight);
         dagreGraph.setNode(nodeId, { width, height });
     }
 
     const insertedEdges = new Set<string>();
-    const sortedEdges = [...graph.edges].sort((left, right) => {
+    const sortedEdges = [...edges].sort((left, right) => {
         const sourceSort = left.source.localeCompare(right.source, undefined, {
             sensitivity: "base",
         });
@@ -141,7 +131,7 @@ export function buildWorkflowLayout(
     }
 
     const targetProductNodeIds = toSortedArray(
-        (graph.targetProductNodeIds ?? []).filter((id) => nodeIdSet.has(id)),
+        (options.targetProductNodeIds ?? []).filter((id) => nodeIdSet.has(id)),
     );
 
     let targetSinkNodeId: string | null = null;
@@ -161,20 +151,26 @@ export function buildWorkflowLayout(
 
     dagre.layout(dagreGraph);
 
-    const positions = new Map<string, WorkflowLayoutPoint>();
-    for (const nodeId of nodeIds) {
-        const point = dagreGraph.node(nodeId);
+    const layoutedNodes = nodes.map((node) => {
+        const point = dagreGraph.node(node.id);
         if (!point) {
-            positions.set(nodeId, { x: 0, y: 0 });
-            continue;
+            return node;
         }
 
-        positions.set(nodeId, {
+        return {
+            ...node,
+            targetPosition: "left",
+            sourcePosition: "right",
             // Dagre reports center points; React Flow expects top-left coordinates.
-            x: point.x - point.width / 2,
-            y: point.y - point.height / 2,
-        });
-    }
+            position: {
+                x: point.x - point.width / 2,
+                y: point.y - point.height / 2,
+            },
+        };
+    });
 
-    return positions;
+    return {
+        nodes: layoutedNodes,
+        edges,
+    };
 }
