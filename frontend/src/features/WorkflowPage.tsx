@@ -28,6 +28,7 @@ import {
     Position,
     ReactFlow,
     type Edge as FlowEdge,
+    type NodeChange,
     type Node as FlowNode,
     type NodeProps,
 } from "@xyflow/react";
@@ -48,7 +49,7 @@ import {
 } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     useAttributesQuery,
     useMachinesQuery,
@@ -83,11 +84,14 @@ interface ProcessNodeData {
         demand: number;
         supply: number;
     }>;
+    incomingProductPuids: string[];
+    outgoingProductPuids: string[];
 }
 
 interface ProductFlowNodeData {
     [key: string]: unknown;
     puid: string;
+    handleProductPuid: string;
     productName: string;
     calculatedFlowRate: number;
     actualFlowRateIn: number;
@@ -186,10 +190,27 @@ function parseNonNegative(value: string): number | null {
     return parsed;
 }
 
+function getIncomingHandleId(productPuid: string): string {
+    return `in:${productPuid}`;
+}
+
+function getOutgoingHandleId(productPuid: string): string {
+    return `out:${productPuid}`;
+}
+
+function getHandleTopOffset(index: number, total: number): string {
+    if (total <= 1) return "50%";
+    const step = 100 / (total + 1);
+    return `${(index + 1) * step}%`;
+}
+
 function ProcessFlowNode({
     data,
     selected,
 }: NodeProps<FlowNode<ProcessNodeData>>) {
+    const incomingProducts = data.incomingProductPuids;
+    const outgoingProducts = data.outgoingProductPuids;
+
     const isUnderSupplied =
         data.supplyMachineCount < data.demandMachineCount * 0.99;
     const isOverSupplied =
@@ -213,16 +234,30 @@ function ProcessFlowNode({
                     : "border-slate-700/80 bg-slate-900/95"
             }`}
         >
-            <Handle
-                type="target"
-                position={Position.Left}
-                className="h-3! w-3! border-2 border-slate-900 bg-purple-500"
-            />
-            <Handle
-                type="source"
-                position={Position.Right}
-                className="h-3! w-3! border-2 border-slate-900 bg-purple-500"
-            />
+            {incomingProducts.map((productPuid, index) => (
+                <Handle
+                    key={`in-${productPuid}`}
+                    id={getIncomingHandleId(productPuid)}
+                    type="target"
+                    position={Position.Left}
+                    style={{
+                        top: getHandleTopOffset(index, incomingProducts.length),
+                    }}
+                    className="h-3! w-3! border-2 border-slate-900 bg-purple-500"
+                />
+            ))}
+            {outgoingProducts.map((productPuid, index) => (
+                <Handle
+                    key={`out-${productPuid}`}
+                    id={getOutgoingHandleId(productPuid)}
+                    type="source"
+                    position={Position.Right}
+                    style={{
+                        top: getHandleTopOffset(index, outgoingProducts.length),
+                    }}
+                    className="h-3! w-3! border-2 border-slate-900 bg-purple-500"
+                />
+            ))}
 
             <div className="mb-3">
                 <div className="truncate text-base font-bold text-slate-100">
@@ -370,11 +405,13 @@ function ProductFlowNode({
             }`}
         >
             <Handle
+                id={getIncomingHandleId(data.handleProductPuid)}
                 type="target"
                 position={Position.Left}
                 className="h-2 w-2 bg-cyan-200"
             />
             <Handle
+                id={getOutgoingHandleId(data.handleProductPuid)}
                 type="source"
                 position={Position.Right}
                 className="h-2 w-2 bg-cyan-200"
@@ -700,6 +737,9 @@ export default function WorkflowPage() {
     const [interactionError, setInteractionError] = useState<string | null>(
         null,
     );
+    const [measuredNodeSizes, setMeasuredNodeSizes] = useState<
+        Record<string, { width: number; height: number }>
+    >({});
 
     const setChartData = (next: WorkflowChart) => {
         queryClient.setQueryData(
@@ -861,14 +901,80 @@ export default function WorkflowPage() {
         },
     });
 
+    const onFlowNodesChange = useCallback(
+        (changes: NodeChange<FlowNode<FlowNodeData>>[]) => {
+            setMeasuredNodeSizes((previous) => {
+                let changed = false;
+                let next = previous;
+
+                for (const change of changes) {
+                    if (change.type !== "dimensions") continue;
+                    if (!change.dimensions) continue;
+
+                    const { width, height } = change.dimensions;
+                    if (
+                        typeof width !== "number" ||
+                        typeof height !== "number" ||
+                        width <= 0 ||
+                        height <= 0
+                    ) {
+                        continue;
+                    }
+
+                    const existing = next[change.id];
+                    if (
+                        existing &&
+                        existing.width === width &&
+                        existing.height === height
+                    ) {
+                        continue;
+                    }
+
+                    if (!changed) {
+                        next = { ...previous };
+                        changed = true;
+                    }
+                    next[change.id] = { width, height };
+                }
+
+                return changed ? next : previous;
+            });
+        },
+        [],
+    );
+
     const flowData = useMemo(() => {
         const productIds = new Set<string>();
+        const incomingProductsByProcess = new Map<string, Set<string>>();
+        const outgoingProductsByProcess = new Map<string, Set<string>>();
 
         for (const productNode of chart.productNodes) {
             productIds.add(`product:${productNode.productPuid}`);
         }
 
         for (const edge of chart.edges) {
+            if (
+                edge.producerNodePuid !== null &&
+                edge.producerNodePuid !== undefined
+            ) {
+                const existing =
+                    outgoingProductsByProcess.get(edge.producerNodePuid) ??
+                    new Set<string>();
+                existing.add(edge.productPuid);
+                outgoingProductsByProcess.set(edge.producerNodePuid, existing);
+            }
+
+            if (
+                edge.consumerNodePuid !== null &&
+                edge.consumerNodePuid !== undefined
+            ) {
+                const existing =
+                    incomingProductsByProcess.get(edge.consumerNodePuid) ??
+                    new Set<string>();
+                existing.add(edge.productPuid);
+                incomingProductsByProcess.set(edge.consumerNodePuid, existing);
+            }
+
             if (
                 edge.producerNodePuid === null ||
                 edge.producerNodePuid === undefined ||
@@ -883,10 +989,25 @@ export default function WorkflowPage() {
             (target) => `product:${target.productPuid}`,
         );
 
+        const sortProductPuids = (values: Iterable<string>): string[] =>
+            [...new Set(values)].sort((a, b) => {
+                const aName = productNameByPuid.get(a) ?? a;
+                const bName = productNameByPuid.get(b) ?? b;
+                return aName.localeCompare(bName, undefined, {
+                    sensitivity: "base",
+                });
+            });
+
         const nodes: FlowNode<FlowNodeData>[] = [
             ...chart.nodes.map((node) => {
                 const id = `process:${node.puid}`;
                 const nodeAttributes = nodeAttributeValues.get(node.puid);
+                const incomingProductPuids = sortProductPuids(
+                    incomingProductsByProcess.get(node.puid) ?? [],
+                );
+                const outgoingProductPuids = sortProductPuids(
+                    outgoingProductsByProcess.get(node.puid) ?? [],
+                );
                 const attributeIds = nodeAttributes
                     ? new Set<string>([
                           ...nodeAttributes.demand.keys(),
@@ -947,6 +1068,8 @@ export default function WorkflowPage() {
                             node.recipePuid,
                         ),
                         attributes,
+                        incomingProductPuids,
+                        outgoingProductPuids,
                     } satisfies ProcessNodeData,
                 } as FlowNode<FlowNodeData>;
             }),
@@ -968,6 +1091,7 @@ export default function WorkflowPage() {
                     position: { x: 0, y: 0 },
                     data: {
                         puid,
+                        handleProductPuid: puid,
                         productName: productNameByPuid.get(puid) ?? puid,
                         calculatedFlowRate: productNode.calculatedFlowRate,
                         actualFlowRateIn: productNode.actualFlowRateIn,
@@ -1009,7 +1133,9 @@ export default function WorkflowPage() {
                     id: `edge:${index}`,
                     source,
                     target,
-                    type: "smoothstep",
+                    sourceHandle: getOutgoingHandleId(edge.productPuid),
+                    targetHandle: getIncomingHandleId(edge.productPuid),
+                    type: "bezier",
                     animated: edge.actualFlowRate > 0,
                     style: { stroke: edgeColor, strokeWidth: 2 },
                     markerEnd: {
@@ -1030,7 +1156,25 @@ export default function WorkflowPage() {
             })
             .filter((edge): edge is FlowEdge => edge !== null);
 
-        return getLayoutedWorkflowElements(nodes, edges, {
+        const measuredNodes: FlowNode<FlowNodeData>[] = nodes.map((node) => {
+            const measured = measuredNodeSizes[node.id];
+            if (!measured) return node;
+
+            if (
+                node.width === measured.width &&
+                node.height === measured.height
+            ) {
+                return node;
+            }
+
+            return {
+                ...node,
+                width: measured.width,
+                height: measured.height,
+            };
+        });
+
+        return getLayoutedWorkflowElements(measuredNodes, edges, {
             productNodeIds: [...productIds],
             targetProductNodeIds,
         });
@@ -1047,6 +1191,7 @@ export default function WorkflowPage() {
         productNameByPuid,
         productNodeByPuid,
         recipeNameByPuid,
+        measuredNodeSizes,
         targetByProduct,
     ]);
 
@@ -1292,6 +1437,7 @@ export default function WorkflowPage() {
                                             nodes={flowData.nodes}
                                             edges={flowData.edges}
                                             nodeTypes={nodeTypes}
+                                            onNodesChange={onFlowNodesChange}
                                             fitView
                                             fitViewOptions={{
                                                 padding: 0.2,
