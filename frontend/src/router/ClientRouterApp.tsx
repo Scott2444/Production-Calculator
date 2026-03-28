@@ -10,10 +10,13 @@ import { createBrowserHistory, createMemoryHistory } from "@tanstack/history";
 import { ProjectProvider } from "@/context/ProjectContext";
 import UsernamePage from "@/features/UsernamePage";
 import ProjectOverview from "@/features/ProjectOverview";
+import WorkflowsPage from "@/features/WorkflowsPage";
+import WorkflowPage from "@/features/WorkflowPage";
 import RecipesPage from "@/features/RecipesPage";
 import MachinesPage from "@/features/MachinesPage";
 import ModifiersPage from "@/features/ModifiersPage";
 import ProductsPage from "@/features/ProductsPage";
+import AttributesPage from "@/features/AttributesPage";
 import HomeRoute from "@/routes/HomeRoute";
 import LoginRoute from "@/routes/LoginRoute";
 import SignUpRoute from "@/routes/SignUpRoute";
@@ -98,6 +101,18 @@ const projectOverviewRoute = createRoute({
     component: ProjectOverview,
 });
 
+const workflowsRoute = createRoute({
+    getParentRoute: () => projectLayoutRoute,
+    path: "workflows",
+    component: WorkflowsPage,
+});
+
+const workflowRoute = createRoute({
+    getParentRoute: () => projectLayoutRoute,
+    path: "workflows/$workflowName",
+    component: WorkflowPage,
+});
+
 const recipesRoute = createRoute({
     getParentRoute: () => projectLayoutRoute,
     path: "recipes",
@@ -122,6 +137,12 @@ const productsRoute = createRoute({
     component: ProductsPage,
 });
 
+const attributesRoute = createRoute({
+    getParentRoute: () => projectLayoutRoute,
+    path: "attributes",
+    component: AttributesPage,
+});
+
 const routeTree = rootRoute.addChildren([
     homeRoute,
     loginRoute,
@@ -133,10 +154,13 @@ const routeTree = rootRoute.addChildren([
     usernameRoute,
     projectLayoutRoute.addChildren([
         projectOverviewRoute,
+        workflowsRoute,
+        workflowRoute,
         recipesRoute,
         machinesRoute,
         modifiersRoute,
         productsRoute,
+        attributesRoute,
     ]),
 ]);
 

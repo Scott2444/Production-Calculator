@@ -3,51 +3,39 @@
 import ProjectPageLayout from "@/components/ProjectPageLayout";
 import ProjectStatusGate from "@/components/ProjectStatusGate";
 import DropDown from "@/components/DropDown";
-import ItemCard from "@/components/ItemCard";
-import Popup from "@/components/Popup";
+import MachineEditorDialog from "@/components/MachineEditorDialog";
 import SearchBar from "@/components/SearchBar";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import { useProject } from "@/context/ProjectContext";
 import { useProtectedApi } from "@/lib/api";
 import {
     deleteMachine,
-    fetchMachines,
     postNewMachine,
     type NewMachinePayload,
     updateMachine,
 } from "@/lib/machines";
-import { fetchRecipes } from "@/lib/recipes";
 import { useDeleteConfirmation } from "@/hooks/DeleteConfirmation";
 import { useSearch } from "@/hooks/Search";
 import {
     IconCheck,
     IconEdit,
     IconPlus,
-    IconSearch,
     IconTrash,
+    IconGauge,
+    IconClipboardList,
+    IconSettings,
 } from "@tabler/icons-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-
-interface Recipe {
-    puid: string;
-    name: string;
-    description: string | null;
-    baseCraftingTime: number;
-    createdAt: string;
-    updatedAt: string;
-}
-
-interface Machine {
-    puid: string;
-    name: string;
-    description: string | null;
-    baseSpeed: number;
-    recipePuids: string[];
-    createdAt: string;
-    updatedAt: string;
-}
+import {
+    useAttributesQuery,
+    useMachinesQuery,
+    useRecipesQuery,
+} from "@/hooks/useQueries";
+import { type RecipeSummary } from "@/types/recipes";
+import { type Attribute } from "@/types/attributes";
+import { type Machine, type MachineAttributeRate } from "@/types/machines";
 
 function coerceMachines(value: unknown): Machine[] {
     if (!value) return [];
@@ -59,12 +47,22 @@ function coerceMachines(value: unknown): Machine[] {
     return [];
 }
 
-function coerceRecipes(value: unknown): Recipe[] {
+function coerceRecipes(value: unknown): RecipeSummary[] {
     if (!value) return [];
-    if (Array.isArray(value)) return value as Recipe[];
+    if (Array.isArray(value)) return value as RecipeSummary[];
     if (typeof value === "object") {
         const maybeItems = (value as { items?: unknown }).items;
-        if (Array.isArray(maybeItems)) return maybeItems as Recipe[];
+        if (Array.isArray(maybeItems)) return maybeItems as RecipeSummary[];
+    }
+    return [];
+}
+
+function coerceAttributes(value: unknown): Attribute[] {
+    if (!value) return [];
+    if (Array.isArray(value)) return value as Attribute[];
+    if (typeof value === "object") {
+        const maybeItems = (value as { items?: unknown }).items;
+        if (Array.isArray(maybeItems)) return maybeItems as Attribute[];
     }
     return [];
 }
@@ -73,6 +71,41 @@ function normalizeStringArray(value: unknown): string[] {
     if (!value) return [];
     if (Array.isArray(value)) return value as string[];
     return [];
+}
+
+function normalizeAttributeRates(value: unknown): MachineAttributeRate[] {
+    if (!value) return [];
+    if (Array.isArray(value)) return value as MachineAttributeRate[];
+    return [];
+}
+
+function validateAttributeRates(
+    attributes: MachineAttributeRate[],
+    label: string,
+): string | null {
+    const trimmed = attributes
+        .map((a) => ({
+            puid: a.puid?.trim?.() ?? a.puid,
+            rate: a.rate,
+        }))
+        .filter((a) => Boolean(a.puid));
+
+    const puids = trimmed.map((a) => a.puid);
+    const duplicates = puids
+        .filter((p, idx) => puids.indexOf(p) !== idx)
+        .filter((p, idx, arr) => arr.indexOf(p) === idx);
+    if (duplicates.length > 0) {
+        return `${label} has duplicate attributes selected.`;
+    }
+
+    for (const attr of trimmed) {
+        if (!attr.puid) return `${label} has a missing attribute.`;
+        if (!(typeof attr.rate === "number") || Number.isNaN(attr.rate)) {
+            return `${label} has an invalid rate.`;
+        }
+    }
+
+    return null;
 }
 
 function formatSelectedRecipesLabel(
@@ -101,18 +134,73 @@ function uniqueTrimmedPuids(values: string[]): string[] {
     return out;
 }
 
+function pickDefaultAttributePuid(
+    attributes: Attribute[],
+    used: Set<string>,
+): string {
+    const firstUnused = attributes.find((a) => !used.has(a.puid));
+    return (firstUnused ?? attributes[0])?.puid ?? "";
+}
+
+function RecipeMultiSelect({
+    value,
+    onChange,
+    disabled,
+    sortedRecipes,
+    recipeNameByPuid,
+}: {
+    value: string[];
+    onChange: (next: string[]) => void;
+    disabled?: boolean;
+    sortedRecipes: RecipeSummary[];
+    recipeNameByPuid: Map<string, string>;
+}) {
+    const effectiveDisabled = Boolean(disabled) || sortedRecipes.length === 0;
+    const selected = uniqueTrimmedPuids(value);
+
+    const recipeOptions = sortedRecipes.map((r) => ({
+        value: r.puid,
+        label: r.name,
+        searchText: `${r.name} ${r.description ?? ""}`,
+    }));
+
+    return (
+        <DropDown
+            label={
+                <div className="min-w-0">
+                    <div className="truncate text-sm text-slate-200">
+                        {formatSelectedRecipesLabel(
+                            selected,
+                            recipeNameByPuid,
+                            sortedRecipes.length,
+                        )}
+                    </div>
+                </div>
+            }
+            align="right"
+            disabled={effectiveDisabled}
+            className="w-full"
+            buttonClassName="rounded-lg px-3 py-2"
+            matchTriggerWidth
+            mode="multi"
+            options={recipeOptions}
+            values={selected}
+            onChangeValues={onChange}
+            searchPlaceholder="Search recipes"
+            searchAriaLabel="Search recipes"
+            emptyFilteredText="No recipes match your search."
+            emptyOptionsText="No recipes yet."
+        />
+    );
+}
+
 export default function Machines() {
     const { routeUsername, routeProjectName, projectId, canEdit } =
         useProject();
     const protectedApi = useProtectedApi();
     const queryClient = useQueryClient();
 
-    const recipesQuery = useQuery({
-        queryKey: ["recipes", projectId],
-        queryFn: () => fetchRecipes(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
+    const recipesQuery = useRecipesQuery(projectId);
 
     const recipes = useMemo(
         () => coerceRecipes(recipesQuery.data),
@@ -131,12 +219,34 @@ export default function Machines() {
         return map;
     }, [sortedRecipes]);
 
-    const machinesQuery = useQuery({
-        queryKey: ["machines", projectId],
-        queryFn: () => fetchMachines(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
+    const attributesQuery = useAttributesQuery(projectId);
+
+    const attributes = useMemo(
+        () => coerceAttributes(attributesQuery.data),
+        [attributesQuery.data],
+    );
+
+    const sortedAttributes = useMemo(() => {
+        return [...attributes].sort((a, b) =>
+            a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+        );
+    }, [attributes]);
+
+    const attributeNameByPuid = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const a of sortedAttributes) map.set(a.puid, a.name);
+        return map;
+    }, [sortedAttributes]);
+
+    const attributeUnitByPuid = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const a of sortedAttributes) {
+            map.set(a.puid, a.unit?.trim() || "");
+        }
+        return map;
+    }, [sortedAttributes]);
+
+    const machinesQuery = useMachinesQuery(projectId);
 
     const machines = useMemo(
         () => coerceMachines(machinesQuery.data),
@@ -154,9 +264,12 @@ export default function Machines() {
             const recipeNames = normalizeStringArray(m.recipePuids)
                 .map((p) => recipeNameByPuid.get(p) ?? p)
                 .join(" ");
-            return `${m.name} ${m.description ?? ""} ${m.baseSpeed} ${recipeNames}`;
+            const attributeNames = normalizeAttributeRates(m.attributes)
+                .map((a) => attributeNameByPuid.get(a.puid) ?? a.puid)
+                .join(" ");
+            return `${m.name} ${m.description ?? ""} ${m.baseSpeed} ${recipeNames} ${attributeNames}`;
         };
-    }, [recipeNameByPuid]);
+    }, [recipeNameByPuid, attributeNameByPuid]);
 
     const {
         searchText,
@@ -171,6 +284,9 @@ export default function Machines() {
     const [createDescription, setCreateDescription] = useState("");
     const [createBaseSpeed, setCreateBaseSpeed] = useState<string>("1");
     const [createRecipePuids, setCreateRecipePuids] = useState<string[]>([]);
+    const [createAttributes, setCreateAttributes] = useState<
+        MachineAttributeRate[]
+    >([]);
     const [createError, setCreateError] = useState<string | null>(null);
     const createNameRef = useRef<HTMLInputElement>(null);
 
@@ -194,6 +310,7 @@ export default function Machines() {
             setCreateDescription("");
             setCreateBaseSpeed("1");
             setCreateRecipePuids([]);
+            setCreateAttributes([]);
             setCreateOpen(false);
             await queryClient.invalidateQueries({
                 queryKey: ["machines", projectId],
@@ -214,6 +331,9 @@ export default function Machines() {
     const [editDescription, setEditDescription] = useState("");
     const [editBaseSpeed, setEditBaseSpeed] = useState<string>("1");
     const [editRecipePuids, setEditRecipePuids] = useState<string[]>([]);
+    const [editAttributes, setEditAttributes] = useState<
+        MachineAttributeRate[]
+    >([]);
     const [editError, setEditError] = useState<string | null>(null);
     const editNameRef = useRef<HTMLInputElement>(null);
 
@@ -230,6 +350,7 @@ export default function Machines() {
         setEditRecipePuids(
             uniqueTrimmedPuids(normalizeStringArray(editTarget?.recipePuids)),
         );
+        setEditAttributes(normalizeAttributeRates(editTarget?.attributes));
     }, [editOpen, editTarget]);
 
     const updateMachineMutation = useMutation({
@@ -290,26 +411,26 @@ export default function Machines() {
         },
     });
 
-    const RecipeMultiSelect = ({
+    const AttributeDropDown = ({
         value,
-        onChange,
+        onSelect,
         disabled,
     }: {
-        value: string[];
-        onChange: (next: string[]) => void;
+        value: string;
+        onSelect: (next: string) => void;
         disabled?: boolean;
     }) => {
+        const selectedName = value ? attributeNameByPuid.get(value) : undefined;
         const effectiveDisabled =
-            Boolean(disabled) || sortedRecipes.length === 0;
-        const selected = uniqueTrimmedPuids(value);
-        const selectedSet = new Set(selected);
+            Boolean(disabled) || sortedAttributes.length === 0;
 
-        const {
-            searchText: menuSearchText,
-            setSearchText: setMenuSearchText,
-            filteredItems: filteredRecipes,
-        } = useSearch(sortedRecipes, {
-            toText: (r) => `${r.name} ${r.description ?? ""}`,
+        const attributeOptions = sortedAttributes.map((a) => {
+            const suffix = a.unit?.trim() ? ` (${a.unit})` : "";
+            return {
+                value: a.puid,
+                label: `${a.name}${suffix}`,
+                searchText: `${a.name} ${a.description ?? ""} ${a.unit ?? ""}`,
+            };
         });
 
         return (
@@ -317,11 +438,10 @@ export default function Machines() {
                 label={
                     <div className="min-w-0">
                         <div className="truncate text-sm text-slate-200">
-                            {formatSelectedRecipesLabel(
-                                selected,
-                                recipeNameByPuid,
-                                sortedRecipes.length,
-                            )}
+                            {selectedName ??
+                                (effectiveDisabled
+                                    ? "No attributes"
+                                    : "Select attribute")}
                         </div>
                     </div>
                 }
@@ -330,94 +450,35 @@ export default function Machines() {
                 className="w-full"
                 buttonClassName="rounded-lg px-3 py-2"
                 matchTriggerWidth
-            >
-                {({ close }) => (
-                    <div className="p-2">
-                        <div className="flex flex-col gap-1">
-                            <div className="sticky top-0 z-10 rounded-lg border border-slate-800 bg-slate-950 p-2">
-                                <div className="flex items-center gap-2">
-                                    <div className="text-slate-400">
-                                        <IconSearch size={16} />
-                                    </div>
-                                    <input
-                                        value={menuSearchText}
-                                        onChange={(e) =>
-                                            setMenuSearchText(e.target.value)
-                                        }
-                                        placeholder="Search recipes"
-                                        className="w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={effectiveDisabled}
-                                        aria-label="Search recipes"
-                                    />
-                                </div>
-                            </div>
-
-                            {filteredRecipes.map((r) => {
-                                const isSelected = selectedSet.has(r.puid);
-                                return (
-                                    <button
-                                        key={r.puid}
-                                        type="button"
-                                        className={`group flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer hover:bg-slate-800/70 ${
-                                            isSelected
-                                                ? "bg-purple-600/15 text-slate-100"
-                                                : "text-slate-200"
-                                        }`}
-                                        onClick={() => {
-                                            const next = new Set(selected);
-                                            if (next.has(r.puid))
-                                                next.delete(r.puid);
-                                            else next.add(r.puid);
-                                            onChange(Array.from(next));
-                                        }}
-                                    >
-                                        <span className="min-w-0 truncate">
-                                            {r.name}
-                                        </span>
-                                        <span
-                                            className={`shrink-0 ${
-                                                isSelected
-                                                    ? "text-purple-300"
-                                                    : "text-slate-500 opacity-0 group-hover:opacity-100"
-                                            }`}
-                                            aria-hidden="true"
-                                        >
-                                            <IconCheck size={16} />
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                            {sortedRecipes.length > 0 &&
-                                filteredRecipes.length === 0 && (
-                                    <div className="px-3 py-2 text-sm text-slate-400">
-                                        No recipes match your search.
-                                    </div>
-                                )}
-
-                            {sortedRecipes.length === 0 && (
-                                <div className="px-3 py-2 text-sm text-slate-400">
-                                    No recipes yet.
-                                </div>
-                            )}
-
-                            <div className="mt-1 flex items-center justify-end">
-                                <button
-                                    type="button"
-                                    className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                    onClick={() => {
-                                        setMenuSearchText("");
-                                        close();
-                                    }}
-                                >
-                                    Done
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </DropDown>
+                mode="single"
+                options={attributeOptions}
+                value={value}
+                onSelect={onSelect}
+                searchPlaceholder="Search attributes"
+                searchAriaLabel="Search attributes"
+                emptyFilteredText="No attributes match your search."
+                emptyOptionsText="No attributes yet."
+            />
         );
     };
+
+    const BoundRecipeMultiSelect = ({
+        value,
+        onChange,
+        disabled,
+    }: {
+        value: string[];
+        onChange: (next: string[]) => void;
+        disabled?: boolean;
+    }) => (
+        <RecipeMultiSelect
+            value={value}
+            onChange={onChange}
+            disabled={disabled}
+            sortedRecipes={sortedRecipes}
+            recipeNameByPuid={recipeNameByPuid}
+        />
+    );
 
     const renderRecipeList = (recipePuids: unknown) => {
         const items = uniqueTrimmedPuids(normalizeStringArray(recipePuids));
@@ -444,6 +505,37 @@ export default function Machines() {
         );
     };
 
+    const renderAttributeRates = (value: unknown) => {
+        const items = normalizeAttributeRates(value);
+        if (items.length === 0) {
+            return <div className="text-sm text-slate-500">None</div>;
+        }
+
+        return (
+            <div className="flex flex-col gap-1">
+                {items.map((item, idx) => {
+                    const name =
+                        attributeNameByPuid.get(item.puid) ?? item.puid;
+                    const unit = attributeUnitByPuid.get(item.puid) || "";
+                    return (
+                        <div
+                            key={`${item.puid}-${idx}`}
+                            className="flex items-center justify-between gap-3"
+                        >
+                            <div className="min-w-0 truncate text-sm text-slate-200">
+                                {name}
+                            </div>
+                            <div className="shrink-0 text-sm text-slate-400">
+                                {item.rate}
+                                {unit ? ` ${unit}` : ""}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
     return (
         <ProjectPageLayout>
             <div className="flex flex-col gap-4">
@@ -464,23 +556,25 @@ export default function Machines() {
                         </div>
                     </div>
 
-                    <button
-                        type="button"
-                        className="inline-flex items-center gap-2 self-start rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                        onClick={() => {
-                            setCreateError(null);
-                            setCreateOpen(true);
-                        }}
-                        disabled={!canEdit}
-                        title={
-                            canEdit
-                                ? "Add machine"
-                                : "Only the project owner can manage machines"
-                        }
-                    >
-                        <IconPlus size={18} />
-                        Add machine
-                    </button>
+                    {canEdit && (
+                        <button
+                            type="button"
+                            className="inline-flex items-center gap-2 self-start rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                            onClick={() => {
+                                setCreateError(null);
+                                setCreateOpen(true);
+                            }}
+                            disabled={!canEdit}
+                            title={
+                                canEdit
+                                    ? "Add machine"
+                                    : "Only the project owner can manage machines"
+                            }
+                        >
+                            <IconPlus size={18} />
+                            Add machine
+                        </button>
+                    )}
                 </div>
 
                 <ProjectStatusGate>
@@ -506,7 +600,7 @@ export default function Machines() {
 
                     {machinesQuery.isLoading && projectId && (
                         <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-sm text-slate-400">
-                            Loading machines…
+                            Loading machines...
                         </div>
                     )}
 
@@ -528,111 +622,160 @@ export default function Machines() {
                         )}
 
                     {filteredMachines.length > 0 && (
-                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
                             {filteredMachines.map((machine) => (
                                 <div
                                     key={machine.puid}
                                     className="rounded-xl border border-slate-800 bg-slate-900/40 p-4"
                                 >
                                     <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0">
-                                            <div className="truncate text-base font-semibold text-slate-100">
-                                                {machine.name}
-                                            </div>
-                                            <div className="mt-1 text-sm text-slate-400">
-                                                Base speed: {machine.baseSpeed}
-                                            </div>
-                                            {machine.description ? (
-                                                <div className="mt-2 text-sm text-slate-300">
-                                                    <ReactMarkdown>
-                                                        {machine.description}
-                                                    </ReactMarkdown>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-row justify-between">
+                                                <div className="flex flex-col">
+                                                    <div className="truncate text-base font-semibold text-slate-100">
+                                                        {machine.name}
+                                                    </div>
+
+                                                    {
+                                                        machine.description ? (
+                                                            <div className="mt-1 text-sm text-slate-300">
+                                                                <ReactMarkdown>
+                                                                    {
+                                                                        machine.description
+                                                                    }
+                                                                </ReactMarkdown>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="mt-1 text-sm text-slate-500">
+                                                                No description
+                                                            </div>
+                                                        ) /* End description */
+                                                    }
                                                 </div>
-                                            ) : (
-                                                <div className="mt-2 text-sm text-slate-500">
-                                                    No description
-                                                </div>
-                                            )}
-                                        </div>
+                                                {canEdit && (
+                                                    <div className="flex gap-2 h-min">
+                                                        <button
+                                                            type="button"
+                                                            className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                            title="Edit machine"
+                                                            aria-label="Edit machine"
+                                                            onClick={() => {
+                                                                setEditTarget(
+                                                                    machine,
+                                                                );
+                                                                setEditError(
+                                                                    null,
+                                                                );
+                                                                setEditOpen(
+                                                                    true,
+                                                                );
+                                                            }}
+                                                            disabled={!canEdit}
+                                                        >
+                                                            <IconEdit
+                                                                size={20}
+                                                            />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            data-delete-confirm="true"
+                                                            className={
+                                                                deleteConfirm.isConfirming(
+                                                                    machine.puid,
+                                                                )
+                                                                    ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                                    : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                                                            }
+                                                            title={
+                                                                deleteConfirm.isConfirming(
+                                                                    machine.puid,
+                                                                )
+                                                                    ? "Click again to confirm"
+                                                                    : "Delete machine"
+                                                            }
+                                                            aria-label={
+                                                                deleteConfirm.isConfirming(
+                                                                    machine.puid,
+                                                                )
+                                                                    ? "Confirm delete machine"
+                                                                    : "Delete machine"
+                                                            }
+                                                            onClick={() => {
+                                                                if (!canEdit)
+                                                                    return;
 
-                                        <div className="flex gap-2">
-                                            <button
-                                                type="button"
-                                                className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                title="Edit machine"
-                                                aria-label="Edit machine"
-                                                onClick={() => {
-                                                    setEditTarget(machine);
-                                                    setEditError(null);
-                                                    setEditOpen(true);
-                                                }}
-                                                disabled={!canEdit}
-                                            >
-                                                <IconEdit size={20} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                data-delete-confirm="true"
-                                                className={
-                                                    deleteConfirm.isConfirming(
-                                                        machine.puid,
-                                                    )
-                                                        ? "rounded-lg border border-red-500/60 bg-red-600/30 p-2 text-red-100 transition-colors cursor-pointer hover:bg-red-600/40 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                        : "rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                }
-                                                title={
-                                                    deleteConfirm.isConfirming(
-                                                        machine.puid,
-                                                    )
-                                                        ? "Click again to confirm"
-                                                        : "Delete machine"
-                                                }
-                                                aria-label={
-                                                    deleteConfirm.isConfirming(
-                                                        machine.puid,
-                                                    )
-                                                        ? "Confirm delete machine"
-                                                        : "Delete machine"
-                                                }
-                                                onClick={() => {
-                                                    if (!canEdit) return;
+                                                                setDeleteError(
+                                                                    null,
+                                                                );
 
-                                                    setDeleteError(null);
-
-                                                    deleteConfirm.confirmOrRequest(
-                                                        machine.puid,
-                                                        () => {
-                                                            deleteMachineMutation.mutate(
+                                                                deleteConfirm.confirmOrRequest(
+                                                                    machine.puid,
+                                                                    () => {
+                                                                        deleteMachineMutation.mutate(
+                                                                            machine.puid,
+                                                                        );
+                                                                    },
+                                                                );
+                                                            }}
+                                                            disabled={
+                                                                !canEdit ||
+                                                                deleteMachineMutation.isPending
+                                                            }
+                                                        >
+                                                            {deleteConfirm.isConfirming(
                                                                 machine.puid,
-                                                            );
-                                                        },
-                                                    );
-                                                }}
-                                                disabled={
-                                                    !canEdit ||
-                                                    deleteMachineMutation.isPending
-                                                }
-                                            >
-                                                {deleteConfirm.isConfirming(
-                                                    machine.puid,
-                                                ) ? (
-                                                    <IconCheck size={20} />
-                                                ) : (
-                                                    <IconTrash size={20} />
+                                                            ) ? (
+                                                                <IconCheck
+                                                                    size={20}
+                                                                />
+                                                            ) : (
+                                                                <IconTrash
+                                                                    size={20}
+                                                                />
+                                                            )}
+                                                        </button>
+                                                    </div>
                                                 )}
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-4 grid grid-cols-1 gap-4">
-                                        <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
-                                            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                                Recipes
                                             </div>
-                                            <div className="mt-2">
-                                                {renderRecipeList(
-                                                    machine.recipePuids,
-                                                )}
+
+                                            <div className="mt-3 grid grid-cols-1 gap-4 text-sm text-slate-300">
+                                                <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
+                                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-purple-400">
+                                                        <IconGauge size={14} />
+                                                        Base Speed
+                                                    </div>
+                                                    <div className="mt-2 text-sm text-slate-200">
+                                                        {machine.baseSpeed}
+                                                    </div>
+                                                </div>
+
+                                                <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
+                                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-400">
+                                                        <IconClipboardList
+                                                            size={14}
+                                                        />
+                                                        Compatible Recipes
+                                                    </div>
+                                                    <div className="mt-2">
+                                                        {renderRecipeList(
+                                                            machine.recipePuids,
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
+                                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-blue-400">
+                                                        <IconSettings
+                                                            size={14}
+                                                        />
+                                                        User Defined Attributes
+                                                    </div>
+                                                    <div className="mt-2">
+                                                        {renderAttributeRates(
+                                                            machine.attributes,
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -643,21 +786,79 @@ export default function Machines() {
                 </ProjectStatusGate>
             </div>
 
-            <ItemCard
+            <MachineEditorDialog
+                mode="create"
                 open={createOpen}
                 onOpenChange={(next) => {
                     setCreateOpen(next);
                     if (next) setCreateError(null);
                 }}
-                title="Add machine"
-                description="Create a new machine in this project."
+                name={createName}
+                description={createDescription}
+                baseSpeed={createBaseSpeed}
+                recipePuids={createRecipePuids}
+                attributes={createAttributes}
+                onNameChange={setCreateName}
+                onDescriptionChange={setCreateDescription}
+                onBaseSpeedChange={setCreateBaseSpeed}
+                onRecipePuidsChange={setCreateRecipePuids}
+                onAddAttribute={() => {
+                    const used = new Set(createAttributes.map((a) => a.puid));
+                    const nextPuid = pickDefaultAttributePuid(
+                        sortedAttributes,
+                        used,
+                    );
+                    if (!nextPuid) return;
+                    setCreateAttributes((prev) => [
+                        ...prev,
+                        { puid: nextPuid, rate: 0 },
+                    ]);
+                }}
+                onAttributePuidChange={(index, puid) => {
+                    setCreateAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === index
+                                ? {
+                                      ...p,
+                                      puid,
+                                  }
+                                : p,
+                        ),
+                    );
+                }}
+                onAttributeRateChange={(index, rate) => {
+                    setCreateAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === index
+                                ? {
+                                      ...p,
+                                      rate,
+                                  }
+                                : p,
+                        ),
+                    );
+                }}
+                onRemoveAttribute={(index) => {
+                    setCreateAttributes((prev) =>
+                        prev.filter((_, i) => i !== index),
+                    );
+                }}
+                onRemoveRecipe={(puid) => {
+                    setCreateRecipePuids((prev) =>
+                        prev.filter((p) => p !== puid),
+                    );
+                }}
+                getRecipeLabel={(puid) => recipeNameByPuid.get(puid) ?? puid}
+                sortedRecipesCount={sortedRecipes.length}
+                sortedAttributesCount={sortedAttributes.length}
+                error={createError}
+                onDismissError={() => setCreateError(null)}
                 initialFocusRef={createNameRef}
-                submitLabel="Create"
-                submittingLabel="Creating…"
                 submitting={createMachineMutation.isPending}
                 submitDisabled={!canEdit || !projectId}
-                cancelDisabled={createMachineMutation.isPending}
                 onCancel={() => setCreateOpen(false)}
+                AttributeDropDown={AttributeDropDown}
+                RecipeMultiSelect={BoundRecipeMultiSelect}
                 onSubmit={() => {
                     setCreateError(null);
                     const trimmedName = createName.trim();
@@ -672,6 +873,15 @@ export default function Machines() {
                         return;
                     }
 
+                    const attributesErr = validateAttributeRates(
+                        createAttributes,
+                        "Attributes",
+                    );
+                    if (attributesErr) {
+                        setCreateError(attributesErr);
+                        return;
+                    }
+
                     createMachineMutation.mutate({
                         name: trimmedName,
                         description: createDescription.trim()
@@ -679,333 +889,130 @@ export default function Machines() {
                             : null,
                         baseSpeed: base,
                         recipePuids: uniqueTrimmedPuids(createRecipePuids),
+                        attributes: createAttributes.map((a) => ({
+                            puid: a.puid,
+                            rate: Number(a.rate),
+                        })),
                     });
                 }}
-            >
-                <div className="flex flex-col gap-4">
-                    <ErrorDisplay
-                        errors={
-                            createError
-                                ? [
-                                      {
-                                          id: "create-error",
-                                          message: createError,
-                                          onDismiss: () => setCreateError(null),
-                                      },
-                                  ]
-                                : []
-                        }
-                    />
+            />
 
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Name
-                        </label>
-                        <input
-                            ref={createNameRef}
-                            value={createName}
-                            onChange={(e) => setCreateName(e.target.value)}
-                            placeholder="Assembler"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={createMachineMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Base speed
-                        </label>
-                        <input
-                            value={createBaseSpeed}
-                            onChange={(e) => setCreateBaseSpeed(e.target.value)}
-                            inputMode="decimal"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={createMachineMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Description
-                        </label>
-                        <textarea
-                            value={createDescription}
-                            onChange={(e) =>
-                                setCreateDescription(e.target.value)
-                            }
-                            placeholder="Optional"
-                            rows={3}
-                            className="resize-none rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={createMachineMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
-                        <div className="text-sm font-medium text-slate-200">
-                            Recipes
-                        </div>
-
-                        {sortedRecipes.length === 0 ? (
-                            <div className="mt-2 text-sm text-slate-500">
-                                No recipes available in this project.
-                            </div>
-                        ) : null}
-
-                        <div className="mt-3 flex flex-col gap-2">
-                            <RecipeMultiSelect
-                                value={createRecipePuids}
-                                onChange={setCreateRecipePuids}
-                                disabled={createMachineMutation.isPending}
-                            />
-
-                            {uniqueTrimmedPuids(createRecipePuids).length ===
-                            0 ? (
-                                <div className="text-sm text-slate-500">
-                                    No recipes selected
-                                </div>
-                            ) : (
-                                <div className="flex flex-col gap-2">
-                                    {uniqueTrimmedPuids(createRecipePuids)
-                                        .slice()
-                                        .sort((a, b) => {
-                                            const an =
-                                                recipeNameByPuid.get(a) ?? a;
-                                            const bn =
-                                                recipeNameByPuid.get(b) ?? b;
-                                            return an.localeCompare(
-                                                bn,
-                                                undefined,
-                                                { sensitivity: "base" },
-                                            );
-                                        })
-                                        .map((puid) => (
-                                            <div
-                                                key={puid}
-                                                className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
-                                            >
-                                                <div className="min-w-0 truncate text-sm text-slate-200">
-                                                    {recipeNameByPuid.get(
-                                                        puid,
-                                                    ) ?? puid}
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    className="shrink-0 rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                    onClick={() =>
-                                                        setCreateRecipePuids(
-                                                            (prev) =>
-                                                                prev.filter(
-                                                                    (p) =>
-                                                                        p !==
-                                                                        puid,
-                                                                ),
-                                                        )
-                                                    }
-                                                    disabled={
-                                                        createMachineMutation.isPending
-                                                    }
-                                                    title="Remove"
-                                                    aria-label="Remove recipe"
-                                                >
-                                                    <IconTrash size={18} />
-                                                </button>
-                                            </div>
-                                        ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </ItemCard>
-
-            <Popup
+            <MachineEditorDialog
+                mode="edit"
                 open={editOpen}
                 onOpenChange={(next) => {
                     setEditOpen(next);
                     if (next) setEditError(null);
                 }}
-                title="Edit machine"
-                description="Update machine details."
+                name={editName}
+                description={editDescription}
+                baseSpeed={editBaseSpeed}
+                recipePuids={editRecipePuids}
+                attributes={editAttributes}
+                onNameChange={setEditName}
+                onDescriptionChange={setEditDescription}
+                onBaseSpeedChange={setEditBaseSpeed}
+                onRecipePuidsChange={setEditRecipePuids}
+                onAddAttribute={() => {
+                    const used = new Set(editAttributes.map((a) => a.puid));
+                    const nextPuid = pickDefaultAttributePuid(
+                        sortedAttributes,
+                        used,
+                    );
+                    if (!nextPuid) return;
+                    setEditAttributes((prev) => [
+                        ...prev,
+                        { puid: nextPuid, rate: 0 },
+                    ]);
+                }}
+                onAttributePuidChange={(index, puid) => {
+                    setEditAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === index
+                                ? {
+                                      ...p,
+                                      puid,
+                                  }
+                                : p,
+                        ),
+                    );
+                }}
+                onAttributeRateChange={(index, rate) => {
+                    setEditAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === index
+                                ? {
+                                      ...p,
+                                      rate,
+                                  }
+                                : p,
+                        ),
+                    );
+                }}
+                onRemoveAttribute={(index) => {
+                    setEditAttributes((prev) =>
+                        prev.filter((_, i) => i !== index),
+                    );
+                }}
+                onRemoveRecipe={(puid) => {
+                    setEditRecipePuids((prev) =>
+                        prev.filter((p) => p !== puid),
+                    );
+                }}
+                getRecipeLabel={(puid) => recipeNameByPuid.get(puid) ?? puid}
+                sortedRecipesCount={sortedRecipes.length}
+                sortedAttributesCount={sortedAttributes.length}
+                error={editError}
+                onDismissError={() => setEditError(null)}
                 initialFocusRef={editNameRef}
-                footer={
-                    <div className="flex items-center justify-end gap-2">
-                        <button
-                            type="button"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-4 py-2 text-sm font-medium text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            onClick={() => setEditOpen(false)}
-                            disabled={updateMachineMutation.isPending}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            className="rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                            onClick={() => {
-                                setEditError(null);
-                                const trimmedName = editName.trim();
-                                if (!trimmedName) {
-                                    setEditError("Machine name is required.");
-                                    return;
-                                }
-                                if (!editTarget) {
-                                    setEditError("No machine selected.");
-                                    return;
-                                }
-
-                                const base = Number(editBaseSpeed);
-                                if (!Number.isFinite(base) || base <= 0) {
-                                    setEditError(
-                                        "Base speed must be a positive number.",
-                                    );
-                                    return;
-                                }
-
-                                updateMachineMutation.mutate({
-                                    name: trimmedName,
-                                    description: editDescription.trim()
-                                        ? editDescription.trim()
-                                        : null,
-                                    baseSpeed: base,
-                                    recipePuids:
-                                        uniqueTrimmedPuids(editRecipePuids),
-                                });
-                            }}
-                            disabled={
-                                updateMachineMutation.isPending ||
-                                !canEdit ||
-                                !editTarget
-                            }
-                        >
-                            {updateMachineMutation.isPending
-                                ? "Saving…"
-                                : "Save"}
-                        </button>
-                    </div>
+                submitting={updateMachineMutation.isPending}
+                submitDisabled={
+                    updateMachineMutation.isPending || !canEdit || !editTarget
                 }
-            >
-                <div className="flex flex-col gap-4">
-                    <ErrorDisplay
-                        errors={
-                            editError
-                                ? [
-                                      {
-                                          id: "edit-error",
-                                          message: editError,
-                                          onDismiss: () => setEditError(null),
-                                      },
-                                  ]
-                                : []
-                        }
-                    />
+                onCancel={() => setEditOpen(false)}
+                AttributeDropDown={AttributeDropDown}
+                RecipeMultiSelect={BoundRecipeMultiSelect}
+                onSubmit={() => {
+                    setEditError(null);
+                    const trimmedName = editName.trim();
+                    if (!trimmedName) {
+                        setEditError("Machine name is required.");
+                        return;
+                    }
+                    if (!editTarget) {
+                        setEditError("No machine selected.");
+                        return;
+                    }
 
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Name
-                        </label>
-                        <input
-                            ref={editNameRef}
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={updateMachineMutation.isPending}
-                        />
-                    </div>
+                    const base = Number(editBaseSpeed);
+                    if (!Number.isFinite(base) || base <= 0) {
+                        setEditError("Base speed must be a positive number.");
+                        return;
+                    }
 
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Base speed
-                        </label>
-                        <input
-                            value={editBaseSpeed}
-                            onChange={(e) => setEditBaseSpeed(e.target.value)}
-                            inputMode="decimal"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={updateMachineMutation.isPending}
-                        />
-                    </div>
+                    const attributesErr = validateAttributeRates(
+                        editAttributes,
+                        "Attributes",
+                    );
+                    if (attributesErr) {
+                        setEditError(attributesErr);
+                        return;
+                    }
 
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Description
-                        </label>
-                        <textarea
-                            value={editDescription}
-                            onChange={(e) => setEditDescription(e.target.value)}
-                            rows={3}
-                            className="resize-none rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={updateMachineMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
-                        <div className="text-sm font-medium text-slate-200">
-                            Recipes
-                        </div>
-                        <div className="mt-3 flex flex-col gap-2">
-                            <RecipeMultiSelect
-                                value={editRecipePuids}
-                                onChange={setEditRecipePuids}
-                                disabled={updateMachineMutation.isPending}
-                            />
-                            {uniqueTrimmedPuids(editRecipePuids).length ===
-                            0 ? (
-                                <div className="text-sm text-slate-500">
-                                    No recipes selected
-                                </div>
-                            ) : (
-                                <div className="flex flex-col gap-2">
-                                    {uniqueTrimmedPuids(editRecipePuids)
-                                        .slice()
-                                        .sort((a, b) => {
-                                            const an =
-                                                recipeNameByPuid.get(a) ?? a;
-                                            const bn =
-                                                recipeNameByPuid.get(b) ?? b;
-                                            return an.localeCompare(
-                                                bn,
-                                                undefined,
-                                                { sensitivity: "base" },
-                                            );
-                                        })
-                                        .map((puid) => (
-                                            <div
-                                                key={puid}
-                                                className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
-                                            >
-                                                <div className="min-w-0 truncate text-sm text-slate-200">
-                                                    {recipeNameByPuid.get(
-                                                        puid,
-                                                    ) ?? puid}
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    className="shrink-0 rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                    onClick={() =>
-                                                        setEditRecipePuids(
-                                                            (prev) =>
-                                                                prev.filter(
-                                                                    (p) =>
-                                                                        p !==
-                                                                        puid,
-                                                                ),
-                                                        )
-                                                    }
-                                                    disabled={
-                                                        updateMachineMutation.isPending
-                                                    }
-                                                    title="Remove"
-                                                    aria-label="Remove recipe"
-                                                >
-                                                    <IconTrash size={18} />
-                                                </button>
-                                            </div>
-                                        ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </Popup>
+                    updateMachineMutation.mutate({
+                        name: trimmedName,
+                        description: editDescription.trim()
+                            ? editDescription.trim()
+                            : null,
+                        baseSpeed: base,
+                        recipePuids: uniqueTrimmedPuids(editRecipePuids),
+                        attributes: editAttributes.map((a) => ({
+                            puid: a.puid,
+                            rate: Number(a.rate),
+                        })),
+                    });
+                }}
+            />
         </ProjectPageLayout>
     );
 }

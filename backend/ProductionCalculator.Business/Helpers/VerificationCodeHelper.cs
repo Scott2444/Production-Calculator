@@ -50,7 +50,7 @@ namespace ProductionCalculator.Business.Helpers
             """;
 
             var message = new EmailMessage();
-            message.From = "Production Calculator Verification <no-reply@production-calculator.com>";
+            message.From = "Production Calculator Verification <noreply@production-calculator.com>";
             message.To.Add(email);
             message.Subject = "Please verify your Production Calculator account";
             message.HtmlBody = body;

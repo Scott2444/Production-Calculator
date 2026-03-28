@@ -11,6 +11,13 @@ namespace ProductionCalculator.Business.Services
         /// Checks the nodechart against the project objects to ensure all versions are up to date.
         /// This also serves as a check that all referenced objects still exist (e.g. if a recipe was deleted after the node chart was calculated).
         /// </summary>
+        /// <param name="nodeChart">The node chart to check</param>
+        /// <param name="projectObjects">The project objects to check against</param>
+        /// <returns>True if the node chart is up to date, false if any referenced objects are missing or have version mismatches</returns>
+        /// <remarks>
+        /// This checks all recipes, machines, modifiers, and attributes referenced by the node chart to ensure they still exist and that the versions match the latest versions in the project objects.
+        /// Attribute relations (links) are not checked even if the default link changes in Project Data.
+        /// </remarks>
         public bool WorkflowIsUpToDate(NodeChart nodeChart, ProjectObjects projectObjects)
         {
             // Nodes - Check that recipe version and machine? version are up to date with latest project version

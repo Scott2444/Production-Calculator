@@ -26,23 +26,23 @@ namespace ProductionCalculator.Business.Services
             _modifierAttributeRepo = modifierAttributeRepo;
             _attributeRepo = attributeRepo;
         }
-        public async Task<ServiceResult<Modifier>> AddModifier(string projectPuid, string name, string? description, double flatBonus, double percentBonus, double multiplicativeBonus, double inputPercent = 0.0, double outputPercent = 0.0, List<ModifierAttributeExchange>? attributes = null)
+        public async Task<ServiceResult<ModifierResponse>> AddModifier(string projectPuid, string name, string? description, double flatBonus, double percentBonus, double multiplicativeBonus, double inputPercent = 1.0, double outputPercent = 1.0, List<ModifierAttributeRequest>? attributes = null)
         {
             attributes ??= [];
-            if (string.IsNullOrWhiteSpace(name)) return ServiceResult<Modifier>.Fail(ServiceStatus.BadRequest400, "Modifier name is required.");
+            if (string.IsNullOrWhiteSpace(name)) return ServiceResult<ModifierResponse>.Fail(ServiceStatus.BadRequest400, "Modifier name is required.");
 
             // Get projectId from projectPuid
             var project = await _projectRepo.GetProjectByPuid(projectPuid);
-            if (project == null) return ServiceResult<Modifier>.Fail(ServiceStatus.NotFound404, "Project not found.");
+            if (project == null) return ServiceResult<ModifierResponse>.Fail(ServiceStatus.NotFound404, "Project not found.");
 
             // Check if name already exists for this project
             var existingModifiers = await _repo.GetModifiersByProjectId(project.Project_Id);
-            if (existingModifiers.Any(p => p.Name == name)) return ServiceResult<Modifier>.Fail(ServiceStatus.Conflict409, "Modifier name already exists for this project.");
+            if (existingModifiers.Any(p => p.Name == name)) return ServiceResult<ModifierResponse>.Fail(ServiceStatus.Conflict409, "Modifier name already exists for this project.");
 
             var validatedAttributes = await ValidateAttributes(attributes, project.Project_Id);
             if (validatedAttributes.error != null)
             {
-                return ServiceResult<Modifier>.Fail(ServiceStatus.BadRequest400, validatedAttributes.error);
+                return ServiceResult<ModifierResponse>.Fail(ServiceStatus.BadRequest400, validatedAttributes.error);
             }
 
             // Limit string lengths
@@ -86,29 +86,30 @@ namespace ProductionCalculator.Business.Services
             await _modifierAttributeRepo.AddModifierAttributes(modifierAttributes);
 
             await UpdateProjectLastUpdated(project);
-            return ServiceResult<Modifier>.SuccessResult(modifier, ServiceStatus.Created201);
+            var modifierResponse = await BuildModifierResponse(modifier);
+            return ServiceResult<ModifierResponse>.SuccessResult(modifierResponse, ServiceStatus.Created201);
         }
-        public async Task<ServiceResult<Modifier>> UpdateModifier(string projectPuid, string puid, string? name, string? description, double flatBonus, double percentBonus, double multiplicativeBonus, double inputPercent = 0.0, double outputPercent = 0.0, List<ModifierAttributeExchange>? attributes = null)
+        public async Task<ServiceResult<ModifierResponse>> UpdateModifier(string projectPuid, string puid, string? name, string? description, double flatBonus, double percentBonus, double multiplicativeBonus, double inputPercent = 1.0, double outputPercent = 1.0, List<ModifierAttributeRequest>? attributes = null)
         {
             attributes ??= [];
-            if (string.IsNullOrWhiteSpace(name)) return ServiceResult<Modifier>.Fail(ServiceStatus.BadRequest400, "Modifier name is required.");
+            if (string.IsNullOrWhiteSpace(name)) return ServiceResult<ModifierResponse>.Fail(ServiceStatus.BadRequest400, "Modifier name is required.");
 
             // Get projectId from projectPuid
             var project = await _projectRepo.GetProjectByPuid(projectPuid);
-            if (project == null) return ServiceResult<Modifier>.Fail(ServiceStatus.NotFound404, "Project not found.");
+            if (project == null) return ServiceResult<ModifierResponse>.Fail(ServiceStatus.NotFound404, "Project not found.");
 
             // Check if machine exists and belongs to project (IMPORTANT FOR AUTHORIZATION!)
             var modifier = await _repo.GetModifierByPuid(puid);
-            if (modifier == null || modifier.Project_Id != project.Project_Id) return ServiceResult<Modifier>.Fail(ServiceStatus.NotFound404, "Modifier not found.");
+            if (modifier == null || modifier.Project_Id != project.Project_Id) return ServiceResult<ModifierResponse>.Fail(ServiceStatus.NotFound404, "Modifier not found.");
 
             // Check if name already exists for this project
             var existingModifiers = await _repo.GetModifiersByProjectId(project.Project_Id);
-            if (existingModifiers.Any(p => p.Name == name && p.Puid != puid)) return ServiceResult<Modifier>.Fail(ServiceStatus.Conflict409, "Modifier name already exists for this project.");
+            if (existingModifiers.Any(p => p.Name == name && p.Puid != puid)) return ServiceResult<ModifierResponse>.Fail(ServiceStatus.Conflict409, "Modifier name already exists for this project.");
 
             var validatedAttributes = await ValidateAttributes(attributes, project.Project_Id);
             if (validatedAttributes.error != null)
             {
-                return ServiceResult<Modifier>.Fail(ServiceStatus.BadRequest400, validatedAttributes.error);
+                return ServiceResult<ModifierResponse>.Fail(ServiceStatus.BadRequest400, validatedAttributes.error);
             }
 
             // Limit string lengths
@@ -169,42 +170,49 @@ namespace ProductionCalculator.Business.Services
             await _modifierAttributeRepo.DeleteModifierAttributes(modifierAttributesToDelete.Select(ma => ma.Modifier_Attribute_Id));
 
             await UpdateProjectLastUpdated(project);
-            return ServiceResult<Modifier>.SuccessResult(modifier, ServiceStatus.Ok200);
+            var modifierResponse = await BuildModifierResponse(modifier);
+            return ServiceResult<ModifierResponse>.SuccessResult(modifierResponse, ServiceStatus.Ok200);
         }
-        public async Task<ServiceResult<Modifier>> GetModifierByPuid(string projectPuid, string puid)
+        public async Task<ServiceResult<ModifierResponse>> GetModifierByPuid(string projectPuid, string puid)
         {
             // Get projectId from projectPuid
             var project = await _projectRepo.GetProjectByPuid(projectPuid);
-            if (project == null) return ServiceResult<Modifier>.Fail(ServiceStatus.NotFound404, "Project not found.");
+            if (project == null) return ServiceResult<ModifierResponse>.Fail(ServiceStatus.NotFound404, "Project not found.");
 
             // Redirect aliased project to canonical project PUID
             if (!string.IsNullOrWhiteSpace(project.Alias_Project_Puid))
             {
-                return ServiceResult<Modifier>.Redirection(ServiceStatus.SeeOther303, $"/projects/{project.Alias_Project_Puid}/modifiers/{puid}");
+                return ServiceResult<ModifierResponse>.Redirection(ServiceStatus.SeeOther303, $"/projects/{project.Alias_Project_Puid}/modifiers/{puid}");
             }
 
             // Check if modifier exists and belongs to project (IMPORTANT FOR AUTHORIZATION!)
             var modifier = await _repo.GetModifierByPuid(puid);
-            if (modifier == null || modifier.Project_Id != project.Project_Id) return ServiceResult<Modifier>.Fail(ServiceStatus.NotFound404, "Modifier not found.");
+            if (modifier == null || modifier.Project_Id != project.Project_Id) return ServiceResult<ModifierResponse>.Fail(ServiceStatus.NotFound404, "Modifier not found.");
 
-            return ServiceResult<Modifier>.SuccessResult(modifier);
+            var modifierResponse = await BuildModifierResponse(modifier);
+            return ServiceResult<ModifierResponse>.SuccessResult(modifierResponse);
         }
-        public async Task<ServiceResult<List<Modifier>>> GetModifiersByProjectPuid(string projectPuid)
+        public async Task<ServiceResult<List<ModifierResponse>>> GetModifiersByProjectPuid(string projectPuid)
         {
             // Authorization already checked if project exists, otherwise they would not have access to it
             // i.e. this should never fail
             var project = await _projectRepo.GetProjectByPuid(projectPuid);
-            if (project == null) return ServiceResult<List<Modifier>>.Fail(ServiceStatus.NotFound404, "Project not found.");
+            if (project == null) return ServiceResult<List<ModifierResponse>>.Fail(ServiceStatus.NotFound404, "Project not found.");
 
             // Redirect aliased project to canonical project PUID
             if (!string.IsNullOrWhiteSpace(project.Alias_Project_Puid))
             {
-                return ServiceResult<List<Modifier>>.Redirection(ServiceStatus.SeeOther303, $"/projects/{project.Alias_Project_Puid}/modifiers");
+                return ServiceResult<List<ModifierResponse>>.Redirection(ServiceStatus.SeeOther303, $"/projects/{project.Alias_Project_Puid}/modifiers");
             }
 
             var modifiers = await _repo.GetModifiersByProjectId(project.Project_Id);
+            var modifierResponses = new List<ModifierResponse>();
+            foreach (var modifier in modifiers)
+            {
+                modifierResponses.Add(await BuildModifierResponse(modifier));
+            }
 
-            return ServiceResult<List<Modifier>>.SuccessResult(modifiers);
+            return ServiceResult<List<ModifierResponse>>.SuccessResult(modifierResponses);
         }
         public async Task<ServiceResult> DeleteModifier(string projectPuid, string puid)
         {
@@ -229,7 +237,46 @@ namespace ProductionCalculator.Business.Services
             await _projectRepo.UpdateProject(project);
         }
 
-        private async Task<(List<(ProjectAttribute attribute, double flatBonus, double percentBonus, double multiplicativeBonus)> attributes, string? error)> ValidateAttributes(List<ModifierAttributeExchange> attributes, int projectId)
+        private async Task<ModifierResponse> BuildModifierResponse(Modifier modifier)
+        {
+            var modifierAttributes = (await _modifierAttributeRepo.GetByModifierId(modifier.Modifier_Id)).ToList();
+            var attributeResponses = new List<ModifierAttributeResponse>();
+            foreach (var modifierAttribute in modifierAttributes)
+            {
+                var attribute = await _attributeRepo.GetAttributeById(modifierAttribute.Attribute_Id);
+                if (attribute == null)
+                {
+                    continue;
+                }
+
+                attributeResponses.Add(new ModifierAttributeResponse
+                {
+                    Puid = attribute.Puid,
+                    FlatBonus = modifierAttribute.Flat_Bonus,
+                    PercentBonus = modifierAttribute.Percent_Bonus,
+                    MultiplicativeBonus = modifierAttribute.Multiplicative_Bonus,
+                    CreatedAt = modifierAttribute.Created_At,
+                    UpdatedAt = modifierAttribute.Last_Updated
+                });
+            }
+
+            return new ModifierResponse
+            {
+                Puid = modifier.Puid,
+                Name = modifier.Name,
+                Description = modifier.Description,
+                FlatBonus = modifier.Flat_Bonus,
+                PercentBonus = modifier.Percent_Bonus,
+                MultiplicativeBonus = modifier.Multiplicative_Bonus,
+                InputPercent = modifier.Input_Percent,
+                OutputPercent = modifier.Output_Percent,
+                Attributes = attributeResponses,
+                CreatedAt = modifier.Created_At,
+                UpdatedAt = modifier.Last_Updated
+            };
+        }
+
+        private async Task<(List<(ProjectAttribute attribute, double flatBonus, double percentBonus, double multiplicativeBonus)> attributes, string? error)> ValidateAttributes(List<ModifierAttributeRequest> attributes, int projectId)
         {
             var uniqueAttributes = attributes
                 .GroupBy(a => a.Puid)

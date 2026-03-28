@@ -42,6 +42,7 @@ builder.Services.AddScoped<IMachineCalculator, MachineCalculator>();
 builder.Services.AddScoped<IWorkflowChartAssembler, WorkflowChartAssembler>();
 builder.Services.AddScoped<IWorkflowMapper, WorkflowMapper>();
 builder.Services.AddScoped<IWorkflowChartValidator, WorkflowChartValidator>();
+builder.Services.AddScoped<IWorkflowNodeUpdater, WorkflowNodeUpdater>();
 builder.Services.AddSingleton<JwtHelper>();
 builder.Services.AddSingleton<CookieOptionsHelper>();
 builder.Services.AddSingleton<RefreshTokenHelper>();

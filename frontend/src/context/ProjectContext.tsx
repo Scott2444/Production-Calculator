@@ -24,6 +24,7 @@ interface ProjectContextType {
     projectId: string;
     canEdit: boolean;
     projectQuery: ReturnType<typeof useQuery<Project>>;
+    isOwner: boolean;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -37,8 +38,18 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
     const projectResolveQuery = useQuery({
         queryKey: ["resolve-project", routeUsername, routeProjectName],
-        queryFn: () =>
-            resolveProject(routeUsername, routeProjectName, protectedApi),
+        queryFn: async () => {
+            const results = await resolveProject(
+                routeUsername,
+                routeProjectName,
+                protectedApi,
+            );
+            return results.find(
+                (p) =>
+                    p.projectName.toLowerCase() ===
+                    routeProjectName.toLowerCase(),
+            );
+        },
         staleTime: 5 * 60 * 1000,
         enabled: Boolean(routeUsername && routeProjectName),
     });
@@ -62,6 +73,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         loggedIn &&
         !currentProject?.aliasProjectPuid;
 
+    const isOwner = routeUsername === username && loggedIn;
+
     const value: ProjectContextType = {
         routeUsername,
         routeProjectName,
@@ -69,6 +82,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         projectId,
         canEdit,
         projectQuery,
+        isOwner,
     };
 
     return (

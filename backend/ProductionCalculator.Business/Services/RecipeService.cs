@@ -33,7 +33,7 @@ namespace ProductionCalculator.Business.Services
             _projectRepo = projectRepo;
         }
 
-        public async Task<ServiceResult<RecipeResponse>> AddRecipe(string projectPuid, string name, string? description, double baseCraftingTime, List<RecipeProductExchange> inputs, List<RecipeProductExchange> outputs, List<AttributeRateExchange>? attributes = null)
+        public async Task<ServiceResult<RecipeResponse>> AddRecipe(string projectPuid, string name, string? description, double baseCraftingTime, List<RecipeProductExchange> inputs, List<RecipeProductExchange> outputs, List<AttributeRateRequest>? attributes = null)
         {
             attributes ??= [];
             if (string.IsNullOrWhiteSpace(name)) return ServiceResult<RecipeResponse>.Fail(ServiceStatus.BadRequest400, "Recipe name is required.");
@@ -105,7 +105,7 @@ namespace ProductionCalculator.Business.Services
            var recipeResponse = ConvertToApiModel(recipe, recipeProducts, recipeAttributes, cachedProducts, cachedAttributes);
            return ServiceResult<RecipeResponse>.SuccessResult(recipeResponse, ServiceStatus.Created201);
         }
-        public async Task<ServiceResult<RecipeResponse>> UpdateRecipe(string projectPuid, string puid, string name, string? description, double baseCraftingTime, List<RecipeProductExchange> inputs, List<RecipeProductExchange> outputs, List<AttributeRateExchange>? attributes = null)
+        public async Task<ServiceResult<RecipeResponse>> UpdateRecipe(string projectPuid, string puid, string name, string? description, double baseCraftingTime, List<RecipeProductExchange> inputs, List<RecipeProductExchange> outputs, List<AttributeRateRequest>? attributes = null)
         {
             attributes ??= [];
             if (string.IsNullOrWhiteSpace(name)) return ServiceResult<RecipeResponse>.Fail(ServiceStatus.BadRequest400, "Recipe name is required.");
@@ -249,7 +249,7 @@ namespace ProductionCalculator.Business.Services
         }
 
         private (List<RecipeAttribute> toAdd, List<RecipeAttribute> toUpdate, List<RecipeAttribute> toDelete) HandleRecipeAttributeUpdate(
-            IEnumerable<AttributeRateExchange> attributes,
+            IEnumerable<AttributeRateRequest> attributes,
             IEnumerable<RecipeAttribute> existingRecipeAttributes,
             int recipeId,
             IEnumerable<ProjectAttribute> cachedAttributes)
@@ -400,7 +400,7 @@ namespace ProductionCalculator.Business.Services
             }
         }
 
-        private async Task CacheAttributes(IEnumerable<AttributeRateExchange> attributes, List<ProjectAttribute> cachedAttributes)
+        private async Task CacheAttributes(IEnumerable<AttributeRateRequest> attributes, List<ProjectAttribute> cachedAttributes)
         {
             foreach (var attribute in attributes)
             {
@@ -470,7 +470,7 @@ namespace ProductionCalculator.Business.Services
             return (true, string.Empty);
         }
 
-        private (bool, string) CheckAttributes(IEnumerable<AttributeRateExchange> attributes, int projectId, IEnumerable<ProjectAttribute> cachedAttributes)
+        private (bool, string) CheckAttributes(IEnumerable<AttributeRateRequest> attributes, int projectId, IEnumerable<ProjectAttribute> cachedAttributes)
         {
             var attributePuids = attributes.Select(i => i.Puid).ToList();
             var duplicatePuids = attributePuids
@@ -510,7 +510,7 @@ namespace ProductionCalculator.Business.Services
             return recipeProducts;
         }
 
-        private List<RecipeAttribute> AssembleRecipeAttributes(IEnumerable<AttributeRateExchange> attributeExchanges, int recipeId, IEnumerable<ProjectAttribute> cachedAttributes)
+        private List<RecipeAttribute> AssembleRecipeAttributes(IEnumerable<AttributeRateRequest> attributeExchanges, int recipeId, IEnumerable<ProjectAttribute> cachedAttributes)
         {
             var recipeAttributes = new List<RecipeAttribute>();
             foreach (var exchange in attributeExchanges)
@@ -536,7 +536,7 @@ namespace ProductionCalculator.Business.Services
         {
             var inputResponses = new List<RecipeProductExchange>();
             var outputResponses = new List<RecipeProductExchange>();
-            var attributeResponses = new List<AttributeRateExchange>();
+            var attributeResponses = new List<AttributeRateResponse>();
             foreach (var rp in recipeProducts)
             {
                 var productPuid = cachedProducts.First(p => p.Product_Id == rp.Product_Id).Puid;  // Must always exist due to prior prior validation
@@ -561,7 +561,7 @@ namespace ProductionCalculator.Business.Services
             foreach (var recipeAttribute in recipeAttributes)
             {
                 var attributePuid = cachedAttributes.First(a => a.Attribute_Id == recipeAttribute.Attribute_Id).Puid;
-                attributeResponses.Add(new AttributeRateExchange
+                attributeResponses.Add(new AttributeRateResponse
                 {
                     Puid = attributePuid,
                     Rate = recipeAttribute.Rate

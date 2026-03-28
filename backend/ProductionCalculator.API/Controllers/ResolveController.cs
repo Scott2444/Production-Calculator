@@ -15,12 +15,13 @@ namespace ProductionCalculator.API.Controllers
             _service = service;
         }
 
-        [Authorize(Policy = "None")]  // Requies custom auth logic in service
+        [Authorize(Policy = "None")]  // Requires custom auth logic in service
         [HttpGet("projects")]
-        public async Task<IActionResult> ResolveProject([FromQuery] string username, [FromQuery] string project)
+        public async Task<IActionResult> ResolveProject([FromQuery] string username, [FromQuery] string? project)
         {
             var result = await _service.ResolveProject(username, project);
-            return FromServiceResult(result, p => new ProjectResolveResponse { ProjectPuid = p.Puid });
+            return FromServiceResult(result, 
+                projects => projects.Select(p => new ProjectResolveResponse { ProjectPuid = p.Puid, ProjectName = p.Name }).ToList());
         }
     }
 }

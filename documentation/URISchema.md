@@ -16,11 +16,13 @@ pub_ids are 10 char strings in base58 (4e17 possible numbers)
 
 ## Users
 
-/{username}/{project_name}/workflows/{workflow_name}
+/{username}/{project_name}/workflows/{workflow_name}/
+/{username}/{project_name}/workflows/
 /{username}/{project_name}/recipes/
 /{username}/{project_name}/machines/
 /{username}/{project_name}/modifiers/
 /{username}/{project_name}/products/
+/{username}/{project_name}/attributes/
 
 # Backend
 

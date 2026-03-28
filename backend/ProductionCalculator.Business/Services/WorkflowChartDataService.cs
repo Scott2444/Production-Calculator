@@ -28,16 +28,24 @@ namespace ProductionCalculator.Business.Services
             _productNodeRepo = productNodeRepo;
             _recipeRepo = recipeRepo;
 		}
+
+        /// <summary>
+        /// Retrieves all nodes, edges, targets, and product nodes for a given workflow, along with their modifiers.
+        /// </summary>
+        /// <param name="workflowId"></param>
+        /// <param name="isTracked">If true, the returned entities will be tracked by the EF context</param>
+        /// <returns>Assembled NodeChart</returns>
         public async Task<NodeChart> GetByWorkflowId(int workflowId, bool isTracked = false)
         {
             var nodes = new List<FullNode>();
             var workflowNodes = await _nodeRepo.GetByWorkflow(workflowId, isTracked);
             foreach (var workflowNode in workflowNodes)
             {
+                var modifiers = await _modifierRepo.GetByNodeId(workflowNode.Node_Id, isTracked);
                 nodes.Add(new FullNode
                 {
                     Node = workflowNode,
-                    Modifiers = await _modifierRepo.GetByNodeId(workflowNode.Node_Id, isTracked),
+                    Modifiers = modifiers,
                 });
             }
             var edges = await _edgeRepo.GetByWorkflow(workflowId, isTracked);
@@ -58,15 +66,20 @@ namespace ProductionCalculator.Business.Services
         /// Handles the logic of determining which nodes need to be created, updated, or deleted, and performs those operations.
         /// Translates NodeChart to subcomponent and calls respective repos.
         /// Modifies NodeChart to reflect primary keys assigned as it is in the DB.
-        /// Returns updated NodeChart.
+        /// Modifiers depend on nodes and this will automatically assign those node_ids to the modifiers.
         /// </summary>
+        /// <returns>Updated NodeChart with IDs assigned by the database</returns>
         public async Task<NodeChart> WorkflowUpdate(int workflowId, NodeChart nodeChart)
         {
             var originalChart = await GetByWorkflowId(workflowId, isTracked: false);
             
             await UpdateNodes(nodeChart.Nodes.Select(n => n.Node).ToList(), originalChart.Nodes.Select(n => n.Node).ToList());
             await UpdateTargets(nodeChart.Targets, originalChart.Targets);
-            await UpdateModifiers(nodeChart.Nodes.SelectMany(n => n.Modifiers).ToList(), originalChart.Nodes.SelectMany(n => n.Modifiers).ToList());
+
+            SetNodeIdDependencies(nodeChart); // Solves Node_Id dependency
+            await UpdateModifiers(
+                nodeChart.Nodes.SelectMany(n => n.Modifiers).ToList(),
+                originalChart.Nodes.SelectMany(n => n.Modifiers).ToList());
             await UpdateProductNodes(nodeChart.ProductNodes, originalChart.ProductNodes);
             await UpdateRecipes(nodeChart.PreferredRecipes, originalChart.PreferredRecipes);
             return nodeChart;
@@ -262,5 +275,20 @@ namespace ProductionCalculator.Business.Services
             // Delete removed
             if (inputsToDelete.Any()) await _productNodeRepo.DeleteWorkflowProductNodes(inputsToDelete.Select(i => i.Workflow_Product_Node_Id).ToList());
         }
-	}
+
+        /// <summary>
+        /// Modifiers depend on nodes being assigned an ID by the database.
+        /// Assigns the correct Workflow_Node_Id to each modifier based on the node it belongs to.
+        /// </summary>
+        private void SetNodeIdDependencies(NodeChart nodeChart)
+        {
+            foreach (var node in nodeChart.Nodes)
+            {
+                foreach (var modifier in node.Modifiers)
+                {
+                    modifier.Workflow_Node_Id = node.Node.Node_Id;
+                }
+            }
+        }
+    }
 }

@@ -33,7 +33,7 @@ namespace ProductionCalculator.Business.Services
             _projectRepo = projectRepo;
         }
 
-        public async Task<ServiceResult<MachineResponse>> AddMachine(string projectPuid, string name, string? description, double baseSpeed, List<string> recipePuids, List<AttributeRateExchange>? attributes = null)
+        public async Task<ServiceResult<MachineResponse>> AddMachine(string projectPuid, string name, string? description, double baseSpeed, List<string> recipePuids, List<AttributeRateRequest>? attributes = null)
         {
             attributes ??= [];
             if (string.IsNullOrWhiteSpace(name)) return ServiceResult<MachineResponse>.Fail(ServiceStatus.BadRequest400, "Machine name is required.");
@@ -120,14 +120,18 @@ namespace ProductionCalculator.Business.Services
                 Description = machine.Description,
                 BaseSpeed = machine.Base_Speed,
                 RecipePuids = validRecipes.Select(r => r.Puid).ToList(),
-                Attributes = attributes,
+                Attributes = attributes.Select(a => new AttributeRateResponse
+                {
+                    Puid = a.Puid,
+                    Rate = a.Rate
+                }).ToList(),
                 CreatedAt = machine.Created_At,
                 UpdatedAt = machine.Last_Updated
             };
 
             return ServiceResult<MachineResponse>.SuccessResult(machineResponse, ServiceStatus.Created201);
         }
-        public async Task<ServiceResult<MachineResponse>> UpdateMachine(string projectPuid, string puid, string? name, string? description, double baseSpeed, List<string> recipePuids, List<AttributeRateExchange>? attributes = null)
+        public async Task<ServiceResult<MachineResponse>> UpdateMachine(string projectPuid, string puid, string? name, string? description, double baseSpeed, List<string> recipePuids, List<AttributeRateRequest>? attributes = null)
         {
             attributes ??= [];
             if (string.IsNullOrWhiteSpace(name)) return ServiceResult<MachineResponse>.Fail(ServiceStatus.BadRequest400, "Machine name is required.");
@@ -239,7 +243,11 @@ namespace ProductionCalculator.Business.Services
                 Description = machine.Description,
                 BaseSpeed = machine.Base_Speed,
                 RecipePuids = validRecipes.Select(r => r.Puid).ToList(),
-                Attributes = attributes,
+                Attributes = attributes.Select(a => new AttributeRateResponse
+                {
+                    Puid = a.Puid,
+                    Rate = a.Rate
+                }).ToList(),
                 CreatedAt = machine.Created_At,
                 UpdatedAt = machine.Last_Updated
             };
@@ -267,13 +275,13 @@ namespace ProductionCalculator.Business.Services
                 if (recipe != null) recipes.Add(recipe);
             }
 
-            var attributes = new List<AttributeRateExchange>();
+            var attributes = new List<AttributeRateResponse>();
             foreach (var machineAttribute in machineAttributes)
             {
                 var attribute = await _attributeRepo.GetAttributeById(machineAttribute.Attribute_Id);
                 if (attribute != null)
                 {
-                    attributes.Add(new AttributeRateExchange
+                    attributes.Add(new AttributeRateResponse
                     {
                         Puid = attribute.Puid,
                         Rate = machineAttribute.Rate
@@ -335,13 +343,13 @@ namespace ProductionCalculator.Business.Services
                 var associatedAttributes = machineAttributes
                     .Where(ma => ma.Machine_Id == machine.Machine_Id)
                     .ToList();
-                var attributeResponses = new List<AttributeRateExchange>();
+                var attributeResponses = new List<AttributeRateResponse>();
                 foreach (var associatedAttribute in associatedAttributes)
                 {
                     var attribute = await _attributeRepo.GetAttributeById(associatedAttribute.Attribute_Id);
                     if (attribute != null)
                     {
-                        attributeResponses.Add(new AttributeRateExchange
+                        attributeResponses.Add(new AttributeRateResponse
                         {
                             Puid = attribute.Puid,
                             Rate = associatedAttribute.Rate
@@ -387,7 +395,7 @@ namespace ProductionCalculator.Business.Services
             await _projectRepo.UpdateProject(project);
         }
 
-        private async Task<(List<(ProjectAttribute attribute, double rate)> attributes, string? error)> ValidateAttributes(List<AttributeRateExchange> attributes, int projectId)
+        private async Task<(List<(ProjectAttribute attribute, double rate)> attributes, string? error)> ValidateAttributes(List<AttributeRateRequest> attributes, int projectId)
         {
             var uniqueAttributes = attributes
                 .GroupBy(a => a.Puid)

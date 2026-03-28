@@ -8,13 +8,37 @@ import React, {
     useEffect,
 } from "react";
 import { createPortal } from "react-dom";
-import { IconChevronDown } from "@tabler/icons-react";
+import { IconCheck, IconChevronDown, IconSearch } from "@tabler/icons-react";
+
+export interface DropDownOption {
+    value: string;
+    label: React.ReactNode;
+    searchText?: string;
+    disabled?: boolean;
+    endAdornment?: React.ReactNode;
+}
 
 interface DropDownProps {
     label: React.ReactNode;
-    children:
+    children?:
         | React.ReactNode
         | ((api: { close: () => void }) => React.ReactNode);
+    mode?: "single" | "multi";
+    options?: DropDownOption[];
+    value?: string;
+    values?: string[];
+    onSelect?: (next: string) => void;
+    onChangeValues?: (next: string[]) => void;
+    enableSearch?: boolean;
+    searchPlaceholder?: string;
+    searchAriaLabel?: string;
+    emptyFilteredText?: string;
+    emptyOptionsText?: string;
+    doneLabel?: string;
+    checkIconSize?: number;
+    optionClassName?: string;
+    optionTextClassName?: string;
+    searchInputClassName?: string;
     align?: "left" | "right";
     placement?: "auto" | "top" | "bottom";
     disabled?: boolean;
@@ -28,6 +52,22 @@ interface DropDownProps {
 export default function DropDown({
     label,
     children,
+    mode = "single",
+    options,
+    value,
+    values,
+    onSelect,
+    onChangeValues,
+    enableSearch = true,
+    searchPlaceholder = "Search",
+    searchAriaLabel = "Search options",
+    emptyFilteredText = "No items match your search.",
+    emptyOptionsText = "No items yet.",
+    doneLabel = "Done",
+    checkIconSize = 16,
+    optionClassName,
+    optionTextClassName,
+    searchInputClassName,
     align = "right",
     placement = "auto",
     disabled = false,
@@ -39,6 +79,7 @@ export default function DropDown({
 }: DropDownProps): React.ReactElement {
     const [open, setOpen] = useState(false);
     const [renderMenu, setRenderMenu] = useState(false);
+    const [searchText, setSearchText] = useState("");
     const menuRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
     const menuPanelRef = useRef<HTMLDivElement>(null);
@@ -117,26 +158,79 @@ export default function DropDown({
     const closeMenu = ({
         returnFocus = false,
     }: { returnFocus?: boolean } = {}) => {
+        setSearchText("");
         if (returnFocus) {
             triggerRef.current?.focus({ preventScroll: true });
         }
         setOpen(false);
     };
 
+    const hasOptionMode = Array.isArray(options);
+
+    const selectedSet = useMemo(() => {
+        if (mode === "multi") {
+            return new Set(values ?? []);
+        }
+        return new Set(value ? [value] : []);
+    }, [mode, value, values]);
+
+    const normalizedSearch = searchText.trim().toLowerCase();
+
+    const filteredOptions = useMemo(() => {
+        if (!hasOptionMode) return [];
+        if (!normalizedSearch) return options;
+
+        return options.filter((option) => {
+            const optionSearchText = (
+                option.searchText ??
+                (typeof option.label === "string" ? option.label : "")
+            )
+                .toString()
+                .toLowerCase();
+            return optionSearchText.includes(normalizedSearch);
+        });
+    }, [hasOptionMode, normalizedSearch, options]);
+
+    const handleOptionClick = useCallback(
+        (nextValue: string) => {
+            if (mode === "multi") {
+                const next = new Set(values ?? []);
+                if (next.has(nextValue)) next.delete(nextValue);
+                else next.add(nextValue);
+                onChangeValues?.(Array.from(next));
+                return;
+            }
+
+            onSelect?.(nextValue);
+            closeMenu({ returnFocus: true });
+        },
+        [mode, onChangeValues, onSelect, values],
+    );
+
     useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            const target = event.target as Node;
+        if (!open) return;
+
+        function handlePointerDown(event: PointerEvent) {
+            const target = event.target as Node | null;
+            if (!target) return;
             const withinTrigger = triggerRef.current?.contains(target) ?? false;
             const withinMenu = menuPanelRef.current?.contains(target) ?? false;
-            if (!withinTrigger && !withinMenu) closeMenu();
+            if (!withinTrigger && !withinMenu) {
+                closeMenu();
+            }
         }
-        if (open) {
-            document.addEventListener("mousedown", handleClickOutside);
-        } else {
-            document.removeEventListener("mousedown", handleClickOutside);
+
+        function handleKeyDown(event: KeyboardEvent) {
+            if (event.key === "Escape") {
+                closeMenu({ returnFocus: true });
+            }
         }
+
+        document.addEventListener("pointerdown", handlePointerDown);
+        document.addEventListener("keydown", handleKeyDown);
         return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("pointerdown", handlePointerDown);
+            document.removeEventListener("keydown", handleKeyDown);
         };
     }, [open]);
 
@@ -178,6 +272,95 @@ export default function DropDown({
         typeof children === "function"
             ? children({ close: () => closeMenu({ returnFocus: true }) })
             : children;
+
+    const renderedOptions = hasOptionMode ? (
+        <div className="p-2">
+            <div className="flex flex-col gap-1">
+                {enableSearch && (
+                    <div className="sticky top-0 z-10 -mx-2 -mt-2 border-b border-slate-800 bg-slate-950/95 px-2 pb-2 pt-2 backdrop-blur supports-backdrop-filter:bg-slate-950/80">
+                        <div className="flex items-center gap-2 rounded-lg bg-slate-950/80 p-1">
+                            <div className="text-slate-400">
+                                <IconSearch size={16} />
+                            </div>
+                            <input
+                                value={searchText}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                placeholder={searchPlaceholder}
+                                className={`w-full rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40 ${
+                                    searchInputClassName ?? ""
+                                }`}
+                                disabled={disabled}
+                                aria-label={searchAriaLabel}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {filteredOptions.map((option) => {
+                    const selected = selectedSet.has(option.value);
+                    return (
+                        <button
+                            key={option.value}
+                            type="button"
+                            disabled={option.disabled}
+                            className={`group flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer hover:bg-slate-800/70 disabled:cursor-not-allowed disabled:opacity-50 ${
+                                selected
+                                    ? "bg-purple-600/15 text-slate-100"
+                                    : "text-slate-200"
+                            } ${optionClassName ?? ""}`}
+                            onClick={() => handleOptionClick(option.value)}
+                        >
+                            <span
+                                className={`min-w-0 truncate ${
+                                    optionTextClassName ?? ""
+                                }`}
+                            >
+                                {option.label}
+                            </span>
+                            <span
+                                className={`shrink-0 ${
+                                    selected
+                                        ? "text-purple-300"
+                                        : "text-slate-500 opacity-0 group-hover:opacity-100"
+                                }`}
+                                aria-hidden="true"
+                            >
+                                {option.endAdornment ?? (
+                                    <IconCheck size={checkIconSize} />
+                                )}
+                            </span>
+                        </button>
+                    );
+                })}
+
+                {options.length > 0 && filteredOptions.length === 0 && (
+                    <div className="px-3 py-2 text-sm text-slate-400">
+                        {emptyFilteredText}
+                    </div>
+                )}
+
+                {options.length === 0 && (
+                    <div className="px-3 py-2 text-sm text-slate-400">
+                        {emptyOptionsText}
+                    </div>
+                )}
+
+                {mode === "multi" && (
+                    <div className="mt-1 flex items-center justify-end border-t border-slate-800 pt-2">
+                        <button
+                            type="button"
+                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                            onClick={() => closeMenu({ returnFocus: true })}
+                        >
+                            {doneLabel}
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    ) : (
+        renderedChildren
+    );
 
     const originClass = useMemo(() => {
         if (resolvedPlacement === "top") {
@@ -235,14 +418,14 @@ export default function DropDown({
                             open
                                 ? "opacity-100 scale-100 pointer-events-auto"
                                 : "opacity-0 scale-95 pointer-events-none"
-                        } ${matchTriggerWidth ? "" : "min-w-40"} ${
+                        } ${matchTriggerWidth ? "" : "min-w-40"} overflow-hidden ${
                             menuClassName ?? ""
                         }`}
                         role="menu"
                         aria-orientation="vertical"
                         aria-hidden={!open}
                     >
-                        {renderedChildren}
+                        {renderedOptions}
                     </div>,
                     document.body,
                 )}

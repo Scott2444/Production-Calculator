@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/context/AuthContext";
@@ -63,7 +63,7 @@ export default function NavBar({
     ];
 
     return (
-        <nav className="flex items-center justify-between py-5 px-8 border-b-2 border-black bg-slate-900/80">
+        <nav className="flex items-center justify-between py-5 px-8 border-b-2 border-black bg-slate-900/90 sticky top-0 z-50">
             <div className="flex items-center gap-14 text-xl">
                 <Link to="/">
                     <Image
@@ -130,28 +130,42 @@ function AccountDropdown({
     user?: NavUser;
 }) {
     const [menuOpen, setMenuOpen] = useState(false);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
     const logout = useLogout();
 
     // Close dropdown on outside click
     useEffect(() => {
         if (!menuOpen) return;
-        const handleClick = (e: MouseEvent) => {
-            const target = e.target as HTMLElement;
-            if (
-                !target.closest("#account-menu-btn") &&
-                !target.closest("#account-dropdown")
-            ) {
+
+        const handlePointerDown = (e: PointerEvent) => {
+            const target = e.target as Node | null;
+            if (!target) return;
+            const withinTrigger = triggerRef.current?.contains(target) ?? false;
+            const withinMenu = menuRef.current?.contains(target) ?? false;
+            if (!withinTrigger && !withinMenu) {
                 setMenuOpen(false);
             }
         };
-        document.addEventListener("mousedown", handleClick);
-        return () => document.removeEventListener("mousedown", handleClick);
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                setMenuOpen(false);
+            }
+        };
+
+        document.addEventListener("pointerdown", handlePointerDown);
+        document.addEventListener("keydown", handleKeyDown);
+        return () => {
+            document.removeEventListener("pointerdown", handlePointerDown);
+            document.removeEventListener("keydown", handleKeyDown);
+        };
     }, [menuOpen]);
 
     return (
         <>
             <button
-                id="account-menu-btn"
+                ref={triggerRef}
                 type="button"
                 aria-haspopup="true"
                 aria-expanded={menuOpen}
@@ -168,7 +182,7 @@ function AccountDropdown({
             </button>
             {menuOpen && (
                 <div
-                    id="account-dropdown"
+                    ref={menuRef}
                     className="absolute right-0 top-15 mt-2 mr-4 w-70 bg-slate-50 rounded-md shadow-lg border border-gray-200 z-50 animate-fade-in"
                 >
                     {/* User info section */}

@@ -9,7 +9,7 @@ namespace ProductionCalculator.Business.APIModels
         public string? Description { get; set; }
         public required double BaseSpeed { get; set; }
         public required List<string> RecipePuids { get; set; }
-        public required List<AttributeRateExchange> Attributes { get; set; }
+        public required List<AttributeRateResponse> Attributes { get; set; }
         public required DateTime CreatedAt { get; set; }
         public required DateTime UpdatedAt { get; set; }
     }

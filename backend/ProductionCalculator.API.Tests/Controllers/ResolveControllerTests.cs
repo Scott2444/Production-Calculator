@@ -1,0 +1,85 @@
+using System.Diagnostics.CodeAnalysis;
+using FakeItEasy;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using ProductionCalculator.API.Controllers;
+using ProductionCalculator.Business.APIModels;
+using ProductionCalculator.Business.Models;
+using ProductionCalculator.Business.Interfaces;
+
+namespace ProductionCalculator.API.Tests;
+
+[ExcludeFromCodeCoverage]
+public class ResolveControllerTests
+{
+	private static ResolveController CreateController(IProjectService service)
+	{
+		var controller = new ResolveController(service)
+		{
+			ControllerContext = new ControllerContext
+			{
+				HttpContext = new DefaultHttpContext()
+			}
+		};
+		return controller;
+	}
+
+    private static ProjectResponse CreateProjectResponse(string puid = "projPuid", string name = "Project")
+    {
+        return new ProjectResponse
+        {
+            Puid = puid,
+            Name = name,
+            OwnerUsername = "user",
+            Description = "desc",
+            IsPublic = false,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+    }
+
+	[Fact]
+	public async Task ResolveProject_ValidRequest_ReturnsOk()
+	{
+		var service = A.Fake<IProjectService>();
+		var project = CreateProjectResponse("projPuid");
+		A.CallTo(() => service.ResolveProject("user", "project"))
+			.Returns(ServiceResult<List<ProjectResponse>>.SuccessResult(new List<ProjectResponse> { project }, ServiceStatus.Ok200));
+		var controller = CreateController(service);
+
+		var result = await controller.ResolveProject("user", "project");
+
+		var obj = Assert.IsType<ObjectResult>(result);
+		Assert.Equal(200, obj.StatusCode);
+		var response = Assert.IsType<List<ProjectResolveResponse>>(obj.Value);
+		Assert.Equal("projPuid", response[0].ProjectPuid);
+	}
+
+	[Fact]
+	public async Task ResolveProject_NotFound_ReturnsNotFound()
+	{
+		var service = A.Fake<IProjectService>();
+		A.CallTo(() => service.ResolveProject("user", "project"))
+			.Returns(ServiceResult<List<ProjectResponse>>.Fail(ServiceStatus.NotFound404, "Not Found"));
+		var controller = CreateController(service);
+
+		var result = await controller.ResolveProject("user", "project");
+
+		var obj = Assert.IsType<ObjectResult>(result);
+		Assert.Equal(404, obj.StatusCode);
+	}
+
+	[Fact]
+	public async Task ResolveProject_BadRequest_ReturnsBadRequest()
+	{
+		var service = A.Fake<IProjectService>();
+		A.CallTo(() => service.ResolveProject("user", "project"))
+			.Returns(ServiceResult<List<ProjectResponse>>.Fail(ServiceStatus.BadRequest400, "Bad Request"));
+		var controller = CreateController(service);
+
+		var result = await controller.ResolveProject("user", "project");
+
+		var obj = Assert.IsType<ObjectResult>(result);
+		Assert.Equal(400, obj.StatusCode);
+	}
+}

@@ -2,6 +2,7 @@ using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Helpers;
+using ProductionCalculator.Business.Records;
 
 
 namespace ProductionCalculator.Business.Services
@@ -18,6 +19,7 @@ namespace ProductionCalculator.Business.Services
         private readonly IWorkflowMapper _workflowMapper;
         private readonly IWorkflowChartAssembler _workflowChartAssembler;
         private readonly IWorkflowChartValidator _workflowChartValidator;
+        private readonly IWorkflowNodeUpdater _workflowNodeUpdater;
 
 		public WorkflowChartService(
             IWorkflowChartDataService chartDataService, 
@@ -25,7 +27,8 @@ namespace ProductionCalculator.Business.Services
             IProjectDataService projectDataService,
             IWorkflowMapper workflowMapper,
             IWorkflowChartAssembler workflowChartAssembler,
-            IWorkflowChartValidator workflowChartValidator
+            IWorkflowChartValidator workflowChartValidator,
+            IWorkflowNodeUpdater workflowNodeUpdater
         )
 		{
 			_chartDataService = chartDataService;
@@ -34,20 +37,41 @@ namespace ProductionCalculator.Business.Services
             _workflowMapper = workflowMapper;
             _workflowChartAssembler = workflowChartAssembler;
             _workflowChartValidator = workflowChartValidator;
+            _workflowNodeUpdater = workflowNodeUpdater;
 		}
         
+        /// <summary>
+        /// Retrieves the workflow chart for a given workflow and maps it to a response object for the API.
+        /// Does not perform any edits or calculations.
+        /// </summary>
         public async Task<ServiceResult<WorkflowChartResponse>> GetWorkflowChartById(Workflow workflow)
 		{
-			var nodeChart = await GetWorkflowChart(workflow);
+			var nodeChart = await _chartDataService.GetByWorkflowId(workflow.Workflow_Id);
             var projectObjects = await _projectDataService.GetProjectObjects(workflow.Project_Id);
-            var response = _workflowMapper.ToResponse(projectObjects, nodeChart);
-            return ServiceResult<WorkflowChartResponse>.SuccessResult(response, ServiceStatus.Ok200);
+            try
+            {
+                var response = _workflowMapper.ToResponse(projectObjects, nodeChart);
+                return ServiceResult<WorkflowChartResponse>.SuccessResult(response, ServiceStatus.Ok200);
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.InternalServerError500, $"Error mapping workflow chart: {ex.Message}");
+            }
 		}
 
+        /// <summary>
+        /// Calculates the workflow chart based on the provided root demands.
+        /// Updates the chart with the new targets and recalculates the entire chart to reflect changes in supply and demand.
+        /// This will persist any existing chart changes if the recipe is used again.
+        /// Yield modifiers to recipes will still be added to the demand calculations.
+        /// </summary>
+        /// <param name="workflow"></param>
+        /// <param name="rootDemands"></param>
+        /// <returns></returns>
 		public async Task<ServiceResult<WorkflowChartResponse>> UpsertRootDemands(Workflow workflow, List<(string productPuid, double rate)> rootDemands)
 		{
 			// Get existing chart and project objects
-            var nodeChart = await GetWorkflowChart(workflow);
+            var nodeChart = await _chartDataService.GetByWorkflowId(workflow.Workflow_Id);
             var projectObjects = await _projectDataService.GetProjectObjects(workflow.Project_Id);
 
             // All demand updates require latest version of objects
@@ -92,7 +116,7 @@ namespace ProductionCalculator.Business.Services
 		public async Task<ServiceResult<WorkflowChartResponse>> UpdateNode(Workflow workflow, string nodePuid, WorkflowNodeRequest request)
 		{
 			// Get existing chart and project objects
-            var nodeChart = await GetWorkflowChart(workflow);
+            var nodeChart = await _chartDataService.GetByWorkflowId(workflow.Workflow_Id);
             var projectObjects = await _projectDataService.GetProjectObjects(workflow.Project_Id);
 
             // All demand updates require latest version of objects
@@ -108,40 +132,25 @@ namespace ProductionCalculator.Business.Services
                 return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, $"Node with PUID {nodePuid} not found in workflow ID {workflow.Workflow_Id}");
             }
 
-            // Update node properties based on request
-            if (request.MachinePuid != null)
+            // Update the full node with the new values and determine the impact of the changes
+            var impact = _workflowNodeUpdater.ApplyPutUpdate(fullNode, request, projectObjects);
+
+            // If no demand or supply recalculation is needed, we can persist the changes and return early without solving
+            if (!impact.RequiresDemandRecalculation && !impact.RequiresSupplyRecalculation)
             {
-                var machine = projectObjects.Machines.FirstOrDefault(m => m.Puid == request.MachinePuid);
-                if (machine == null)
-                {
-                    return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, $"Machine with PUID {request.MachinePuid} not found in project ID {workflow.Project_Id}");
-                }
-                fullNode.Node.Machine_Id = machine.Machine_Id;
+                var updatedChart = await _chartDataService.WorkflowUpdate(workflow.Workflow_Id, nodeChart);
+                var response = _workflowMapper.ToResponse(projectObjects, updatedChart);
+                return ServiceResult<WorkflowChartResponse>.SuccessResult(response, ServiceStatus.Ok200);
             }
-            fullNode.Modifiers.Clear();
-            foreach (var modifierPuid in request.ModifierPuids)
-            {
-                var modifier = projectObjects.Modifiers.FirstOrDefault(m => m.Puid == modifierPuid);
-                if (modifier == null)
-                {
-                    return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.NotFound404, $"Modifier with PUID {modifierPuid} not found in project ID {workflow.Project_Id}");
-                }
-                fullNode.Modifiers.Add(new WorkflowNodeModifier
-                {
-                    Workflow_Node_Modifier_Id = 0, // New node modifier
-                    Workflow_Node_Id = fullNode.Node.Node_Id,
-                    Modifier_Id = modifier.Modifier_Id,
-                    Modifier_Version = modifier.Version
-                });
-            }
-            fullNode.Node.Actual_Machine_Count = request.ActualMachineCount;
-            return await SafeCalculateChartAndResponse(workflow, nodeChart, projectObjects, recalculateDemand: false);
-		}
+
+            // 3. Recalculate if necessary
+            return await SafeCalculateChartAndResponse(workflow, nodeChart, projectObjects, recalculateDemand: impact.RequiresDemandRecalculation);
+        }
         
         public async Task<ServiceResult<WorkflowChartResponse>> SetRecipes(Workflow workflow, List<string> recipePuids)
         {
             // Get existing chart and project objects
-            var nodeChart = await GetWorkflowChart(workflow);
+            var nodeChart = await _chartDataService.GetByWorkflowId(workflow.Workflow_Id);
             var projectObjects = await _projectDataService.GetProjectObjects(workflow.Project_Id);
 
             // All demand updates require latest version of objects
@@ -191,7 +200,7 @@ namespace ProductionCalculator.Business.Services
 		public async Task<ServiceResult<WorkflowChartResponse>> SetExternal(Workflow workflow, string productPuid, bool isExternal, double? externalRate)
 		{
 			// Get existing chart and project objects
-            var nodeChart = await GetWorkflowChart(workflow);
+            var nodeChart = await _chartDataService.GetByWorkflowId(workflow.Workflow_Id);
             var projectObjects = await _projectDataService.GetProjectObjects(workflow.Project_Id);
 
             // All demand updates require latest version of objects
@@ -234,7 +243,7 @@ namespace ProductionCalculator.Business.Services
         public async Task<ServiceResult<WorkflowChartResponse>> UpgradeWorkflowChart(Workflow workflow)
         {
             // Get existing chart and project objects
-            var nodeChart = await GetWorkflowChart(workflow);
+            var nodeChart = await _chartDataService.GetByWorkflowId(workflow.Workflow_Id);
             var projectObjects = await _projectDataService.GetProjectObjects(workflow.Project_Id);
 
             // Check if chart is already up to date, early exit
@@ -250,13 +259,6 @@ namespace ProductionCalculator.Business.Services
             return await SafeCalculateChartAndResponse(workflow, nodeChart, projectObjects);
         }
 
-        private async Task<NodeChart> GetWorkflowChart(Workflow workflow)
-        {
-            // Retrieve existing node chart from database
-            var nodeChart = await _chartDataService.GetByWorkflowId(workflow.Workflow_Id);
-            return nodeChart;
-        }
-
         /// <summary>
         /// Calculates and returns the node chart API response and catches any calculation errors
         /// Used as a wrapper for all operations that update the chart to ensure consistent error handling and response formatting
@@ -267,33 +269,40 @@ namespace ProductionCalculator.Business.Services
             // Recalculate chart
             try 
             {
-                var updatedChart = recalculateDemand ? await CalculateNodeChartDS(workflow, nodeChart, projectObjects) : await CalculateNodeChartS(nodeChart, projectObjects);
+                var updatedChart = recalculateDemand ? 
+                    await CalculateNodeChartDS(workflow, nodeChart, projectObjects) : 
+                    await CalculateNodeChartS(workflow, nodeChart, projectObjects);
                 var response = _workflowMapper.ToResponse(projectObjects, updatedChart);
                 return ServiceResult<WorkflowChartResponse>.SuccessResult(response, ServiceStatus.Ok200);
             }
             catch (InvalidOperationException ex)
             {
-                Console.WriteLine(ex);
                 return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.BadRequest400, $"No possible workflow configuration for the given target demands. {ex.Message}");
+            }
+            catch (ArgumentException ex)
+            {
+                return ServiceResult<WorkflowChartResponse>.Fail(ServiceStatus.InternalServerError500, $"Error calculating workflow chart: {ex.Message}");
             }
         }
 
         /// <summary>
         /// Calculates the node chart using a demand driven approach where it first ensures all demand is met and then calculates supply based on that demand.
         /// This does not guarantee that the structure will be preserved.
+        /// Saves changes to database.
         /// </summary>
         private async Task<NodeChart> CalculateNodeChartDS(Workflow workflow, NodeChart nodeChart, ProjectObjects projectObjects)
         {
             // Demand calculation
             var recipeRates = _workflowSolver.SolveDemand(projectObjects, nodeChart);
             var updatedChart = await _workflowChartAssembler.RebuildChartNodes(nodeChart, recipeRates, projectObjects, workflow, _chartDataService.NodePuidExists);
-            await _chartDataService.WorkflowUpdate(workflow.Workflow_Id, updatedChart); // Update chart in DB to assign IDs before rebuilding edges
+            await _chartDataService.WorkflowUpdate(workflow.Workflow_Id, updatedChart); // Update chart in DB to assign node IDs before rebuilding edges
             updatedChart = _workflowChartAssembler.RebuildChartEdges(nodeChart, updatedChart, projectObjects);
             // Supply calculation
-            recipeRates = _workflowSolver.SolveSupply(projectObjects, updatedChart);
-            updatedChart = _workflowChartAssembler.UpdateChartRates(updatedChart, recipeRates, projectObjects);
+            var supplySolverResult = _workflowSolver.SolveSupply(projectObjects, updatedChart);
+            updatedChart = _workflowChartAssembler.UpdateChartRates(updatedChart, supplySolverResult, projectObjects);
 
             await _chartDataService.WorkflowUpdate(workflow.Workflow_Id, updatedChart); // Final update to save all calculated values
+            await _chartDataService.WorkflowEdgeUpdate(workflow.Workflow_Id, updatedChart);
             return updatedChart;
         }
 
@@ -301,11 +310,14 @@ namespace ProductionCalculator.Business.Services
         /// Calculates the node chart for supply only.
         /// This guarantees that the structure will be preserved.
         /// Only affects the supply calculation.
+        /// Saves changes to database.
         /// </summary>
-        private async Task<NodeChart> CalculateNodeChartS(NodeChart nodeChart, ProjectObjects projectObjects)
+        private async Task<NodeChart> CalculateNodeChartS(Workflow workflow, NodeChart nodeChart, ProjectObjects projectObjects)
         {
             var recipeRates = _workflowSolver.SolveSupply(projectObjects, nodeChart);
             nodeChart = _workflowChartAssembler.UpdateChartRates(nodeChart, recipeRates, projectObjects);
+            await _chartDataService.WorkflowUpdate(workflow.Workflow_Id, nodeChart);
+            await _chartDataService.WorkflowEdgeUpdate(workflow.Workflow_Id, nodeChart);
             return nodeChart;
         }
 	}

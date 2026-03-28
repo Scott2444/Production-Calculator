@@ -12,9 +12,17 @@ export async function fetchModifiers(
 export interface NewModifierPayload {
     name: string;
     description: string | null;
-    flatSpeedBonus: number;
-    additivePercentBonus: number;
-    multiplicativeModifier: number;
+    flatBonus: number;
+    percentBonus: number;
+    multiplicativeBonus: number;
+    inputPercent: number;
+    outputPercent: number;
+    attributes: {
+        puid: string;
+        flatBonus: number;
+        percentBonus: number;
+        multiplicativeBonus: number;
+    }[];
 }
 
 export async function postNewModifier(

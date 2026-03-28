@@ -18,12 +18,18 @@ namespace ProductionCalculator.Business.Services
         /// <param name="machine"></param>
         /// <param name="modifiers"></param>
         /// <returns>Number of machines to achieve the recipe rate</returns>
+        /// <exception>ArgumentException if effective speed is zero or negative</exception>
         public double CalculateMachineCount(double rate, Recipe recipe, Machine machine, List<Modifier> modifiers)
         {
             // recipes_per_second_per_machine = effective_speed / base_crafting_time<br>
             // machine_count = recipe_rate / recipes_per_second_per_machine
 
             var effective_speed = CalculateEffectiveSpeed(machine, modifiers);
+            if (effective_speed <= 0)
+            {
+                throw new ArgumentException("Effective speed must be greater than zero.");
+            }
+
             var recipes_per_second_per_machine = effective_speed / recipe.Base_Crafting_Time;
             var machine_count = rate / recipes_per_second_per_machine;
             return machine_count;
@@ -35,6 +41,10 @@ namespace ProductionCalculator.Business.Services
             // recipes_per_second_per_machine = effective_speed / base_crafting_time<br>
             // recipe_rate = machine_count × recipes_per_second_per_machine
             var effective_speed = CalculateEffectiveSpeed(machine, modifiers);
+            if (effective_speed <= 0)
+            {
+                throw new ArgumentException("Effective speed must be greater than zero.");
+            }
             var recipes_per_second_per_machine = effective_speed / recipe.Base_Crafting_Time;
             return numMachines * recipes_per_second_per_machine;
         }

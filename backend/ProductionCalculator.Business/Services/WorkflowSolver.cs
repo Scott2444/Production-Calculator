@@ -1,18 +1,24 @@
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using Google.OrTools.LinearSolver;
+using ProductionCalculator.Business.Records;
 
 namespace ProductionCalculator.Business.Services
 {
     public class WorkflowSolver : IWorkflowSolver
     {
+        private readonly IMachineCalculator _machineCalculator;
+
         private const double EXTERNAL_IMPORT = 0.0001; // Very low cost for externally provided products
         private const double PREFERRED_RECIPE = 0.01;
         private const double DEFAULT_COST = 1.0; // Default cost for recipes
         private const double TARGET_BONUS = 100000.0; // Bonus to encourage meeting target supply
         private const double OVERFLOW_BONUS = 1000.0; // Bonus to encourage producing this product
 
-        public WorkflowSolver() {}
+        public WorkflowSolver(IMachineCalculator machineCalculator)
+        {
+            _machineCalculator = machineCalculator;
+        }
 
         /// <summary>
         /// Uses a linear solver for demand calculation based on the provided project objects and node chart.
@@ -149,7 +155,7 @@ namespace ProductionCalculator.Business.Services
         /// Uses a linear solver for supply calculation based on only the recipes in the node chart, externally provided products, and Actual_Machine_Count in a node.
         /// Used for calculating supply rates when either the chart structure is updated or when the user updates supply values.
         /// </summary>
-        public Dictionary<int, double> SolveSupply(ProjectObjects projectObjects, NodeChart nodeChart)
+        public SolverSupplyResult SolveSupply(ProjectObjects projectObjects, NodeChart nodeChart)
         {
             if (nodeChart.Targets.Any(t => t.Target_Rate < 0.0))
             {
@@ -186,28 +192,16 @@ namespace ProductionCalculator.Business.Services
             Solver solver = Solver.CreateSolver("GLOP");
             Objective objective = solver.Objective();
 
-            double GetMaxRecipeRate(FullNode fullNode)
-            {
-                var machineCount = fullNode.Node.Actual_Machine_Count
-                    ?? fullNode.Node.Calculated_Machine_Count
-                    ?? 0.0;
-                
-                var targetCount = fullNode.Node.Calculated_Machine_Count ?? 0.0;
-                var targetRate = fullNode.Node.Calculated_Target_Rate ?? 0.0;
-
-                if (machineCount <= 0.0 || targetCount <= 0.0 || targetRate <= 0.0)
-                {
-                    return 0.0;
-                }
-
-                return machineCount / targetCount * targetRate;
-            }
-
             // Real recipe variables (bounded by machine capacity)
             foreach (var fullNode in nodeChart.Nodes)
             {
                 var recipe = projectObjects.Recipes.First(r => r.Recipe_Id == fullNode.Node.Recipe_Id);
-                var maxRate = GetMaxRecipeRate(fullNode);
+                var maxRate = _machineCalculator.CalculateRecipeRate(
+                    fullNode.Node.Actual_Machine_Count ?? 0.0, 
+                    recipe, 
+                    projectObjects.Machines.First(m => m.Machine_Id == fullNode.Node.Machine_Id), 
+                    fullNode.Modifiers.Select(m => projectObjects.Modifiers.First(mod => mod.Modifier_Id == m.Modifier_Id)).ToList()
+                    );
                 var variable = solver.MakeNumVar(0.0, maxRate, recipe.Name);
                 recipeVarMap[recipe.Recipe_Id] = variable;
                 objective.SetCoefficient(variable, 1.0);
@@ -261,6 +255,7 @@ namespace ProductionCalculator.Business.Services
             }
 
             // Add primary and overflow sink variables for targets
+            var sinkVarMap = new Dictionary<int, (Variable primarySink, Variable overflowSink)>();
             foreach (var target in targetDict)
             {
                 if (!productConstraintMap.ContainsKey(target.Key))
@@ -277,9 +272,11 @@ namespace ProductionCalculator.Business.Services
 
                 objective.SetCoefficient(primarySink, TARGET_BONUS);
                 objective.SetCoefficient(overflowSink, OVERFLOW_BONUS);
+                sinkVarMap[target.Key] = (primarySink, overflowSink);
             }
 
             // Add import recipes (bounded by external flow rates)
+            var importVarMap = new Dictionary<int, Variable>();
             foreach (var externalProduct in externalProducts)
             {
                 var productConstraint = productConstraintMap[externalProduct.Product_Id];
@@ -288,6 +285,7 @@ namespace ProductionCalculator.Business.Services
                 productConstraint.SetCoefficient(importRecipe, 1.0);
 
                 objective.SetCoefficient(importRecipe, -EXTERNAL_IMPORT);
+                importVarMap[externalProduct.Product_Id] = importRecipe;
             }
 
             objective.SetMaximization();
@@ -315,9 +313,43 @@ namespace ProductionCalculator.Business.Services
                 }
             }
 
-            return recipeRates;
+            // Extract ingoing and outgoing flow rates for products (leaf product nodes only)
+            var productInFlowRates = new Dictionary<int, double>();
+            // Imported products will have inflow rates
+            foreach (var kvp in importVarMap)
+            {
+                var productId = kvp.Key;
+                var variable = kvp.Value;
+                if (variable.SolutionValue() > 1e-5)
+                {
+                    productInFlowRates[productId] = variable.SolutionValue();
+                }
+            }
+
+            var productOutFlowRates = new Dictionary<int, double>();
+            foreach (var target in targetDict)
+            {
+                var productId = target.Key;
+                if (!sinkVarMap.ContainsKey(productId))
+                {
+                    continue;
+                }
+
+                var (primarySink, overflowSink) = sinkVarMap[productId];
+                var totalOutFlow = primarySink.SolutionValue() + overflowSink.SolutionValue();
+                if (totalOutFlow > 1e-5)
+                {
+                    productOutFlowRates[productId] = totalOutFlow;
+                }
+            }
+
+            return new SolverSupplyResult(recipeRates, productInFlowRates, productOutFlowRates);
         }
 
+        /// <summary>
+        /// Scales the recipe-product quantities based on the yield modifiers from the node chart.
+        /// Stacking is done additively.
+        /// </summary>
         private Dictionary<(int recipeId, int productId), double> 
             ScaleRecipeProductQuantities(
                 Dictionary<(int recipeId, int productId), double> recipeProductNetQuantities,

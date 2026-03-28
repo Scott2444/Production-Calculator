@@ -1,15 +1,15 @@
-using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Models;
+using ProductionCalculator.Business.APIModels;
 
 namespace ProductionCalculator.Business.Interfaces
 {
     public interface IProjectService
     {
-        Task<ServiceResult<Project>> AddProject(string name, string? description, bool? isPublic, string? aliasProjectPuid);
-        Task<ServiceResult<Project>> UpdateProject(string projectPuid, string name, string? description, bool? isPublic, string? aliasProjectPuid);
-        Task<ServiceResult<Project>> GetProjectByPuid(string puid);
-        Task<ServiceResult<List<Project>>> GetProjectsByUserPuid(string userPuid);
+        Task<ServiceResult<ProjectResponse>> AddProject(string name, string? description, bool? isPublic, string? aliasProjectPuid);
+        Task<ServiceResult<ProjectResponse>> UpdateProject(string projectPuid, string name, string? description, bool? isPublic, string? aliasProjectPuid);
+        Task<ServiceResult<ProjectResponse>> GetProjectByPuid(string puid);
+        Task<ServiceResult<List<ProjectResponse>>> GetProjectsByUserPuid(string userPuid);
         Task<ServiceResult> DeleteProject(string puid);
-        Task<ServiceResult<Project>> ResolveProject(string username, string projectName);
+        Task<ServiceResult<List<ProjectResponse>>> ResolveProject(string username, string? projectName);
     }
 }

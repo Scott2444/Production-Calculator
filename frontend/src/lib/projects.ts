@@ -22,17 +22,23 @@ export async function fetchProject(
 
 export async function resolveProject(
     username: string,
-    projectName: string,
-    protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
+    projectName?: string,
+    protectedApi: (
+        input: RequestInfo,
+        init?: RequestInit,
+    ) => Promise<Response> = fetch,
 ) {
-    const res = await protectedApi(
-        `/resolve/projects?username=${encodeURIComponent(username)}&project=${encodeURIComponent(projectName)}`,
-        {
-            method: "GET",
-        },
-    );
+    let url = `/resolve/projects?username=${encodeURIComponent(username)}`;
+    if (projectName) {
+        url += `&project=${encodeURIComponent(projectName)}`;
+    }
+    const res = await protectedApi(url, {
+        method: "GET",
+    });
     if (!res.ok) throw new Error("Failed to load project");
-    return res.json();
+    return res.json() as Promise<
+        { projectName: string; projectPuid: string }[]
+    >;
 }
 
 export interface UpsertProjectPayload {
