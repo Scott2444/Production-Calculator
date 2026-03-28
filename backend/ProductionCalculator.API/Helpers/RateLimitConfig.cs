@@ -15,10 +15,15 @@ namespace ProductionCalculator.API.Helpers
                     factory: _ => new FixedWindowRateLimiterOptions
                     {
                         AutoReplenishment = true,
-                        PermitLimit = 50,
+                        PermitLimit = 100,
                         QueueLimit = 0,
                         Window = TimeSpan.FromMinutes(3)
                     }));
+                options.OnRejected = async (context, cancellationToken) =>
+                {
+                    context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                    await context.HttpContext.Response.WriteAsync("Too many requests. Please try again later.", cancellationToken);
+                };
             });
             services.AddRateLimiter(options =>
             {
@@ -35,6 +40,11 @@ namespace ProductionCalculator.API.Helpers
                         }
                     )
                 );
+                options.OnRejected = async (context, cancellationToken) =>
+                {
+                    context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                    await context.HttpContext.Response.WriteAsync("Too many requests. Please try again later.", cancellationToken);
+                };
             });
             return services;
         }
