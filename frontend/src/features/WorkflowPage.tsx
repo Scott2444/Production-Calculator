@@ -1733,7 +1733,7 @@ export default function WorkflowPage() {
                                                         className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
                                                             activeGlobalMenu ===
                                                             "targets"
-                                                                ? "border-purple-500/70 bg-purple-700/35 text-purple-100"
+                                                                ? "border-purple-500/70 bg-purple-700/85 text-purple-100"
                                                                 : "border-slate-700 bg-slate-900/85 text-slate-200 hover:border-purple-500/60 hover:bg-slate-800/90"
                                                         }`}
                                                         onClick={() =>
@@ -1756,7 +1756,7 @@ export default function WorkflowPage() {
                                                         className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
                                                             activeGlobalMenu ===
                                                             "preferredRecipes"
-                                                                ? "border-purple-500/70 bg-purple-700/35 text-purple-100"
+                                                                ? "border-purple-500/70 bg-purple-700/85 text-purple-100"
                                                                 : "border-slate-700 bg-slate-900/85 text-slate-200 hover:border-purple-500/60 hover:bg-slate-800/90"
                                                         }`}
                                                         onClick={() =>
@@ -1779,7 +1779,7 @@ export default function WorkflowPage() {
                                                         className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
                                                             activeGlobalMenu ===
                                                             "externalProducts"
-                                                                ? "border-purple-500/70 bg-purple-700/35 text-purple-100"
+                                                                ? "border-purple-500/70 bg-purple-700/85 text-purple-100"
                                                                 : "border-slate-700 bg-slate-900/85 text-slate-200 hover:border-purple-500/60 hover:bg-slate-800/90"
                                                         }`}
                                                         onClick={() =>
@@ -2617,7 +2617,7 @@ export default function WorkflowPage() {
                                             <div className="pointer-events-auto absolute bottom-4 left-1/2 w-95 -translate-x-1/2 rounded-xl border border-slate-700/90 bg-slate-900/92 p-3 shadow-xl backdrop-blur">
                                                 <div className="flex items-center justify-between gap-3">
                                                     <div className="text-xs font-semibold uppercase tracking-wide text-slate-200">
-                                                        Global Attribute Totals
+                                                        Attribute Totals
                                                     </div>
                                                     <button
                                                         type="button"
@@ -2655,11 +2655,19 @@ export default function WorkflowPage() {
                                                                 totals yet.
                                                             </div>
                                                         ) : (
-                                                            <div className="grid gap-1 text-xs text-slate-300">
+                                                            <div className="space-y-1.5">
                                                                 {globalAttributeTotals.map(
                                                                     (
                                                                         attribute,
                                                                     ) => {
+                                                                        const isAtTarget =
+                                                                            attribute.supply >=
+                                                                            attribute.demand *
+                                                                                0.99;
+                                                                        const attrColor =
+                                                                            isAtTarget
+                                                                                ? "text-slate-100"
+                                                                                : "text-amber-400/90";
                                                                         const unit =
                                                                             attribute.unit?.trim()
                                                                                 ? ` ${attribute.unit}`
@@ -2669,30 +2677,45 @@ export default function WorkflowPage() {
                                                                                 key={
                                                                                     attribute.puid
                                                                                 }
-                                                                                className="flex items-center justify-between gap-2"
+                                                                                className="flex items-center justify-between text-[11px]"
                                                                             >
-                                                                                <span className="truncate text-slate-300">
-                                                                                    {
-                                                                                        attribute.name
-                                                                                    }
-                                                                                </span>
-                                                                                <span className="shrink-0 text-slate-100">
-                                                                                    D{" "}
-                                                                                    {formatRate(
-                                                                                        attribute.demand,
-                                                                                    )}
-                                                                                    {
-                                                                                        " | "
-                                                                                    }
-
-                                                                                    S{" "}
-                                                                                    {formatRate(
-                                                                                        attribute.supply,
-                                                                                    )}
-                                                                                    {
-                                                                                        unit
-                                                                                    }
-                                                                                </span>
+                                                                                <div className="flex items-center gap-2 text-slate-400 truncate pr-2">
+                                                                                    <IconBolt
+                                                                                        size={
+                                                                                            12
+                                                                                        }
+                                                                                        className="shrink-0 text-slate-500"
+                                                                                    />
+                                                                                    <span className="truncate">
+                                                                                        {
+                                                                                            attribute.name
+                                                                                        }
+                                                                                    </span>
+                                                                                </div>
+                                                                                <div className="font-mono shrink-0">
+                                                                                    <span
+                                                                                        className={
+                                                                                            attrColor
+                                                                                        }
+                                                                                    >
+                                                                                        {formatRate(
+                                                                                            attribute.supply,
+                                                                                        )}
+                                                                                    </span>
+                                                                                    <span className="mx-1 text-slate-600">
+                                                                                        /
+                                                                                    </span>
+                                                                                    <span className="text-slate-400">
+                                                                                        {formatRate(
+                                                                                            attribute.demand,
+                                                                                        )}
+                                                                                    </span>
+                                                                                    <span className="ml-0.5 text-[9px] text-slate-600">
+                                                                                        {
+                                                                                            unit
+                                                                                        }
+                                                                                    </span>
+                                                                                </div>
                                                                             </div>
                                                                         );
                                                                     },
