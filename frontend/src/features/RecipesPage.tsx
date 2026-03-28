@@ -3,8 +3,7 @@
 import ProjectPageLayout from "@/components/ProjectPageLayout";
 import ProjectStatusGate from "@/components/ProjectStatusGate";
 import DropDown from "@/components/DropDown";
-import Popup from "@/components/Popup";
-import ItemCard from "@/components/ItemCard";
+import RecipeEditorDialog from "@/components/RecipeEditorDialog";
 import SearchBar from "@/components/SearchBar";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import { useProject } from "@/context/ProjectContext";
@@ -805,21 +804,112 @@ export default function Recipes() {
                 </ProjectStatusGate>
             </div>
 
-            <ItemCard
+            <RecipeEditorDialog
+                mode="create"
                 open={createOpen}
-                onOpenChange={(next) => {
-                    setCreateOpen(next);
-                    if (next) setCreateError(null);
+                onOpenChange={setCreateOpen}
+                name={createName}
+                onNameChange={setCreateName}
+                description={createDescription}
+                onDescriptionChange={setCreateDescription}
+                baseCraftingTime={createBaseTime}
+                onBaseCraftingTimeChange={setCreateBaseTime}
+                inputs={createInputs}
+                onAddInput={() => {
+                    const used = new Set(createInputs.map((i) => i.puid));
+                    const nextPuid = pickDefaultProductPuid(
+                        sortedProducts,
+                        used,
+                    );
+                    if (!nextPuid) return;
+                    setCreateInputs((prev) => [
+                        ...prev,
+                        { puid: nextPuid, quantity: 1 },
+                    ]);
                 }}
-                title="Add recipe"
-                description="Create a new recipe in this project."
-                initialFocusRef={createNameRef}
-                submitLabel="Create"
-                submittingLabel="Creating..."
-                submitting={createRecipeMutation.isPending}
-                submitDisabled={!canEdit || !projectId}
-                cancelDisabled={createRecipeMutation.isPending}
-                onCancel={() => setCreateOpen(false)}
+                onInputPuidChange={(idx, next) =>
+                    setCreateInputs((prev) =>
+                        prev.map((p, i) =>
+                            i === idx ? { ...p, puid: next } : p,
+                        ),
+                    )
+                }
+                onInputQuantityChange={(idx, next) =>
+                    setCreateInputs((prev) =>
+                        prev.map((p, i) =>
+                            i === idx ? { ...p, quantity: next } : p,
+                        ),
+                    )
+                }
+                onRemoveInput={(idx) =>
+                    setCreateInputs((prev) => prev.filter((_, i) => i !== idx))
+                }
+                outputs={createOutputs}
+                onAddOutput={() => {
+                    const used = new Set(createOutputs.map((o) => o.puid));
+                    const nextPuid = pickDefaultProductPuid(
+                        sortedProducts,
+                        used,
+                    );
+                    if (!nextPuid) return;
+                    setCreateOutputs((prev) => [
+                        ...prev,
+                        { puid: nextPuid, quantity: 1 },
+                    ]);
+                }}
+                onOutputPuidChange={(idx, next) =>
+                    setCreateOutputs((prev) =>
+                        prev.map((p, i) =>
+                            i === idx ? { ...p, puid: next } : p,
+                        ),
+                    )
+                }
+                onOutputQuantityChange={(idx, next) =>
+                    setCreateOutputs((prev) =>
+                        prev.map((p, i) =>
+                            i === idx ? { ...p, quantity: next } : p,
+                        ),
+                    )
+                }
+                onRemoveOutput={(idx) =>
+                    setCreateOutputs((prev) => prev.filter((_, i) => i !== idx))
+                }
+                attributes={createAttributes}
+                onAddAttribute={() => {
+                    const used = new Set(createAttributes.map((a) => a.puid));
+                    const nextPuid = pickDefaultAttributePuid(
+                        sortedAttributes,
+                        used,
+                    );
+                    if (!nextPuid) return;
+                    setCreateAttributes((prev) => [
+                        ...prev,
+                        { puid: nextPuid, rate: 0 },
+                    ]);
+                }}
+                onAttributePuidChange={(idx, next) =>
+                    setCreateAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === idx ? { ...p, puid: next } : p,
+                        ),
+                    )
+                }
+                onAttributeRateChange={(idx, next) =>
+                    setCreateAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === idx ? { ...p, rate: next } : p,
+                        ),
+                    )
+                }
+                onRemoveAttribute={(idx) =>
+                    setCreateAttributes((prev) =>
+                        prev.filter((_, i) => i !== idx),
+                    )
+                }
+                sortedProductsCount={sortedProducts.length}
+                sortedAttributesCount={sortedAttributes.length}
+                error={createError}
+                onDismissError={() => setCreateError(null)}
                 onSubmit={() => {
                     setCreateError(null);
                     const trimmedName = createName.trim();
@@ -879,912 +969,190 @@ export default function Recipes() {
                         })),
                     });
                 }}
-            >
-                <div className="flex flex-col gap-4">
-                    <ErrorDisplay
-                        errors={
-                            createError
-                                ? [
-                                      {
-                                          id: "create-error",
-                                          message: createError,
-                                          onDismiss: () => setCreateError(null),
-                                      },
-                                  ]
-                                : []
-                        }
-                    />
+                onCancel={() => setCreateOpen(false)}
+                submitting={createRecipeMutation.isPending}
+                submitDisabled={!canEdit || !projectId}
+                initialFocusRef={createNameRef}
+                ProductDropDown={ProductDropDown}
+                AttributeDropDown={AttributeDropDown}
+            />
 
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Name
-                        </label>
-                        <input
-                            ref={createNameRef}
-                            value={createName}
-                            onChange={(e) => setCreateName(e.target.value)}
-                            placeholder="Iron plate"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={createRecipeMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Base crafting time (seconds)
-                        </label>
-                        <input
-                            value={createBaseTime}
-                            onChange={(e) => setCreateBaseTime(e.target.value)}
-                            inputMode="decimal"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={createRecipeMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Description (Optional)
-                        </label>
-                        <textarea
-                            value={createDescription}
-                            onChange={(e) =>
-                                setCreateDescription(e.target.value)
-                            }
-                            placeholder="A brief description about this recipe..."
-                            rows={3}
-                            className="resize-none rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={createRecipeMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
-                        <div className="flex items-center justify-between gap-3">
-                            <div className="text-sm font-medium text-slate-200">
-                                Inputs
-                            </div>
-                            <button
-                                type="button"
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                onClick={() => {
-                                    const used = new Set(
-                                        createInputs.map((i) => i.puid),
-                                    );
-                                    const nextPuid = pickDefaultProductPuid(
-                                        sortedProducts,
-                                        used,
-                                    );
-                                    if (!nextPuid) return;
-                                    setCreateInputs((prev) => [
-                                        ...prev,
-                                        { puid: nextPuid, quantity: 1 },
-                                    ]);
-                                }}
-                                disabled={
-                                    createRecipeMutation.isPending ||
-                                    sortedProducts.length === 0
-                                }
-                                title={
-                                    sortedProducts.length === 0
-                                        ? "Create products first"
-                                        : "Add input"
-                                }
-                            >
-                                <IconPlus size={16} />
-                                Add
-                            </button>
-                        </div>
-
-                        {sortedProducts.length === 0 ? (
-                            <div className="mt-2 text-sm text-slate-500">
-                                No products available in this project.
-                            </div>
-                        ) : null}
-
-                        <div className="mt-3 flex flex-col gap-2">
-                            {createInputs.length === 0 && (
-                                <div className="text-sm text-slate-500">
-                                    No inputs
-                                </div>
-                            )}
-                            {createInputs.map((row, idx) => (
-                                <div
-                                    key={`create-in-${idx}`}
-                                    className="flex items-center gap-2"
-                                >
-                                    <ProductDropDown
-                                        value={row.puid}
-                                        disabled={
-                                            createRecipeMutation.isPending
-                                        }
-                                        onSelect={(next) => {
-                                            setCreateInputs((prev) =>
-                                                prev.map((p, i) =>
-                                                    i === idx
-                                                        ? {
-                                                              ...p,
-                                                              puid: next,
-                                                          }
-                                                        : p,
-                                                ),
-                                            );
-                                        }}
-                                    />
-                                    <input
-                                        value={String(row.quantity)}
-                                        onChange={(e) => {
-                                            const next = Number(e.target.value);
-                                            setCreateInputs((prev) =>
-                                                prev.map((p, i) =>
-                                                    i === idx
-                                                        ? {
-                                                              ...p,
-                                                              quantity: next,
-                                                          }
-                                                        : p,
-                                                ),
-                                            );
-                                        }}
-                                        inputMode="decimal"
-                                        className="w-28 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={
-                                            createRecipeMutation.isPending
-                                        }
-                                    />
-                                    <button
-                                        type="button"
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                        onClick={() =>
-                                            setCreateInputs((prev) =>
-                                                prev.filter(
-                                                    (_, i) => i !== idx,
-                                                ),
-                                            )
-                                        }
-                                        disabled={
-                                            createRecipeMutation.isPending
-                                        }
-                                        title="Remove"
-                                        aria-label="Remove input"
-                                    >
-                                        <IconTrash size={18} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
-                        <div className="flex items-center justify-between gap-3">
-                            <div className="text-sm font-medium text-slate-200">
-                                Outputs
-                            </div>
-                            <button
-                                type="button"
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                onClick={() => {
-                                    const used = new Set(
-                                        createOutputs.map((o) => o.puid),
-                                    );
-                                    const nextPuid = pickDefaultProductPuid(
-                                        sortedProducts,
-                                        used,
-                                    );
-                                    if (!nextPuid) return;
-                                    setCreateOutputs((prev) => [
-                                        ...prev,
-                                        { puid: nextPuid, quantity: 1 },
-                                    ]);
-                                }}
-                                disabled={
-                                    createRecipeMutation.isPending ||
-                                    sortedProducts.length === 0
-                                }
-                                title={
-                                    sortedProducts.length === 0
-                                        ? "Create products first"
-                                        : "Add output"
-                                }
-                            >
-                                <IconPlus size={16} />
-                                Add
-                            </button>
-                        </div>
-
-                        {sortedProducts.length === 0 ? (
-                            <div className="mt-2 text-sm text-slate-500">
-                                No products available in this project.
-                            </div>
-                        ) : null}
-
-                        <div className="mt-3 flex flex-col gap-2">
-                            {createOutputs.length === 0 && (
-                                <div className="text-sm text-slate-500">
-                                    No outputs
-                                </div>
-                            )}
-                            {createOutputs.map((row, idx) => (
-                                <div
-                                    key={`create-out-${idx}`}
-                                    className="flex items-center gap-2"
-                                >
-                                    <ProductDropDown
-                                        value={row.puid}
-                                        disabled={
-                                            createRecipeMutation.isPending
-                                        }
-                                        onSelect={(next) => {
-                                            setCreateOutputs((prev) =>
-                                                prev.map((p, i) =>
-                                                    i === idx
-                                                        ? {
-                                                              ...p,
-                                                              puid: next,
-                                                          }
-                                                        : p,
-                                                ),
-                                            );
-                                        }}
-                                    />
-                                    <input
-                                        value={String(row.quantity)}
-                                        onChange={(e) => {
-                                            const next = Number(e.target.value);
-                                            setCreateOutputs((prev) =>
-                                                prev.map((p, i) =>
-                                                    i === idx
-                                                        ? {
-                                                              ...p,
-                                                              quantity: next,
-                                                          }
-                                                        : p,
-                                                ),
-                                            );
-                                        }}
-                                        inputMode="decimal"
-                                        className="w-28 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={
-                                            createRecipeMutation.isPending
-                                        }
-                                    />
-                                    <button
-                                        type="button"
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                        onClick={() =>
-                                            setCreateOutputs((prev) =>
-                                                prev.filter(
-                                                    (_, i) => i !== idx,
-                                                ),
-                                            )
-                                        }
-                                        disabled={
-                                            createRecipeMutation.isPending
-                                        }
-                                        title="Remove"
-                                        aria-label="Remove output"
-                                    >
-                                        <IconTrash size={18} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="rounded-lg border border-slate-800 bg-slate-950/20 p-3">
-                        <div className="flex items-center justify-between gap-3">
-                            <div className="text-sm font-medium text-slate-200">
-                                Attributes
-                            </div>
-                            <button
-                                type="button"
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                onClick={() => {
-                                    const used = new Set(
-                                        createAttributes.map((a) => a.puid),
-                                    );
-                                    const nextPuid = pickDefaultAttributePuid(
-                                        sortedAttributes,
-                                        used,
-                                    );
-                                    if (!nextPuid) return;
-                                    setCreateAttributes((prev) => [
-                                        ...prev,
-                                        { puid: nextPuid, rate: 0 },
-                                    ]);
-                                }}
-                                disabled={
-                                    createRecipeMutation.isPending ||
-                                    sortedAttributes.length === 0
-                                }
-                                title={
-                                    sortedAttributes.length === 0
-                                        ? "Create attributes first"
-                                        : "Add attribute"
-                                }
-                            >
-                                <IconPlus size={16} />
-                                Add
-                            </button>
-                        </div>
-
-                        {sortedAttributes.length === 0 ? (
-                            <div className="mt-2 text-sm text-slate-500">
-                                No attributes available in this project.
-                            </div>
-                        ) : null}
-
-                        <div className="mt-3 flex flex-col gap-2">
-                            {createAttributes.length === 0 && (
-                                <div className="text-sm text-slate-500">
-                                    No attributes
-                                </div>
-                            )}
-                            {createAttributes.map((row, idx) => (
-                                <div
-                                    key={`create-attr-${idx}`}
-                                    className="flex items-center gap-2"
-                                >
-                                    <AttributeDropDown
-                                        value={row.puid}
-                                        disabled={
-                                            createRecipeMutation.isPending
-                                        }
-                                        onSelect={(next) => {
-                                            setCreateAttributes((prev) =>
-                                                prev.map((p, i) =>
-                                                    i === idx
-                                                        ? {
-                                                              ...p,
-                                                              puid: next,
-                                                          }
-                                                        : p,
-                                                ),
-                                            );
-                                        }}
-                                    />
-                                    <input
-                                        value={String(row.rate)}
-                                        onChange={(e) => {
-                                            const next = Number(e.target.value);
-                                            setCreateAttributes((prev) =>
-                                                prev.map((p, i) =>
-                                                    i === idx
-                                                        ? {
-                                                              ...p,
-                                                              rate: next,
-                                                          }
-                                                        : p,
-                                                ),
-                                            );
-                                        }}
-                                        inputMode="decimal"
-                                        className="w-32 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={
-                                            createRecipeMutation.isPending
-                                        }
-                                        placeholder="Rate"
-                                    />
-                                    <button
-                                        type="button"
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                        onClick={() =>
-                                            setCreateAttributes((prev) =>
-                                                prev.filter(
-                                                    (_, i) => i !== idx,
-                                                ),
-                                            )
-                                        }
-                                        disabled={
-                                            createRecipeMutation.isPending
-                                        }
-                                        title="Remove"
-                                        aria-label="Remove attribute"
-                                    >
-                                        <IconTrash size={18} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </ItemCard>
-
-            <Popup
+            <RecipeEditorDialog
+                mode="edit"
                 open={editOpen}
-                onOpenChange={(next) => {
-                    setEditOpen(next);
-                    if (next) setEditError(null);
+                onOpenChange={setEditOpen}
+                name={editName}
+                onNameChange={setEditName}
+                description={editDescription}
+                onDescriptionChange={setEditDescription}
+                baseCraftingTime={editBaseTime}
+                onBaseCraftingTimeChange={setEditBaseTime}
+                inputs={editInputs}
+                onAddInput={() => {
+                    const used = new Set(editInputs.map((i) => i.puid));
+                    const nextPuid = pickDefaultProductPuid(
+                        sortedProducts,
+                        used,
+                    );
+                    if (!nextPuid) return;
+                    setEditInputs((prev) => [
+                        ...prev,
+                        { puid: nextPuid, quantity: 1 },
+                    ]);
                 }}
-                title="Edit recipe"
-                description="Update recipe details."
-                initialFocusRef={editNameRef}
-                footer={
-                    <div className="flex items-center justify-end gap-2">
-                        <button
-                            type="button"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-4 py-2 text-sm font-medium text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            onClick={() => setEditOpen(false)}
-                            disabled={updateRecipeMutation.isPending}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            className="rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                            onClick={() => {
-                                setEditError(null);
-                                const trimmedName = editName.trim();
-                                if (!trimmedName) {
-                                    setEditError("Recipe name is required.");
-                                    return;
-                                }
-                                if (!editTarget) {
-                                    setEditError("No recipe selected.");
-                                    return;
-                                }
-
-                                const base = Number(editBaseTime);
-                                if (!Number.isFinite(base) || base <= 0) {
-                                    setEditError(
-                                        "Base crafting time must be a positive number.",
-                                    );
-                                    return;
-                                }
-
-                                const inputsErr = validateExchanges(
-                                    editInputs,
-                                    "Inputs",
-                                );
-                                if (inputsErr) {
-                                    setEditError(inputsErr);
-                                    return;
-                                }
-                                const outputsErr = validateExchanges(
-                                    editOutputs,
-                                    "Outputs",
-                                );
-                                if (outputsErr) {
-                                    setEditError(outputsErr);
-                                    return;
-                                }
-
-                                const attributesErr = validateAttributeRates(
-                                    editAttributes,
-                                    "Attributes",
-                                );
-                                if (attributesErr) {
-                                    setEditError(attributesErr);
-                                    return;
-                                }
-
-                                updateRecipeMutation.mutate({
-                                    name: trimmedName,
-                                    description: editDescription.trim()
-                                        ? editDescription.trim()
-                                        : null,
-                                    baseCraftingTime: base,
-                                    inputs: editInputs.map((i) => ({
-                                        puid: i.puid,
-                                        quantity: Number(i.quantity),
-                                    })),
-                                    outputs: editOutputs.map((o) => ({
-                                        puid: o.puid,
-                                        quantity: Number(o.quantity),
-                                    })),
-                                    attributes: editAttributes.map((a) => ({
-                                        puid: a.puid,
-                                        rate: Number(a.rate),
-                                    })),
-                                });
-                            }}
-                            disabled={
-                                updateRecipeMutation.isPending ||
-                                !canEdit ||
-                                !editTarget
-                            }
-                        >
-                            {updateRecipeMutation.isPending
-                                ? "Saving..."
-                                : "Save"}
-                        </button>
-                    </div>
+                onInputPuidChange={(idx, next) =>
+                    setEditInputs((prev) =>
+                        prev.map((p, i) =>
+                            i === idx ? { ...p, puid: next } : p,
+                        ),
+                    )
                 }
-            >
-                <div className="flex flex-col gap-4">
-                    <ErrorDisplay
-                        errors={
-                            editError
-                                ? [
-                                      {
-                                          id: "edit-error",
-                                          message: editError,
-                                          onDismiss: () => setEditError(null),
-                                      },
-                                  ]
-                                : []
-                        }
-                    />
+                onInputQuantityChange={(idx, next) =>
+                    setEditInputs((prev) =>
+                        prev.map((p, i) =>
+                            i === idx ? { ...p, quantity: next } : p,
+                        ),
+                    )
+                }
+                onRemoveInput={(idx) =>
+                    setEditInputs((prev) => prev.filter((_, i) => i !== idx))
+                }
+                outputs={editOutputs}
+                onAddOutput={() => {
+                    const used = new Set(editOutputs.map((o) => o.puid));
+                    const nextPuid = pickDefaultProductPuid(
+                        sortedProducts,
+                        used,
+                    );
+                    if (!nextPuid) return;
+                    setEditOutputs((prev) => [
+                        ...prev,
+                        { puid: nextPuid, quantity: 1 },
+                    ]);
+                }}
+                onOutputPuidChange={(idx, next) =>
+                    setEditOutputs((prev) =>
+                        prev.map((p, i) =>
+                            i === idx ? { ...p, puid: next } : p,
+                        ),
+                    )
+                }
+                onOutputQuantityChange={(idx, next) =>
+                    setEditOutputs((prev) =>
+                        prev.map((p, i) =>
+                            i === idx ? { ...p, quantity: next } : p,
+                        ),
+                    )
+                }
+                onRemoveOutput={(idx) =>
+                    setEditOutputs((prev) => prev.filter((_, i) => i !== idx))
+                }
+                attributes={editAttributes}
+                onAddAttribute={() => {
+                    const used = new Set(editAttributes.map((a) => a.puid));
+                    const nextPuid = pickDefaultAttributePuid(
+                        sortedAttributes,
+                        used,
+                    );
+                    if (!nextPuid) return;
+                    setEditAttributes((prev) => [
+                        ...prev,
+                        { puid: nextPuid, rate: 0 },
+                    ]);
+                }}
+                onAttributePuidChange={(idx, next) =>
+                    setEditAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === idx ? { ...p, puid: next } : p,
+                        ),
+                    )
+                }
+                onAttributeRateChange={(idx, next) =>
+                    setEditAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === idx ? { ...p, rate: next } : p,
+                        ),
+                    )
+                }
+                onRemoveAttribute={(idx) =>
+                    setEditAttributes((prev) =>
+                        prev.filter((_, i) => i !== idx),
+                    )
+                }
+                sortedProductsCount={sortedProducts.length}
+                sortedAttributesCount={sortedAttributes.length}
+                error={editError}
+                onDismissError={() => setEditError(null)}
+                onSubmit={() => {
+                    setEditError(null);
+                    const trimmedName = editName.trim();
+                    if (!trimmedName) {
+                        setEditError("Recipe name is required.");
+                        return;
+                    }
+                    if (!editTarget) {
+                        setEditError("No recipe selected.");
+                        return;
+                    }
 
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Name
-                        </label>
-                        <input
-                            ref={editNameRef}
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={updateRecipeMutation.isPending}
-                        />
-                    </div>
+                    const base = Number(editBaseTime);
+                    if (!Number.isFinite(base) || base <= 0) {
+                        setEditError(
+                            "Base crafting time must be a positive number.",
+                        );
+                        return;
+                    }
 
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Description (Optional)
-                        </label>
-                        <textarea
-                            value={editDescription}
-                            onChange={(e) => setEditDescription(e.target.value)}
-                            rows={3}
-                            className="resize-none rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={updateRecipeMutation.isPending}
-                            placeholder="A brief description about this recipe..."
-                        />
-                    </div>
+                    const inputsErr = validateExchanges(editInputs, "Inputs");
+                    if (inputsErr) {
+                        setEditError(inputsErr);
+                        return;
+                    }
+                    const outputsErr = validateExchanges(
+                        editOutputs,
+                        "Outputs",
+                    );
+                    if (outputsErr) {
+                        setEditError(outputsErr);
+                        return;
+                    }
 
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                        <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-purple-400">
-                            <IconClock size={16} />
-                            Recipe Time
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            <label className="text-sm font-medium text-slate-200">
-                                Base crafting time (seconds)
-                            </label>
-                            <input
-                                value={editBaseTime}
-                                onChange={(e) =>
-                                    setEditBaseTime(e.target.value)
-                                }
-                                inputMode="decimal"
-                                className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                disabled={updateRecipeMutation.isPending}
-                            />
-                        </div>
-                    </div>
+                    const attributesErr = validateAttributeRates(
+                        editAttributes,
+                        "Attributes",
+                    );
+                    if (attributesErr) {
+                        setEditError(attributesErr);
+                        return;
+                    }
 
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                        <div className="flex items-center justify-between gap-3 mb-4">
-                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-400">
-                                <IconArrowBarToRight size={16} />
-                                Inputs
-                            </div>
-                            <button
-                                type="button"
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-amber-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-amber-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                onClick={() => {
-                                    const used = new Set(
-                                        editInputs.map((i) => i.puid),
-                                    );
-                                    const nextPuid = pickDefaultProductPuid(
-                                        sortedProducts,
-                                        used,
-                                    );
-                                    if (!nextPuid) return;
-                                    setEditInputs((prev) => [
-                                        ...prev,
-                                        { puid: nextPuid, quantity: 1 },
-                                    ]);
-                                }}
-                                disabled={
-                                    updateRecipeMutation.isPending ||
-                                    sortedProducts.length === 0
-                                }
-                                title={
-                                    sortedProducts.length === 0
-                                        ? "Create products first"
-                                        : "Add input"
-                                }
-                            >
-                                <IconPlus size={16} />
-                                Add
-                            </button>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            {editInputs.length === 0 && (
-                                <div className="text-sm text-slate-500">
-                                    No inputs
-                                </div>
-                            )}
-                            {editInputs.map((row, idx) => (
-                                <div
-                                    key={`edit-in-${idx}`}
-                                    className="flex items-center gap-2"
-                                >
-                                    <ProductDropDown
-                                        value={row.puid}
-                                        disabled={
-                                            updateRecipeMutation.isPending
-                                        }
-                                        onSelect={(next) => {
-                                            setEditInputs((prev) =>
-                                                prev.map((p, i) =>
-                                                    i === idx
-                                                        ? {
-                                                              ...p,
-                                                              puid: next,
-                                                          }
-                                                        : p,
-                                                ),
-                                            );
-                                        }}
-                                    />
-                                    <input
-                                        value={String(row.quantity)}
-                                        onChange={(e) => {
-                                            const next = Number(e.target.value);
-                                            setEditInputs((prev) =>
-                                                prev.map((p, i) =>
-                                                    i === idx
-                                                        ? {
-                                                              ...p,
-                                                              quantity: next,
-                                                          }
-                                                        : p,
-                                                ),
-                                            );
-                                        }}
-                                        inputMode="decimal"
-                                        className="w-28 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={
-                                            updateRecipeMutation.isPending
-                                        }
-                                    />
-                                    <button
-                                        type="button"
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                        onClick={() =>
-                                            setEditInputs((prev) =>
-                                                prev.filter(
-                                                    (_, i) => i !== idx,
-                                                ),
-                                            )
-                                        }
-                                        disabled={
-                                            updateRecipeMutation.isPending
-                                        }
-                                        title="Remove"
-                                        aria-label="Remove input"
-                                    >
-                                        <IconTrash size={18} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                        <div className="flex items-center justify-between gap-3 mb-4">
-                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-400">
-                                <IconArrowBarRight size={16} />
-                                Outputs
-                            </div>
-                            <button
-                                type="button"
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-emerald-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                onClick={() => {
-                                    const used = new Set(
-                                        editOutputs.map((o) => o.puid),
-                                    );
-                                    const nextPuid = pickDefaultProductPuid(
-                                        sortedProducts,
-                                        used,
-                                    );
-                                    if (!nextPuid) return;
-                                    setEditOutputs((prev) => [
-                                        ...prev,
-                                        { puid: nextPuid, quantity: 1 },
-                                    ]);
-                                }}
-                                disabled={
-                                    updateRecipeMutation.isPending ||
-                                    sortedProducts.length === 0
-                                }
-                                title={
-                                    sortedProducts.length === 0
-                                        ? "Create products first"
-                                        : "Add output"
-                                }
-                            >
-                                <IconPlus size={16} />
-                                Add
-                            </button>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            {editOutputs.length === 0 && (
-                                <div className="text-sm text-slate-500">
-                                    No outputs
-                                </div>
-                            )}
-                            {editOutputs.map((row, idx) => (
-                                <div
-                                    key={`edit-out-${idx}`}
-                                    className="flex items-center gap-2"
-                                >
-                                    <ProductDropDown
-                                        value={row.puid}
-                                        disabled={
-                                            updateRecipeMutation.isPending
-                                        }
-                                        onSelect={(next) => {
-                                            setEditOutputs((prev) =>
-                                                prev.map((p, i) =>
-                                                    i === idx
-                                                        ? {
-                                                              ...p,
-                                                              puid: next,
-                                                          }
-                                                        : p,
-                                                ),
-                                            );
-                                        }}
-                                    />
-                                    <input
-                                        value={String(row.quantity)}
-                                        onChange={(e) => {
-                                            const next = Number(e.target.value);
-                                            setEditOutputs((prev) =>
-                                                prev.map((p, i) =>
-                                                    i === idx
-                                                        ? {
-                                                              ...p,
-                                                              quantity: next,
-                                                          }
-                                                        : p,
-                                                ),
-                                            );
-                                        }}
-                                        inputMode="decimal"
-                                        className="w-28 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={
-                                            updateRecipeMutation.isPending
-                                        }
-                                    />
-                                    <button
-                                        type="button"
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                        onClick={() =>
-                                            setEditOutputs((prev) =>
-                                                prev.filter(
-                                                    (_, i) => i !== idx,
-                                                ),
-                                            )
-                                        }
-                                        disabled={
-                                            updateRecipeMutation.isPending
-                                        }
-                                        title="Remove"
-                                        aria-label="Remove output"
-                                    >
-                                        <IconTrash size={18} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                        <div className="flex items-center justify-between gap-3 mb-4">
-                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-blue-400">
-                                <IconSettings size={16} />
-                                User Defined Attributes
-                            </div>
-                            <button
-                                type="button"
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-blue-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                onClick={() => {
-                                    const used = new Set(
-                                        editAttributes.map((a) => a.puid),
-                                    );
-                                    const nextPuid = pickDefaultAttributePuid(
-                                        sortedAttributes,
-                                        used,
-                                    );
-                                    if (!nextPuid) return;
-                                    setEditAttributes((prev) => [
-                                        ...prev,
-                                        { puid: nextPuid, rate: 0 },
-                                    ]);
-                                }}
-                                disabled={
-                                    updateRecipeMutation.isPending ||
-                                    sortedAttributes.length === 0
-                                }
-                                title={
-                                    sortedAttributes.length === 0
-                                        ? "Create attributes first"
-                                        : "Add attribute"
-                                }
-                            >
-                                <IconPlus size={16} />
-                                Add
-                            </button>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            {editAttributes.length === 0 && (
-                                <div className="text-sm text-slate-500">
-                                    No attributes
-                                </div>
-                            )}
-                            {editAttributes.map((row, idx) => (
-                                <div
-                                    key={`edit-attr-${idx}`}
-                                    className="flex items-center gap-2"
-                                >
-                                    <AttributeDropDown
-                                        value={row.puid}
-                                        disabled={
-                                            updateRecipeMutation.isPending
-                                        }
-                                        onSelect={(next) => {
-                                            setEditAttributes((prev) =>
-                                                prev.map((p, i) =>
-                                                    i === idx
-                                                        ? {
-                                                              ...p,
-                                                              puid: next,
-                                                          }
-                                                        : p,
-                                                ),
-                                            );
-                                        }}
-                                    />
-                                    <input
-                                        value={String(row.rate)}
-                                        onChange={(e) => {
-                                            const next = Number(e.target.value);
-                                            setEditAttributes((prev) =>
-                                                prev.map((p, i) =>
-                                                    i === idx
-                                                        ? {
-                                                              ...p,
-                                                              rate: next,
-                                                          }
-                                                        : p,
-                                                ),
-                                            );
-                                        }}
-                                        inputMode="decimal"
-                                        className="w-32 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={
-                                            updateRecipeMutation.isPending
-                                        }
-                                        placeholder="Rate"
-                                    />
-                                    <button
-                                        type="button"
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                        onClick={() =>
-                                            setEditAttributes((prev) =>
-                                                prev.filter(
-                                                    (_, i) => i !== idx,
-                                                ),
-                                            )
-                                        }
-                                        disabled={
-                                            updateRecipeMutation.isPending
-                                        }
-                                        title="Remove"
-                                        aria-label="Remove attribute"
-                                    >
-                                        <IconTrash size={18} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </Popup>
+                    updateRecipeMutation.mutate({
+                        name: trimmedName,
+                        description: editDescription.trim()
+                            ? editDescription.trim()
+                            : null,
+                        baseCraftingTime: base,
+                        inputs: editInputs.map((i) => ({
+                            puid: i.puid,
+                            quantity: Number(i.quantity),
+                        })),
+                        outputs: editOutputs.map((o) => ({
+                            puid: o.puid,
+                            quantity: Number(o.quantity),
+                        })),
+                        attributes: editAttributes.map((a) => ({
+                            puid: a.puid,
+                            rate: Number(a.rate),
+                        })),
+                    });
+                }}
+                onCancel={() => setEditOpen(false)}
+                submitting={updateRecipeMutation.isPending}
+                submitDisabled={!canEdit || !editTarget}
+                initialFocusRef={editNameRef}
+                ProductDropDown={ProductDropDown}
+                AttributeDropDown={AttributeDropDown}
+            />
         </ProjectPageLayout>
     );
 }

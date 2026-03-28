@@ -12,8 +12,7 @@ import {
     deleteAttribute,
 } from "@/lib/attributes";
 import { useProtectedApi } from "@/lib/api";
-import Popup from "@/components/Popup";
-import ItemCard from "@/components/ItemCard";
+import AttributeEditorDialog from "@/components/AttributeEditorDialog";
 import { useAuth } from "@/context/AuthContext";
 import { useProject } from "@/context/ProjectContext";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -368,20 +367,24 @@ export default function Attributes() {
                 </ProjectStatusGate>
             </div>
 
-            <ItemCard
+            <AttributeEditorDialog
+                mode="create"
                 open={createOpen}
                 onOpenChange={(next) => {
                     setCreateOpen(next);
                     if (next) setCreateError(null);
                 }}
-                title="Add attribute"
-                description="Create a new attribute in this project."
+                name={createName}
+                description={createDescription}
+                unit={createUnit}
+                onNameChange={setCreateName}
+                onDescriptionChange={setCreateDescription}
+                onUnitChange={setCreateUnit}
+                error={createError}
+                onDismissError={() => setCreateError(null)}
                 initialFocusRef={createNameRef}
-                submitLabel="Create"
-                submittingLabel="Creating..."
                 submitting={createAttributeMutation.isPending}
                 submitDisabled={!canEdit || !projectId}
-                cancelDisabled={createAttributeMutation.isPending}
                 onCancel={() => setCreateOpen(false)}
                 onSubmit={() => {
                     setCreateError(null);
@@ -399,179 +402,50 @@ export default function Attributes() {
                         unit: createUnit.trim() ? createUnit.trim() : null,
                     });
                 }}
-            >
-                <div className="flex flex-col gap-4">
-                    <ErrorDisplay
-                        errors={
-                            createError
-                                ? [
-                                      {
-                                          id: "create-error",
-                                          message: createError,
-                                          onDismiss: () => setCreateError(null),
-                                      },
-                                  ]
-                                : []
-                        }
-                    />
+            />
 
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Name
-                        </label>
-                        <input
-                            ref={createNameRef}
-                            value={createName}
-                            onChange={(e) => setCreateName(e.target.value)}
-                            placeholder="Power"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={createAttributeMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Unit
-                        </label>
-                        <input
-                            value={createUnit}
-                            onChange={(e) => setCreateUnit(e.target.value)}
-                            placeholder="kW"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={createAttributeMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Description
-                        </label>
-                        <textarea
-                            value={createDescription}
-                            onChange={(e) =>
-                                setCreateDescription(e.target.value)
-                            }
-                            placeholder="Optional"
-                            rows={3}
-                            className="resize-none rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={createAttributeMutation.isPending}
-                        />
-                    </div>
-                </div>
-            </ItemCard>
-
-            <Popup
+            <AttributeEditorDialog
+                mode="edit"
                 open={editOpen}
                 onOpenChange={(next) => {
                     setEditOpen(next);
                     if (next) setEditError(null);
                 }}
-                title="Edit attribute"
-                description="Update attribute details."
+                name={editName}
+                description={editDescription}
+                unit={editUnit}
+                onNameChange={setEditName}
+                onDescriptionChange={setEditDescription}
+                onUnitChange={setEditUnit}
+                error={editError}
+                onDismissError={() => setEditError(null)}
                 initialFocusRef={editNameRef}
-                footer={
-                    <div className="flex items-center justify-end gap-2">
-                        <button
-                            type="button"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-4 py-2 text-sm font-medium text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            onClick={() => setEditOpen(false)}
-                            disabled={updateAttributeMutation.isPending}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            className="rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                            onClick={() => {
-                                setEditError(null);
-                                const trimmed = editName.trim();
-                                if (!trimmed) {
-                                    setEditError("Attribute name is required.");
-                                    return;
-                                }
-                                if (!editTarget) {
-                                    setEditError("No attribute selected.");
-                                    return;
-                                }
-
-                                updateAttributeMutation.mutate({
-                                    name: trimmed,
-                                    description: editDescription.trim()
-                                        ? editDescription.trim()
-                                        : null,
-                                    unit: editUnit.trim()
-                                        ? editUnit.trim()
-                                        : null,
-                                });
-                            }}
-                            disabled={
-                                updateAttributeMutation.isPending ||
-                                !canEdit ||
-                                !editTarget
-                            }
-                        >
-                            {updateAttributeMutation.isPending
-                                ? "Saving..."
-                                : "Save"}
-                        </button>
-                    </div>
+                submitting={updateAttributeMutation.isPending}
+                submitDisabled={
+                    updateAttributeMutation.isPending || !canEdit || !editTarget
                 }
-            >
-                <div className="flex flex-col gap-4">
-                    <ErrorDisplay
-                        errors={
-                            editError
-                                ? [
-                                      {
-                                          id: "edit-error",
-                                          message: editError,
-                                          onDismiss: () => setEditError(null),
-                                      },
-                                  ]
-                                : []
-                        }
-                    />
+                onCancel={() => setEditOpen(false)}
+                onSubmit={() => {
+                    setEditError(null);
+                    const trimmed = editName.trim();
+                    if (!trimmed) {
+                        setEditError("Attribute name is required.");
+                        return;
+                    }
+                    if (!editTarget) {
+                        setEditError("No attribute selected.");
+                        return;
+                    }
 
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Name
-                        </label>
-                        <input
-                            ref={editNameRef}
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={updateAttributeMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Unit
-                        </label>
-                        <input
-                            value={editUnit}
-                            onChange={(e) => setEditUnit(e.target.value)}
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={updateAttributeMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Description (Optional)
-                        </label>
-                        <textarea
-                            value={editDescription}
-                            onChange={(e) => setEditDescription(e.target.value)}
-                            placeholder="A brief description about this attribute..."
-                            rows={3}
-                            className="resize-none rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={updateAttributeMutation.isPending}
-                        />
-                    </div>
-                </div>
-            </Popup>
+                    updateAttributeMutation.mutate({
+                        name: trimmed,
+                        description: editDescription.trim()
+                            ? editDescription.trim()
+                            : null,
+                        unit: editUnit.trim() ? editUnit.trim() : null,
+                    });
+                }}
+            />
         </ProjectPageLayout>
     );
 }

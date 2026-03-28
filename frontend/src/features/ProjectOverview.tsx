@@ -5,6 +5,7 @@ import ProjectStatusGate from "@/components/ProjectStatusGate";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import { useProject } from "@/context/ProjectContext";
 import Popup from "@/components/Popup";
+import ProjectEditorDialog from "@/components/ProjectEditorDialog";
 import { IconEdit, IconTrash } from "@tabler/icons-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/context/AuthContext";
@@ -69,13 +70,8 @@ function getWorkflowRouteSegment(workflow: Workflow): string {
 }
 
 export default function ProjectPage() {
-    const {
-        routeUsername,
-        routeProjectName,
-        currentProject,
-        canEdit,
-        isOwner,
-    } = useProject();
+    const { routeUsername, routeProjectName, currentProject, isOwner } =
+        useProject();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
@@ -599,118 +595,48 @@ export default function ProjectPage() {
                 </ProjectStatusGate>
             </div>
 
-            <Popup
+            <ProjectEditorDialog
+                mode="edit"
                 open={editOpen}
                 onOpenChange={(next) => {
                     setEditOpen(next);
                     if (next) setEditError(null);
                 }}
-                title="Edit project"
-                description="Update project settings."
+                name={editName}
+                description={editDescription}
+                isPublic={editIsPublic}
+                onNameChange={setEditName}
+                onDescriptionChange={setEditDescription}
+                onIsPublicChange={setEditIsPublic}
+                error={editError}
+                onDismissError={() => setEditError(null)}
                 initialFocusRef={editNameRef}
-                footer={
-                    <div className="flex items-center justify-end gap-2">
-                        <button
-                            type="button"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-4 py-2 text-sm font-medium text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            onClick={() => setEditOpen(false)}
-                            disabled={updateProjectMutation.isPending}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            className="rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                            onClick={() => {
-                                setEditError(null);
-                                const trimmed = editName.trim();
-                                if (!trimmed) {
-                                    setEditError("Project name is required.");
-                                    return;
-                                }
-                                if (!currentProject) {
-                                    setEditError("No project selected.");
-                                    return;
-                                }
+                submitting={updateProjectMutation.isPending}
+                submitDisabled={updateProjectMutation.isPending}
+                onCancel={() => setEditOpen(false)}
+                onSubmit={() => {
+                    setEditError(null);
+                    const trimmed = editName.trim();
+                    if (!trimmed) {
+                        setEditError("Project name is required.");
+                        return;
+                    }
+                    if (!currentProject) {
+                        setEditError("No project selected.");
+                        return;
+                    }
 
-                                updateProjectMutation.mutate({
-                                    name: trimmed,
-                                    description: editDescription.trim()
-                                        ? editDescription.trim()
-                                        : null,
-                                    isPublic: editIsPublic,
-                                    aliasProjectPuid:
-                                        currentProject.aliasProjectPuid ?? null,
-                                });
-                            }}
-                            disabled={updateProjectMutation.isPending}
-                        >
-                            {updateProjectMutation.isPending
-                                ? "Saving…"
-                                : "Save"}
-                        </button>
-                    </div>
-                }
-            >
-                <div className="flex flex-col gap-4">
-                    <ErrorDisplay
-                        errors={
-                            editError
-                                ? [
-                                      {
-                                          id: "edit-error",
-                                          message: editError,
-                                          onDismiss: () => setEditError(null),
-                                      },
-                                  ]
-                                : []
-                        }
-                    />
-
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Name
-                        </label>
-                        <input
-                            ref={editNameRef}
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={updateProjectMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Description (Optional)
-                        </label>
-                        <textarea
-                            value={editDescription}
-                            onChange={(e) => setEditDescription(e.target.value)}
-                            placeholder="A brief description about this project..."
-                            rows={3}
-                            className="resize-none rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={updateProjectMutation.isPending}
-                        />
-                    </div>
-
-                    <label className="flex items-center gap-3 rounded-lg border border-slate-800 cursor-pointer bg-slate-900/40 px-3 py-2 text-sm text-slate-200">
-                        <input
-                            type="checkbox"
-                            checked={editIsPublic}
-                            onChange={(e) => setEditIsPublic(e.target.checked)}
-                            disabled={updateProjectMutation.isPending}
-                            className="h-4 w-4 accent-purple-500 cursor-pointer"
-                        />
-                        <div className="min-w-0">
-                            <div className="font-medium">Public project</div>
-                            <div className="text-xs text-slate-400">
-                                Allow others to view this project.
-                            </div>
-                        </div>
-                    </label>
-                </div>
-            </Popup>
+                    updateProjectMutation.mutate({
+                        name: trimmed,
+                        description: editDescription.trim()
+                            ? editDescription.trim()
+                            : null,
+                        isPublic: editIsPublic,
+                        aliasProjectPuid:
+                            currentProject.aliasProjectPuid ?? null,
+                    });
+                }}
+            />
 
             <Popup
                 open={deleteOpen}

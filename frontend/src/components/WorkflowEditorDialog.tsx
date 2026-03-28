@@ -1,26 +1,37 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Popup from "@/components/Popup";
 import { useProtectedApi } from "@/lib/api";
-import { updateWorkflow, NewWorkflowPayload, Workflow } from "@/lib/workflow";
+import {
+    type NewWorkflowPayload,
+    postNewWorkflow,
+    updateWorkflow,
+    type Workflow,
+} from "@/lib/workflow";
 
-export interface EditWorkflowProps {
+type WorkflowEditorMode = "create" | "edit";
+
+export interface WorkflowEditorDialogProps {
+    mode: WorkflowEditorMode;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     projectId: string;
-    workflow: Workflow | null;
+    workflow?: Workflow | null;
+    onCreated?: (workflow: Workflow) => void;
     onUpdated?: (workflow: Workflow) => void;
 }
 
-export default function EditWorkflow({
+export default function WorkflowEditorDialog({
+    mode,
     open,
     onOpenChange,
     projectId,
-    workflow,
+    workflow = null,
+    onCreated,
     onUpdated,
-}: EditWorkflowProps): React.ReactElement {
+}: WorkflowEditorDialogProps) {
     const queryClient = useQueryClient();
     const protectedApi = useProtectedApi();
 
@@ -30,15 +41,30 @@ export default function EditWorkflow({
     const nameRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        if (open && workflow) {
-            setName(workflow.name ?? "");
-            setDescription(workflow.description ?? "");
-            setError(null);
+        if (!open) return;
+        setError(null);
+        if (mode === "edit") {
+            setName(workflow?.name ?? "");
+            setDescription(workflow?.description ?? "");
+        } else {
+            setName("");
+            setDescription("");
         }
-    }, [open, workflow]);
+    }, [open, mode, workflow]);
 
-    const editWorkflowMutation = useMutation({
+    const mutation = useMutation({
         mutationFn: async (payload: NewWorkflowPayload) => {
+            if (!projectId) throw new Error("No project selected.");
+
+            if (mode === "create") {
+                const response = await postNewWorkflow(
+                    projectId,
+                    protectedApi,
+                    payload,
+                );
+                return response as Workflow;
+            }
+
             if (!workflow) throw new Error("No workflow selected.");
             const response = await updateWorkflow(
                 projectId,
@@ -48,7 +74,7 @@ export default function EditWorkflow({
             );
             return response as Workflow;
         },
-        onSuccess: async (updatedWorkflow) => {
+        onSuccess: async (savedWorkflow) => {
             setError(null);
             onOpenChange(false);
 
@@ -56,34 +82,38 @@ export default function EditWorkflow({
                 queryKey: ["workflows", projectId],
             });
 
-            if (onUpdated) {
-                onUpdated(updatedWorkflow);
+            if (mode === "create") {
+                onCreated?.(savedWorkflow);
+            } else {
+                onUpdated?.(savedWorkflow);
             }
         },
         onError: (err) => {
             setError(
                 err instanceof Error
                     ? err.message
-                    : "Failed to update workflow.",
+                    : mode === "create"
+                      ? "Failed to create workflow."
+                      : "Failed to update workflow.",
             );
         },
     });
 
-    const isPending = editWorkflowMutation.isPending;
+    const isPending = mutation.isPending;
 
     return (
         <Popup
             open={open}
             onOpenChange={(next) => {
                 onOpenChange(next);
-                if (next && workflow) {
-                    setError(null);
-                    setName(workflow.name ?? "");
-                    setDescription(workflow.description ?? "");
-                }
+                if (next) setError(null);
             }}
-            title="Edit workflow"
-            description="Update the details of your workflow."
+            title={mode === "create" ? "Create workflow" : "Edit workflow"}
+            description={
+                mode === "create"
+                    ? "Create a new workflow for your project."
+                    : "Update the details of your workflow."
+            }
             initialFocusRef={nameRef}
             footer={
                 <div className="flex items-center justify-end gap-2">
@@ -103,14 +133,21 @@ export default function EditWorkflow({
                                 setError("Name is required.");
                                 return;
                             }
-                            editWorkflowMutation.mutate({
+
+                            mutation.mutate({
                                 name: name.trim(),
                                 description: description.trim() || null,
                             });
                         }}
-                        disabled={isPending}
+                        disabled={isPending || (mode === "edit" && !workflow)}
                     >
-                        {isPending ? "Updating..." : "Update Workflow"}
+                        {isPending
+                            ? mode === "create"
+                                ? "Creating..."
+                                : "Updating..."
+                            : mode === "create"
+                              ? "Create Workflow"
+                              : "Update Workflow"}
                     </button>
                 </div>
             }
@@ -121,16 +158,17 @@ export default function EditWorkflow({
                         {error}
                     </div>
                 )}
+
                 <div className="flex flex-col gap-1.5">
                     <label
-                        htmlFor="edit-workflow-name"
+                        htmlFor={`${mode}-workflow-name`}
                         className="text-xs font-medium text-slate-400"
                     >
                         Name
                     </label>
                     <input
                         ref={nameRef}
-                        id="edit-workflow-name"
+                        id={`${mode}-workflow-name`}
                         type="text"
                         className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-purple-500/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
                         placeholder="My Workflow"
@@ -139,15 +177,16 @@ export default function EditWorkflow({
                         disabled={isPending}
                     />
                 </div>
+
                 <div className="flex flex-col gap-1.5">
                     <label
-                        htmlFor="edit-workflow-description"
+                        htmlFor={`${mode}-workflow-description`}
                         className="text-xs font-medium text-slate-400"
                     >
                         Description (Optional)
                     </label>
                     <textarea
-                        id="edit-workflow-description"
+                        id={`${mode}-workflow-description`}
                         rows={3}
                         className="w-full resize-none rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-purple-500/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
                         placeholder="Explain what this workflow is for..."

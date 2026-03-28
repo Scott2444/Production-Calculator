@@ -3,8 +3,7 @@
 import ProjectPageLayout from "@/components/ProjectPageLayout";
 import ProjectStatusGate from "@/components/ProjectStatusGate";
 import SearchBar from "@/components/SearchBar";
-import CreateWorkflow from "@/components/CreateWorkflow";
-import EditWorkflow from "@/components/EditWorkflow";
+import WorkflowEditorDialog from "@/components/WorkflowEditorDialog";
 import DeleteWorkflow from "@/components/DeleteWorkflow";
 import { useProject } from "@/context/ProjectContext";
 import { type Workflow } from "@/lib/workflow";
@@ -67,8 +66,6 @@ export default function WorkflowsPage() {
         toText: (workflow) =>
             `${workflow.name ?? ""} ${workflow.description ?? ""} ${workflow.puid}`,
     });
-
-    const workflowsHref = `/${encodeURIComponent(routeUsername ?? "")}/${encodeURIComponent(routeProjectName ?? "")}/workflows`;
 
     return (
         <ProjectPageLayout>
@@ -234,7 +231,8 @@ export default function WorkflowsPage() {
                     )}
                 </ProjectStatusGate>
 
-                <CreateWorkflow
+                <WorkflowEditorDialog
+                    mode="create"
                     open={createOpen}
                     onOpenChange={setCreateOpen}
                     projectId={projectId}
@@ -245,9 +243,13 @@ export default function WorkflowsPage() {
                     }}
                 />
 
-                <EditWorkflow
+                <WorkflowEditorDialog
+                    mode="edit"
                     open={editOpen}
-                    onOpenChange={setEditOpen}
+                    onOpenChange={(next) => {
+                        setEditOpen(next);
+                        if (!next) setSelectedWorkflow(null);
+                    }}
                     projectId={projectId}
                     workflow={selectedWorkflow}
                 />

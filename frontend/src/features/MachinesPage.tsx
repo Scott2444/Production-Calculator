@@ -3,8 +3,7 @@
 import ProjectPageLayout from "@/components/ProjectPageLayout";
 import ProjectStatusGate from "@/components/ProjectStatusGate";
 import DropDown from "@/components/DropDown";
-import ItemCard from "@/components/ItemCard";
-import Popup from "@/components/Popup";
+import MachineEditorDialog from "@/components/MachineEditorDialog";
 import SearchBar from "@/components/SearchBar";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import { useProject } from "@/context/ProjectContext";
@@ -463,6 +462,24 @@ export default function Machines() {
         );
     };
 
+    const BoundRecipeMultiSelect = ({
+        value,
+        onChange,
+        disabled,
+    }: {
+        value: string[];
+        onChange: (next: string[]) => void;
+        disabled?: boolean;
+    }) => (
+        <RecipeMultiSelect
+            value={value}
+            onChange={onChange}
+            disabled={disabled}
+            sortedRecipes={sortedRecipes}
+            recipeNameByPuid={recipeNameByPuid}
+        />
+    );
+
     const renderRecipeList = (recipePuids: unknown) => {
         const items = uniqueTrimmedPuids(normalizeStringArray(recipePuids));
         if (items.length === 0) {
@@ -769,21 +786,79 @@ export default function Machines() {
                 </ProjectStatusGate>
             </div>
 
-            <ItemCard
+            <MachineEditorDialog
+                mode="create"
                 open={createOpen}
                 onOpenChange={(next) => {
                     setCreateOpen(next);
                     if (next) setCreateError(null);
                 }}
-                title="Add machine"
-                description="Create a new machine in this project."
+                name={createName}
+                description={createDescription}
+                baseSpeed={createBaseSpeed}
+                recipePuids={createRecipePuids}
+                attributes={createAttributes}
+                onNameChange={setCreateName}
+                onDescriptionChange={setCreateDescription}
+                onBaseSpeedChange={setCreateBaseSpeed}
+                onRecipePuidsChange={setCreateRecipePuids}
+                onAddAttribute={() => {
+                    const used = new Set(createAttributes.map((a) => a.puid));
+                    const nextPuid = pickDefaultAttributePuid(
+                        sortedAttributes,
+                        used,
+                    );
+                    if (!nextPuid) return;
+                    setCreateAttributes((prev) => [
+                        ...prev,
+                        { puid: nextPuid, rate: 0 },
+                    ]);
+                }}
+                onAttributePuidChange={(index, puid) => {
+                    setCreateAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === index
+                                ? {
+                                      ...p,
+                                      puid,
+                                  }
+                                : p,
+                        ),
+                    );
+                }}
+                onAttributeRateChange={(index, rate) => {
+                    setCreateAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === index
+                                ? {
+                                      ...p,
+                                      rate,
+                                  }
+                                : p,
+                        ),
+                    );
+                }}
+                onRemoveAttribute={(index) => {
+                    setCreateAttributes((prev) =>
+                        prev.filter((_, i) => i !== index),
+                    );
+                }}
+                onRemoveRecipe={(puid) => {
+                    setCreateRecipePuids((prev) =>
+                        prev.filter((p) => p !== puid),
+                    );
+                }}
+                getRecipeLabel={(puid) => recipeNameByPuid.get(puid) ?? puid}
+                sortedRecipesCount={sortedRecipes.length}
+                sortedAttributesCount={sortedAttributes.length}
+                error={createError}
+                onDismissError={() => setCreateError(null)}
                 initialFocusRef={createNameRef}
-                submitLabel="Create"
-                submittingLabel="Creating..."
                 submitting={createMachineMutation.isPending}
                 submitDisabled={!canEdit || !projectId}
-                cancelDisabled={createMachineMutation.isPending}
                 onCancel={() => setCreateOpen(false)}
+                AttributeDropDown={AttributeDropDown}
+                RecipeMultiSelect={BoundRecipeMultiSelect}
                 onSubmit={() => {
                     setCreateError(null);
                     const trimmedName = createName.trim();
@@ -820,597 +895,124 @@ export default function Machines() {
                         })),
                     });
                 }}
-            >
-                <div className="flex flex-col gap-4">
-                    <ErrorDisplay
-                        errors={
-                            createError
-                                ? [
-                                      {
-                                          id: "create-error",
-                                          message: createError,
-                                          onDismiss: () => setCreateError(null),
-                                      },
-                                  ]
-                                : []
-                        }
-                    />
+            />
 
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Name
-                        </label>
-                        <input
-                            ref={createNameRef}
-                            value={createName}
-                            onChange={(e) => setCreateName(e.target.value)}
-                            placeholder="Assembler"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={createMachineMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Description (Optional)
-                        </label>
-                        <textarea
-                            value={createDescription}
-                            onChange={(e) =>
-                                setCreateDescription(e.target.value)
-                            }
-                            placeholder="A brief description about this machine..."
-                            rows={3}
-                            className="resize-none rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={createMachineMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                        <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-purple-400">
-                            <IconGauge size={16} />
-                            Machine Speed
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            <label className="text-sm font-medium text-slate-200">
-                                Base speed
-                            </label>
-                            <input
-                                value={createBaseSpeed}
-                                onChange={(e) =>
-                                    setCreateBaseSpeed(e.target.value)
-                                }
-                                inputMode="decimal"
-                                className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                disabled={createMachineMutation.isPending}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                        <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-emerald-400">
-                            <IconClipboardList size={16} />
-                            Compatible Recipes
-                        </div>
-
-                        {sortedRecipes.length === 0 ? (
-                            <div className="mt-2 text-sm text-slate-500">
-                                No recipes available in this project.
-                            </div>
-                        ) : null}
-
-                        <div className="flex flex-col gap-2">
-                            <RecipeMultiSelect
-                                value={createRecipePuids}
-                                onChange={setCreateRecipePuids}
-                                disabled={createMachineMutation.isPending}
-                                sortedRecipes={sortedRecipes}
-                                recipeNameByPuid={recipeNameByPuid}
-                            />
-
-                            {uniqueTrimmedPuids(createRecipePuids).length ===
-                            0 ? (
-                                <div className="text-sm text-slate-500">
-                                    No recipes selected
-                                </div>
-                            ) : (
-                                <div className="flex flex-col gap-2">
-                                    {uniqueTrimmedPuids(createRecipePuids)
-                                        .slice()
-                                        .sort((a, b) => {
-                                            const an =
-                                                recipeNameByPuid.get(a) ?? a;
-                                            const bn =
-                                                recipeNameByPuid.get(b) ?? b;
-                                            return an.localeCompare(
-                                                bn,
-                                                undefined,
-                                                { sensitivity: "base" },
-                                            );
-                                        })
-                                        .map((puid) => (
-                                            <div
-                                                key={puid}
-                                                className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
-                                            >
-                                                <div className="min-w-0 truncate text-sm text-slate-200">
-                                                    {recipeNameByPuid.get(
-                                                        puid,
-                                                    ) ?? puid}
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    className="shrink-0 rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                    onClick={() =>
-                                                        setCreateRecipePuids(
-                                                            (prev) =>
-                                                                prev.filter(
-                                                                    (p) =>
-                                                                        p !==
-                                                                        puid,
-                                                                ),
-                                                        )
-                                                    }
-                                                    disabled={
-                                                        createMachineMutation.isPending
-                                                    }
-                                                    title="Remove"
-                                                    aria-label="Remove recipe"
-                                                >
-                                                    <IconTrash size={18} />
-                                                </button>
-                                            </div>
-                                        ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                        <div className="flex items-center justify-between gap-3 mb-4">
-                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-blue-400">
-                                <IconSettings size={16} />
-                                User Defined Attributes
-                            </div>
-                            <button
-                                type="button"
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                onClick={() => {
-                                    const used = new Set(
-                                        createAttributes.map((a) => a.puid),
-                                    );
-                                    const nextPuid = pickDefaultAttributePuid(
-                                        sortedAttributes,
-                                        used,
-                                    );
-                                    if (!nextPuid) return;
-                                    setCreateAttributes((prev) => [
-                                        ...prev,
-                                        { puid: nextPuid, rate: 0 },
-                                    ]);
-                                }}
-                                disabled={
-                                    createMachineMutation.isPending ||
-                                    sortedAttributes.length === 0
-                                }
-                                title={
-                                    sortedAttributes.length === 0
-                                        ? "Create attributes first"
-                                        : "Add attribute"
-                                }
-                            >
-                                <IconPlus size={16} />
-                                Add
-                            </button>
-                        </div>
-
-                        {sortedAttributes.length === 0 ? (
-                            <div className="mt-2 text-sm text-slate-500">
-                                No attributes available in this project.
-                            </div>
-                        ) : null}
-
-                        <div className="mt-3 flex flex-col gap-2">
-                            {createAttributes.length === 0 && (
-                                <div className="text-sm text-slate-500">
-                                    No attributes
-                                </div>
-                            )}
-                            {createAttributes.map((row, idx) => (
-                                <div
-                                    key={`create-attr-${idx}`}
-                                    className="flex items-center gap-2"
-                                >
-                                    <AttributeDropDown
-                                        value={row.puid}
-                                        disabled={
-                                            createMachineMutation.isPending
-                                        }
-                                        onSelect={(next) => {
-                                            setCreateAttributes((prev) =>
-                                                prev.map((p, i) =>
-                                                    i === idx
-                                                        ? {
-                                                              ...p,
-                                                              puid: next,
-                                                          }
-                                                        : p,
-                                                ),
-                                            );
-                                        }}
-                                    />
-                                    <input
-                                        value={String(row.rate)}
-                                        onChange={(e) => {
-                                            const next = Number(e.target.value);
-                                            setCreateAttributes((prev) =>
-                                                prev.map((p, i) =>
-                                                    i === idx
-                                                        ? {
-                                                              ...p,
-                                                              rate: next,
-                                                          }
-                                                        : p,
-                                                ),
-                                            );
-                                        }}
-                                        inputMode="decimal"
-                                        className="w-32 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={
-                                            createMachineMutation.isPending
-                                        }
-                                        placeholder="Rate"
-                                    />
-                                    <button
-                                        type="button"
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                        onClick={() =>
-                                            setCreateAttributes((prev) =>
-                                                prev.filter(
-                                                    (_, i) => i !== idx,
-                                                ),
-                                            )
-                                        }
-                                        disabled={
-                                            createMachineMutation.isPending
-                                        }
-                                        title="Remove"
-                                        aria-label="Remove attribute"
-                                    >
-                                        <IconTrash size={18} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </ItemCard>
-
-            <Popup
+            <MachineEditorDialog
+                mode="edit"
                 open={editOpen}
                 onOpenChange={(next) => {
                     setEditOpen(next);
                     if (next) setEditError(null);
                 }}
-                title="Edit machine"
-                description="Update machine details."
+                name={editName}
+                description={editDescription}
+                baseSpeed={editBaseSpeed}
+                recipePuids={editRecipePuids}
+                attributes={editAttributes}
+                onNameChange={setEditName}
+                onDescriptionChange={setEditDescription}
+                onBaseSpeedChange={setEditBaseSpeed}
+                onRecipePuidsChange={setEditRecipePuids}
+                onAddAttribute={() => {
+                    const used = new Set(editAttributes.map((a) => a.puid));
+                    const nextPuid = pickDefaultAttributePuid(
+                        sortedAttributes,
+                        used,
+                    );
+                    if (!nextPuid) return;
+                    setEditAttributes((prev) => [
+                        ...prev,
+                        { puid: nextPuid, rate: 0 },
+                    ]);
+                }}
+                onAttributePuidChange={(index, puid) => {
+                    setEditAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === index
+                                ? {
+                                      ...p,
+                                      puid,
+                                  }
+                                : p,
+                        ),
+                    );
+                }}
+                onAttributeRateChange={(index, rate) => {
+                    setEditAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === index
+                                ? {
+                                      ...p,
+                                      rate,
+                                  }
+                                : p,
+                        ),
+                    );
+                }}
+                onRemoveAttribute={(index) => {
+                    setEditAttributes((prev) =>
+                        prev.filter((_, i) => i !== index),
+                    );
+                }}
+                onRemoveRecipe={(puid) => {
+                    setEditRecipePuids((prev) =>
+                        prev.filter((p) => p !== puid),
+                    );
+                }}
+                getRecipeLabel={(puid) => recipeNameByPuid.get(puid) ?? puid}
+                sortedRecipesCount={sortedRecipes.length}
+                sortedAttributesCount={sortedAttributes.length}
+                error={editError}
+                onDismissError={() => setEditError(null)}
                 initialFocusRef={editNameRef}
-                footer={
-                    <div className="flex items-center justify-end gap-2">
-                        <button
-                            type="button"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-4 py-2 text-sm font-medium text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            onClick={() => setEditOpen(false)}
-                            disabled={updateMachineMutation.isPending}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            className="rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                            onClick={() => {
-                                setEditError(null);
-                                const trimmedName = editName.trim();
-                                if (!trimmedName) {
-                                    setEditError("Machine name is required.");
-                                    return;
-                                }
-                                if (!editTarget) {
-                                    setEditError("No machine selected.");
-                                    return;
-                                }
-
-                                const base = Number(editBaseSpeed);
-                                if (!Number.isFinite(base) || base <= 0) {
-                                    setEditError(
-                                        "Base speed must be a positive number.",
-                                    );
-                                    return;
-                                }
-
-                                const attributesErr = validateAttributeRates(
-                                    editAttributes,
-                                    "Attributes",
-                                );
-                                if (attributesErr) {
-                                    setEditError(attributesErr);
-                                    return;
-                                }
-
-                                updateMachineMutation.mutate({
-                                    name: trimmedName,
-                                    description: editDescription.trim()
-                                        ? editDescription.trim()
-                                        : null,
-                                    baseSpeed: base,
-                                    recipePuids:
-                                        uniqueTrimmedPuids(editRecipePuids),
-                                    attributes: editAttributes.map((a) => ({
-                                        puid: a.puid,
-                                        rate: Number(a.rate),
-                                    })),
-                                });
-                            }}
-                            disabled={
-                                updateMachineMutation.isPending ||
-                                !canEdit ||
-                                !editTarget
-                            }
-                        >
-                            {updateMachineMutation.isPending
-                                ? "Saving..."
-                                : "Save"}
-                        </button>
-                    </div>
+                submitting={updateMachineMutation.isPending}
+                submitDisabled={
+                    updateMachineMutation.isPending || !canEdit || !editTarget
                 }
-            >
-                <div className="flex flex-col gap-4">
-                    <ErrorDisplay
-                        errors={
-                            editError
-                                ? [
-                                      {
-                                          id: "edit-error",
-                                          message: editError,
-                                          onDismiss: () => setEditError(null),
-                                      },
-                                  ]
-                                : []
-                        }
-                    />
+                onCancel={() => setEditOpen(false)}
+                AttributeDropDown={AttributeDropDown}
+                RecipeMultiSelect={BoundRecipeMultiSelect}
+                onSubmit={() => {
+                    setEditError(null);
+                    const trimmedName = editName.trim();
+                    if (!trimmedName) {
+                        setEditError("Machine name is required.");
+                        return;
+                    }
+                    if (!editTarget) {
+                        setEditError("No machine selected.");
+                        return;
+                    }
 
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Name
-                        </label>
-                        <input
-                            ref={editNameRef}
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={updateMachineMutation.isPending}
-                        />
-                    </div>
+                    const base = Number(editBaseSpeed);
+                    if (!Number.isFinite(base) || base <= 0) {
+                        setEditError("Base speed must be a positive number.");
+                        return;
+                    }
 
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Description (Optional)
-                        </label>
-                        <textarea
-                            value={editDescription}
-                            onChange={(e) => setEditDescription(e.target.value)}
-                            rows={3}
-                            placeholder="A brief description about this machine..."
-                            className="resize-none rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={updateMachineMutation.isPending}
-                        />
-                    </div>
+                    const attributesErr = validateAttributeRates(
+                        editAttributes,
+                        "Attributes",
+                    );
+                    if (attributesErr) {
+                        setEditError(attributesErr);
+                        return;
+                    }
 
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                        <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-purple-400">
-                            <IconGauge size={16} />
-                            Machine Speed
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            <label className="text-sm font-medium text-slate-200">
-                                Base speed
-                            </label>
-                            <input
-                                value={editBaseSpeed}
-                                onChange={(e) =>
-                                    setEditBaseSpeed(e.target.value)
-                                }
-                                inputMode="decimal"
-                                className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                disabled={updateMachineMutation.isPending}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                        <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-emerald-400">
-                            <IconClipboardList size={16} />
-                            Compatible Recipes
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            <RecipeMultiSelect
-                                value={editRecipePuids}
-                                onChange={setEditRecipePuids}
-                                disabled={updateMachineMutation.isPending}
-                                sortedRecipes={sortedRecipes}
-                                recipeNameByPuid={recipeNameByPuid}
-                            />
-                            {uniqueTrimmedPuids(editRecipePuids).length ===
-                            0 ? (
-                                <div className="text-sm text-slate-500">
-                                    No recipes selected
-                                </div>
-                            ) : (
-                                <div className="flex flex-col gap-2">
-                                    {uniqueTrimmedPuids(editRecipePuids)
-                                        .slice()
-                                        .sort((a, b) => {
-                                            const an =
-                                                recipeNameByPuid.get(a) ?? a;
-                                            const bn =
-                                                recipeNameByPuid.get(b) ?? b;
-                                            return an.localeCompare(
-                                                bn,
-                                                undefined,
-                                                { sensitivity: "base" },
-                                            );
-                                        })
-                                        .map((puid) => (
-                                            <div
-                                                key={puid}
-                                                className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
-                                            >
-                                                <div className="min-w-0 truncate text-sm text-slate-200">
-                                                    {recipeNameByPuid.get(
-                                                        puid,
-                                                    ) ?? puid}
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    className="shrink-0 rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                                    onClick={() =>
-                                                        setEditRecipePuids(
-                                                            (prev) =>
-                                                                prev.filter(
-                                                                    (p) =>
-                                                                        p !==
-                                                                        puid,
-                                                                ),
-                                                        )
-                                                    }
-                                                    disabled={
-                                                        updateMachineMutation.isPending
-                                                    }
-                                                    title="Remove"
-                                                    aria-label="Remove recipe"
-                                                >
-                                                    <IconTrash size={18} />
-                                                </button>
-                                            </div>
-                                        ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                        <div className="flex items-center justify-between gap-3 mb-4">
-                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-blue-400">
-                                <IconSettings size={16} />
-                                User Defined Attributes
-                            </div>
-                            <button
-                                type="button"
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                onClick={() => {
-                                    const used = new Set(
-                                        editAttributes.map((a) => a.puid),
-                                    );
-                                    const nextPuid = pickDefaultAttributePuid(
-                                        sortedAttributes,
-                                        used,
-                                    );
-                                    if (!nextPuid) return;
-                                    setEditAttributes((prev) => [
-                                        ...prev,
-                                        { puid: nextPuid, rate: 0 },
-                                    ]);
-                                }}
-                                disabled={
-                                    updateMachineMutation.isPending ||
-                                    sortedAttributes.length === 0
-                                }
-                                title={
-                                    sortedAttributes.length === 0
-                                        ? "Create attributes first"
-                                        : "Add attribute"
-                                }
-                            >
-                                <IconPlus size={16} />
-                                Add
-                            </button>
-                        </div>
-
-                        <div className="mt-3 flex flex-col gap-2">
-                            {editAttributes.length === 0 && (
-                                <div className="text-sm text-slate-500">
-                                    No attributes
-                                </div>
-                            )}
-                            {editAttributes.map((row, idx) => (
-                                <div
-                                    key={`edit-attr-${idx}`}
-                                    className="flex items-center gap-2"
-                                >
-                                    <AttributeDropDown
-                                        value={row.puid}
-                                        disabled={
-                                            updateMachineMutation.isPending
-                                        }
-                                        onSelect={(next) => {
-                                            setEditAttributes((prev) =>
-                                                prev.map((p, i) =>
-                                                    i === idx
-                                                        ? {
-                                                              ...p,
-                                                              puid: next,
-                                                          }
-                                                        : p,
-                                                ),
-                                            );
-                                        }}
-                                    />
-                                    <input
-                                        value={String(row.rate)}
-                                        onChange={(e) => {
-                                            const next = Number(e.target.value);
-                                            setEditAttributes((prev) =>
-                                                prev.map((p, i) =>
-                                                    i === idx
-                                                        ? {
-                                                              ...p,
-                                                              rate: next,
-                                                          }
-                                                        : p,
-                                                ),
-                                            );
-                                        }}
-                                        inputMode="decimal"
-                                        className="w-32 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={
-                                            updateMachineMutation.isPending
-                                        }
-                                        placeholder="Rate"
-                                    />
-                                    <button
-                                        type="button"
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                        onClick={() =>
-                                            setEditAttributes((prev) =>
-                                                prev.filter(
-                                                    (_, i) => i !== idx,
-                                                ),
-                                            )
-                                        }
-                                        disabled={
-                                            updateMachineMutation.isPending
-                                        }
-                                        title="Remove"
-                                        aria-label="Remove attribute"
-                                    >
-                                        <IconTrash size={18} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </Popup>
+                    updateMachineMutation.mutate({
+                        name: trimmedName,
+                        description: editDescription.trim()
+                            ? editDescription.trim()
+                            : null,
+                        baseSpeed: base,
+                        recipePuids: uniqueTrimmedPuids(editRecipePuids),
+                        attributes: editAttributes.map((a) => ({
+                            puid: a.puid,
+                            rate: Number(a.rate),
+                        })),
+                    });
+                }}
+            />
         </ProjectPageLayout>
     );
 }

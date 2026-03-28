@@ -5,8 +5,7 @@ import ProjectStatusGate from "@/components/ProjectStatusGate";
 import DropDown from "@/components/DropDown";
 import SearchBar from "@/components/SearchBar";
 import ErrorDisplay from "@/components/ErrorDisplay";
-import Popup from "@/components/Popup";
-import ItemCard from "@/components/ItemCard";
+import ModifierEditorDialog from "@/components/ModifierEditorDialog";
 import { useAuth } from "@/context/AuthContext";
 import { useProject } from "@/context/ProjectContext";
 import { useProtectedApi } from "@/lib/api";
@@ -657,21 +656,106 @@ export default function Modifiers() {
                 </ProjectStatusGate>
             </div>
 
-            <ItemCard
+            <ModifierEditorDialog
+                mode="create"
                 open={createOpen}
                 onOpenChange={(next) => {
                     setCreateOpen(next);
                     if (next) setCreateError(null);
                 }}
-                title="Add modifier"
-                description="Create a new modifier in this project."
+                name={createName}
+                description={createDescription}
+                flatBonus={createFlatBonus}
+                percentBonus={createPercentBonus}
+                multiplicativeBonus={createMultiplicativeBonus}
+                inputPercent={createInputPercent}
+                outputPercent={createOutputPercent}
+                attributes={createAttributes}
+                onNameChange={setCreateName}
+                onDescriptionChange={setCreateDescription}
+                onFlatBonusChange={setCreateFlatBonus}
+                onPercentBonusChange={setCreatePercentBonus}
+                onMultiplicativeBonusChange={setCreateMultiplicativeBonus}
+                onInputPercentChange={setCreateInputPercent}
+                onOutputPercentChange={setCreateOutputPercent}
+                onAddAttribute={() => {
+                    const used = new Set(createAttributes.map((a) => a.puid));
+                    const nextPuid = pickDefaultAttributePuid(
+                        sortedAttributes,
+                        used,
+                    );
+                    if (!nextPuid) return;
+                    setCreateAttributes((prev) => [
+                        ...prev,
+                        {
+                            puid: nextPuid,
+                            flatBonus: 0,
+                            percentBonus: 0,
+                            multiplicativeBonus: 0,
+                        },
+                    ]);
+                }}
+                onAttributePuidChange={(index, puid) => {
+                    setCreateAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === index
+                                ? {
+                                      ...p,
+                                      puid,
+                                  }
+                                : p,
+                        ),
+                    );
+                }}
+                onAttributeFlatBonusChange={(index, value) => {
+                    setCreateAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === index
+                                ? {
+                                      ...p,
+                                      flatBonus: value,
+                                  }
+                                : p,
+                        ),
+                    );
+                }}
+                onAttributePercentBonusChange={(index, value) => {
+                    setCreateAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === index
+                                ? {
+                                      ...p,
+                                      percentBonus: value,
+                                  }
+                                : p,
+                        ),
+                    );
+                }}
+                onAttributeMultiplicativeBonusChange={(index, value) => {
+                    setCreateAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === index
+                                ? {
+                                      ...p,
+                                      multiplicativeBonus: value,
+                                  }
+                                : p,
+                        ),
+                    );
+                }}
+                onRemoveAttribute={(index) => {
+                    setCreateAttributes((prev) =>
+                        prev.filter((_, i) => i !== index),
+                    );
+                }}
+                sortedAttributesCount={sortedAttributes.length}
+                error={createError}
+                onDismissError={() => setCreateError(null)}
                 initialFocusRef={createNameRef}
-                submitLabel="Create"
-                submittingLabel="Creating..."
                 submitting={createModifierMutation.isPending}
                 submitDisabled={!canEdit || !projectId}
-                cancelDisabled={createModifierMutation.isPending}
                 onCancel={() => setCreateOpen(false)}
+                AttributeDropDown={AttributeDropDown}
                 onSubmit={() => {
                     setCreateError(null);
                     const trimmed = createName.trim();
@@ -739,888 +823,181 @@ export default function Modifiers() {
                         })),
                     });
                 }}
-            >
-                <div className="flex flex-col gap-4 min-w-0">
-                    <ErrorDisplay
-                        errors={
-                            createError
-                                ? [
-                                      {
-                                          id: "create-error",
-                                          message: createError,
-                                          onDismiss: () => setCreateError(null),
-                                      },
-                                  ]
-                                : []
-                        }
-                    />
+            />
 
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Name
-                        </label>
-                        <input
-                            ref={createNameRef}
-                            value={createName}
-                            onChange={(e) => setCreateName(e.target.value)}
-                            placeholder="Productivity module"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={createModifierMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Description (Optional)
-                        </label>
-                        <textarea
-                            value={createDescription}
-                            onChange={(e) =>
-                                setCreateDescription(e.target.value)
-                            }
-                            rows={3}
-                            placeholder="A brief description about this modifier..."
-                            className="resize-none rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={createModifierMutation.isPending}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-6">
-                        <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                            <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-purple-400">
-                                <IconGauge size={16} />
-                                Speed Modifiers
-                            </div>
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-sm font-medium text-slate-200">
-                                        Flat bonus
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="any"
-                                        value={createFlatBonus}
-                                        onChange={(e) =>
-                                            setCreateFlatBonus(e.target.value)
-                                        }
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={
-                                            createModifierMutation.isPending
-                                        }
-                                    />
-                                </div>
-
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-sm font-medium text-slate-200">
-                                        Additive bonus
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="any"
-                                        value={createPercentBonus}
-                                        onChange={(e) =>
-                                            setCreatePercentBonus(
-                                                e.target.value,
-                                            )
-                                        }
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={
-                                            createModifierMutation.isPending
-                                        }
-                                    />
-                                </div>
-
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-sm font-medium text-slate-200">
-                                        Multiplicative bonus
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="any"
-                                        value={createMultiplicativeBonus}
-                                        onChange={(e) =>
-                                            setCreateMultiplicativeBonus(
-                                                e.target.value,
-                                            )
-                                        }
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={
-                                            createModifierMutation.isPending
-                                        }
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                            <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-emerald-400">
-                                <IconPackage size={16} />
-                                Yield Modifiers
-                            </div>
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-sm font-medium text-slate-200">
-                                        Input bonus
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="any"
-                                        value={createInputPercent}
-                                        onChange={(e) =>
-                                            setCreateInputPercent(
-                                                e.target.value,
-                                            )
-                                        }
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={
-                                            createModifierMutation.isPending
-                                        }
-                                    />
-                                </div>
-
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-sm font-medium text-slate-200">
-                                        Output bonus
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="any"
-                                        value={createOutputPercent}
-                                        onChange={(e) =>
-                                            setCreateOutputPercent(
-                                                e.target.value,
-                                            )
-                                        }
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={
-                                            createModifierMutation.isPending
-                                        }
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                        <div className="flex items-center justify-between gap-3 mb-4">
-                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-blue-400">
-                                <IconSettings size={16} />
-                                Attribute Bonuses
-                            </div>
-                            <button
-                                type="button"
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                onClick={() => {
-                                    const used = new Set(
-                                        createAttributes.map((a) => a.puid),
-                                    );
-                                    const nextPuid = pickDefaultAttributePuid(
-                                        sortedAttributes,
-                                        used,
-                                    );
-                                    if (!nextPuid) return;
-                                    setCreateAttributes((prev) => [
-                                        ...prev,
-                                        {
-                                            puid: nextPuid,
-                                            flatBonus: 0,
-                                            percentBonus: 0,
-                                            multiplicativeBonus: 0,
-                                        },
-                                    ]);
-                                }}
-                                disabled={
-                                    createModifierMutation.isPending ||
-                                    sortedAttributes.length === 0
-                                }
-                                title={
-                                    sortedAttributes.length === 0
-                                        ? "Create attributes first"
-                                        : "Add attribute"
-                                }
-                            >
-                                <IconPlus size={16} />
-                                Add
-                            </button>
-                        </div>
-
-                        {sortedAttributes.length === 0 ? (
-                            <div className="mt-2 text-sm text-slate-500">
-                                No attributes available in this project.
-                            </div>
-                        ) : null}
-
-                        <div className="mt-3 flex flex-col gap-2 min-w-0">
-                            {createAttributes.length === 0 && (
-                                <div className="text-sm text-slate-500">
-                                    No attributes
-                                </div>
-                            )}
-                            {createAttributes.map((row, idx) => (
-                                <div
-                                    key={`create-attr-${idx}`}
-                                    className="flex flex-col gap-1"
-                                >
-                                    <label className="text-sm font-small text-slate-200">
-                                        Attribute
-                                    </label>
-                                    <div className="flex flex-row gap-1">
-                                        <div className="flex flex-col min-w-0 flex-1">
-                                            <div>
-                                                <AttributeDropDown
-                                                    value={row.puid}
-                                                    disabled={
-                                                        createModifierMutation.isPending
-                                                    }
-                                                    onSelect={(next) => {
-                                                        setCreateAttributes(
-                                                            (prev) =>
-                                                                prev.map(
-                                                                    (p, i) =>
-                                                                        i ===
-                                                                        idx
-                                                                            ? {
-                                                                                  ...p,
-                                                                                  puid: next,
-                                                                              }
-                                                                            : p,
-                                                                ),
-                                                        );
-                                                    }}
-                                                />
-                                            </div>
-                                            <div className="flex flex-row gap-2 mt-1 w-full overflow-hidden">
-                                                <div className="min-w-0 flex-1 flex flex-col gap-1">
-                                                    <label className="text-sm font-small text-slate-200">
-                                                        Flat bonus
-                                                    </label>
-                                                    <input
-                                                        value={String(
-                                                            row.flatBonus,
-                                                        )}
-                                                        onChange={(e) => {
-                                                            const next = Number(
-                                                                e.target.value,
-                                                            );
-                                                            setCreateAttributes(
-                                                                (prev) =>
-                                                                    prev.map(
-                                                                        (
-                                                                            p,
-                                                                            i,
-                                                                        ) =>
-                                                                            i ===
-                                                                            idx
-                                                                                ? {
-                                                                                      ...p,
-                                                                                      flatBonus:
-                                                                                          next,
-                                                                                  }
-                                                                                : p,
-                                                                    ),
-                                                            );
-                                                        }}
-                                                        inputMode="decimal"
-                                                        placeholder="Flat"
-                                                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                                        disabled={
-                                                            createModifierMutation.isPending
-                                                        }
-                                                    />
-                                                </div>
-                                                <div className="min-w-0 flex-1 flex flex-col gap-1">
-                                                    <label className="text-sm font-small text-slate-200">
-                                                        Additive bonus
-                                                    </label>
-                                                    <input
-                                                        value={String(
-                                                            row.percentBonus,
-                                                        )}
-                                                        onChange={(e) => {
-                                                            const next = Number(
-                                                                e.target.value,
-                                                            );
-                                                            setCreateAttributes(
-                                                                (prev) =>
-                                                                    prev.map(
-                                                                        (
-                                                                            p,
-                                                                            i,
-                                                                        ) =>
-                                                                            i ===
-                                                                            idx
-                                                                                ? {
-                                                                                      ...p,
-                                                                                      percentBonus:
-                                                                                          next,
-                                                                                  }
-                                                                                : p,
-                                                                    ),
-                                                            );
-                                                        }}
-                                                        inputMode="decimal"
-                                                        placeholder="Additive"
-                                                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                                        disabled={
-                                                            createModifierMutation.isPending
-                                                        }
-                                                    />
-                                                </div>
-                                                <div className="min-w-0 flex-1 flex flex-col gap-1">
-                                                    <label className="text-sm font-small text-slate-200">
-                                                        Multiplicative bonus
-                                                    </label>
-                                                    <input
-                                                        value={String(
-                                                            row.multiplicativeBonus,
-                                                        )}
-                                                        onChange={(e) => {
-                                                            const next = Number(
-                                                                e.target.value,
-                                                            );
-                                                            setCreateAttributes(
-                                                                (prev) =>
-                                                                    prev.map(
-                                                                        (
-                                                                            p,
-                                                                            i,
-                                                                        ) =>
-                                                                            i ===
-                                                                            idx
-                                                                                ? {
-                                                                                      ...p,
-                                                                                      multiplicativeBonus:
-                                                                                          next,
-                                                                                  }
-                                                                                : p,
-                                                                    ),
-                                                            );
-                                                        }}
-                                                        inputMode="decimal"
-                                                        placeholder="Multiplicative"
-                                                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                                        disabled={
-                                                            createModifierMutation.isPending
-                                                        }
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                            onClick={() =>
-                                                setCreateAttributes((prev) =>
-                                                    prev.filter(
-                                                        (_, i) => i !== idx,
-                                                    ),
-                                                )
-                                            }
-                                            disabled={
-                                                createModifierMutation.isPending
-                                            }
-                                            title="Remove"
-                                            aria-label="Remove attribute"
-                                        >
-                                            <IconTrash size={18} />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </ItemCard>
-
-            <Popup
+            <ModifierEditorDialog
+                mode="edit"
                 open={editOpen}
                 onOpenChange={(next) => {
                     setEditOpen(next);
                     if (next) setEditError(null);
                 }}
-                title="Edit modifier"
-                description="Update modifier details."
+                name={editName}
+                description={editDescription}
+                flatBonus={editFlatBonus}
+                percentBonus={editPercentBonus}
+                multiplicativeBonus={editMultiplicativeBonus}
+                inputPercent={editInputPercent}
+                outputPercent={editOutputPercent}
+                attributes={editAttributes}
+                onNameChange={setEditName}
+                onDescriptionChange={setEditDescription}
+                onFlatBonusChange={setEditFlatBonus}
+                onPercentBonusChange={setEditPercentBonus}
+                onMultiplicativeBonusChange={setEditMultiplicativeBonus}
+                onInputPercentChange={setEditInputPercent}
+                onOutputPercentChange={setEditOutputPercent}
+                onAddAttribute={() => {
+                    const used = new Set(editAttributes.map((a) => a.puid));
+                    const nextPuid = pickDefaultAttributePuid(
+                        sortedAttributes,
+                        used,
+                    );
+                    if (!nextPuid) return;
+                    setEditAttributes((prev) => [
+                        ...prev,
+                        {
+                            puid: nextPuid,
+                            flatBonus: 0,
+                            percentBonus: 0,
+                            multiplicativeBonus: 0,
+                        },
+                    ]);
+                }}
+                onAttributePuidChange={(index, puid) => {
+                    setEditAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === index
+                                ? {
+                                      ...p,
+                                      puid,
+                                  }
+                                : p,
+                        ),
+                    );
+                }}
+                onAttributeFlatBonusChange={(index, value) => {
+                    setEditAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === index
+                                ? {
+                                      ...p,
+                                      flatBonus: value,
+                                  }
+                                : p,
+                        ),
+                    );
+                }}
+                onAttributePercentBonusChange={(index, value) => {
+                    setEditAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === index
+                                ? {
+                                      ...p,
+                                      percentBonus: value,
+                                  }
+                                : p,
+                        ),
+                    );
+                }}
+                onAttributeMultiplicativeBonusChange={(index, value) => {
+                    setEditAttributes((prev) =>
+                        prev.map((p, i) =>
+                            i === index
+                                ? {
+                                      ...p,
+                                      multiplicativeBonus: value,
+                                  }
+                                : p,
+                        ),
+                    );
+                }}
+                onRemoveAttribute={(index) => {
+                    setEditAttributes((prev) =>
+                        prev.filter((_, i) => i !== index),
+                    );
+                }}
+                sortedAttributesCount={sortedAttributes.length}
+                error={editError}
+                onDismissError={() => setEditError(null)}
                 initialFocusRef={editNameRef}
-                footer={
-                    <div className="flex items-center justify-end gap-2">
-                        <button
-                            type="button"
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-4 py-2 text-sm font-medium text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            onClick={() => setEditOpen(false)}
-                            disabled={updateModifierMutation.isPending}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            className="rounded-lg bg-purple-600/30 px-4 py-2 text-sm font-medium text-purple-100 transition-colors cursor-pointer hover:bg-purple-600/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                            onClick={() => {
-                                setEditError(null);
-                                const trimmed = editName.trim();
-                                if (!trimmed) {
-                                    setEditError("Modifier name is required.");
-                                    return;
-                                }
-                                if (!editTarget) {
-                                    setEditError("No modifier selected.");
-                                    return;
-                                }
-
-                                const flat = parseRequiredNumber(editFlatBonus);
-                                if (flat === null) {
-                                    setEditError("Flat bonus is required.");
-                                    return;
-                                }
-
-                                const percent =
-                                    parseRequiredNumber(editPercentBonus);
-                                if (percent === null) {
-                                    setEditError("Additive bonus is required.");
-                                    return;
-                                }
-
-                                const mult = parseRequiredNumber(
-                                    editMultiplicativeBonus,
-                                );
-                                if (mult === null) {
-                                    setEditError(
-                                        "Multiplicative bonus is required.",
-                                    );
-                                    return;
-                                }
-
-                                const inputPercent =
-                                    parseRequiredNumber(editInputPercent);
-                                if (inputPercent === null) {
-                                    setEditError("Input bonus is required.");
-                                    return;
-                                }
-
-                                const outputPercent =
-                                    parseRequiredNumber(editOutputPercent);
-                                if (outputPercent === null) {
-                                    setEditError("Output bonus is required.");
-                                    return;
-                                }
-
-                                const attributesErr = validateAttributeBonuses(
-                                    editAttributes,
-                                    "Attributes",
-                                );
-                                if (attributesErr) {
-                                    setEditError(attributesErr);
-                                    return;
-                                }
-
-                                updateModifierMutation.mutate({
-                                    name: trimmed,
-                                    description: editDescription.trim()
-                                        ? editDescription.trim()
-                                        : null,
-                                    flatBonus: flat,
-                                    percentBonus: percent,
-                                    multiplicativeBonus: mult,
-                                    inputPercent,
-                                    outputPercent,
-                                    attributes: editAttributes.map((a) => ({
-                                        puid: a.puid,
-                                        flatBonus: Number(a.flatBonus),
-                                        percentBonus: Number(a.percentBonus),
-                                        multiplicativeBonus: Number(
-                                            a.multiplicativeBonus,
-                                        ),
-                                    })),
-                                });
-                            }}
-                            disabled={
-                                updateModifierMutation.isPending ||
-                                !canEdit ||
-                                !editTarget
-                            }
-                        >
-                            {updateModifierMutation.isPending
-                                ? "Saving..."
-                                : "Save"}
-                        </button>
-                    </div>
+                submitting={updateModifierMutation.isPending}
+                submitDisabled={
+                    updateModifierMutation.isPending || !canEdit || !editTarget
                 }
-            >
-                <div className="flex flex-col gap-4">
-                    <ErrorDisplay
-                        errors={
-                            editError
-                                ? [
-                                      {
-                                          id: "edit-error",
-                                          message: editError,
-                                          onDismiss: () => setEditError(null),
-                                      },
-                                  ]
-                                : []
-                        }
-                    />
+                onCancel={() => setEditOpen(false)}
+                AttributeDropDown={AttributeDropDown}
+                onSubmit={() => {
+                    setEditError(null);
+                    const trimmed = editName.trim();
+                    if (!trimmed) {
+                        setEditError("Modifier name is required.");
+                        return;
+                    }
+                    if (!editTarget) {
+                        setEditError("No modifier selected.");
+                        return;
+                    }
 
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Name
-                        </label>
-                        <input
-                            ref={editNameRef}
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={updateModifierMutation.isPending}
-                        />
-                    </div>
+                    const flat = parseRequiredNumber(editFlatBonus);
+                    if (flat === null) {
+                        setEditError("Flat bonus is required.");
+                        return;
+                    }
 
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-slate-200">
-                            Description (Optional)
-                        </label>
-                        <textarea
-                            value={editDescription}
-                            onChange={(e) => setEditDescription(e.target.value)}
-                            placeholder="A brief description about this modifier..."
-                            rows={3}
-                            className="resize-none rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                            disabled={updateModifierMutation.isPending}
-                        />
-                    </div>
+                    const percent = parseRequiredNumber(editPercentBonus);
+                    if (percent === null) {
+                        setEditError("Additive bonus is required.");
+                        return;
+                    }
 
-                    <div className="flex flex-col gap-6">
-                        <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                            <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-purple-400">
-                                <IconGauge size={16} />
-                                Speed Modifiers
-                            </div>
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-sm font-medium text-slate-200">
-                                        Flat bonus
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="any"
-                                        value={editFlatBonus}
-                                        onChange={(e) =>
-                                            setEditFlatBonus(e.target.value)
-                                        }
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={
-                                            updateModifierMutation.isPending
-                                        }
-                                    />
-                                </div>
+                    const mult = parseRequiredNumber(editMultiplicativeBonus);
+                    if (mult === null) {
+                        setEditError("Multiplicative bonus is required.");
+                        return;
+                    }
 
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-sm font-medium text-slate-200">
-                                        Additive bonus
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="any"
-                                        value={editPercentBonus}
-                                        onChange={(e) =>
-                                            setEditPercentBonus(e.target.value)
-                                        }
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={
-                                            updateModifierMutation.isPending
-                                        }
-                                    />
-                                </div>
+                    const inputPercent = parseRequiredNumber(editInputPercent);
+                    if (inputPercent === null) {
+                        setEditError("Input bonus is required.");
+                        return;
+                    }
 
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-sm font-medium text-slate-200">
-                                        Multiplicative bonus
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="any"
-                                        value={editMultiplicativeBonus}
-                                        onChange={(e) =>
-                                            setEditMultiplicativeBonus(
-                                                e.target.value,
-                                            )
-                                        }
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={
-                                            updateModifierMutation.isPending
-                                        }
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                    const outputPercent =
+                        parseRequiredNumber(editOutputPercent);
+                    if (outputPercent === null) {
+                        setEditError("Output bonus is required.");
+                        return;
+                    }
 
-                        <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                            <div className="flex items-center gap-2 mb-4 text-xs font-semibold uppercase tracking-wide text-emerald-400">
-                                <IconPackage size={16} />
-                                Yield Modifiers
-                            </div>
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-sm font-medium text-slate-200">
-                                        Input bonus
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="any"
-                                        value={editInputPercent}
-                                        onChange={(e) =>
-                                            setEditInputPercent(e.target.value)
-                                        }
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={
-                                            updateModifierMutation.isPending
-                                        }
-                                    />
-                                </div>
+                    const attributesErr = validateAttributeBonuses(
+                        editAttributes,
+                        "Attributes",
+                    );
+                    if (attributesErr) {
+                        setEditError(attributesErr);
+                        return;
+                    }
 
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-sm font-medium text-slate-200">
-                                        Output bonus
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="any"
-                                        value={editOutputPercent}
-                                        onChange={(e) =>
-                                            setEditOutputPercent(e.target.value)
-                                        }
-                                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                        disabled={
-                                            updateModifierMutation.isPending
-                                        }
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-4">
-                        <div className="flex items-center justify-between gap-3 mb-4">
-                            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-blue-400">
-                                <IconSettings size={16} />
-                                Attribute Bonuses
-                            </div>
-                            <button
-                                type="button"
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                onClick={() => {
-                                    const used = new Set(
-                                        editAttributes.map((a) => a.puid),
-                                    );
-                                    const nextPuid = pickDefaultAttributePuid(
-                                        sortedAttributes,
-                                        used,
-                                    );
-                                    if (!nextPuid) return;
-                                    setEditAttributes((prev) => [
-                                        ...prev,
-                                        {
-                                            puid: nextPuid,
-                                            flatBonus: 0,
-                                            percentBonus: 0,
-                                            multiplicativeBonus: 0,
-                                        },
-                                    ]);
-                                }}
-                                disabled={
-                                    updateModifierMutation.isPending ||
-                                    sortedAttributes.length === 0
-                                }
-                                title={
-                                    sortedAttributes.length === 0
-                                        ? "Create attributes first"
-                                        : "Add attribute"
-                                }
-                            >
-                                <IconPlus size={16} />
-                                Add
-                            </button>
-                        </div>
-
-                        <div className="mt-3 flex flex-col gap-2">
-                            {editAttributes.length === 0 && (
-                                <div className="text-sm text-slate-500">
-                                    No attributes
-                                </div>
-                            )}
-                            {editAttributes.map((row, idx) => (
-                                <div
-                                    key={`edit-attr-${idx}`}
-                                    className="flex flex-col gap-1"
-                                >
-                                    <label className="text-sm font-small text-slate-200">
-                                        Attribute
-                                    </label>
-                                    <div className="flex flex-row gap-1">
-                                        <div className="flex flex-col min-w-0 flex-1">
-                                            <div>
-                                                <AttributeDropDown
-                                                    value={row.puid}
-                                                    disabled={
-                                                        updateModifierMutation.isPending
-                                                    }
-                                                    onSelect={(next) => {
-                                                        setEditAttributes(
-                                                            (prev) =>
-                                                                prev.map(
-                                                                    (p, i) =>
-                                                                        i ===
-                                                                        idx
-                                                                            ? {
-                                                                                  ...p,
-                                                                                  puid: next,
-                                                                              }
-                                                                            : p,
-                                                                ),
-                                                        );
-                                                    }}
-                                                />
-                                            </div>
-                                            <div className="flex flex-row gap-2 mt-1 w-full overflow-hidden">
-                                                <div className="min-w-0 flex-1 flex flex-col gap-1">
-                                                    <label className="text-sm font-small text-slate-200">
-                                                        Flat bonus
-                                                    </label>
-                                                    <input
-                                                        value={String(
-                                                            row.flatBonus,
-                                                        )}
-                                                        onChange={(e) => {
-                                                            const next = Number(
-                                                                e.target.value,
-                                                            );
-                                                            setEditAttributes(
-                                                                (prev) =>
-                                                                    prev.map(
-                                                                        (
-                                                                            p,
-                                                                            i,
-                                                                        ) =>
-                                                                            i ===
-                                                                            idx
-                                                                                ? {
-                                                                                      ...p,
-                                                                                      flatBonus:
-                                                                                          next,
-                                                                                  }
-                                                                                : p,
-                                                                    ),
-                                                            );
-                                                        }}
-                                                        inputMode="decimal"
-                                                        placeholder="Flat"
-                                                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                                        disabled={
-                                                            updateModifierMutation.isPending
-                                                        }
-                                                    />
-                                                </div>
-                                                <div className="min-w-0 flex-1 flex flex-col gap-1">
-                                                    <label className="text-sm font-small text-slate-200">
-                                                        Additive bonus
-                                                    </label>
-                                                    <input
-                                                        value={String(
-                                                            row.percentBonus,
-                                                        )}
-                                                        onChange={(e) => {
-                                                            const next = Number(
-                                                                e.target.value,
-                                                            );
-                                                            setEditAttributes(
-                                                                (prev) =>
-                                                                    prev.map(
-                                                                        (
-                                                                            p,
-                                                                            i,
-                                                                        ) =>
-                                                                            i ===
-                                                                            idx
-                                                                                ? {
-                                                                                      ...p,
-                                                                                      percentBonus:
-                                                                                          next,
-                                                                                  }
-                                                                                : p,
-                                                                    ),
-                                                            );
-                                                        }}
-                                                        inputMode="decimal"
-                                                        placeholder="Additive"
-                                                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                                        disabled={
-                                                            updateModifierMutation.isPending
-                                                        }
-                                                    />
-                                                </div>
-                                                <div className="min-w-0 flex-1 flex flex-col gap-1">
-                                                    <label className="text-sm font-small text-slate-200">
-                                                        Multiplicative bonus
-                                                    </label>
-                                                    <input
-                                                        value={String(
-                                                            row.multiplicativeBonus,
-                                                        )}
-                                                        onChange={(e) => {
-                                                            const next = Number(
-                                                                e.target.value,
-                                                            );
-                                                            setEditAttributes(
-                                                                (prev) =>
-                                                                    prev.map(
-                                                                        (
-                                                                            p,
-                                                                            i,
-                                                                        ) =>
-                                                                            i ===
-                                                                            idx
-                                                                                ? {
-                                                                                      ...p,
-                                                                                      multiplicativeBonus:
-                                                                                          next,
-                                                                                  }
-                                                                                : p,
-                                                                    ),
-                                                            );
-                                                        }}
-                                                        inputMode="decimal"
-                                                        placeholder="Multiplicative"
-                                                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
-                                                        disabled={
-                                                            updateModifierMutation.isPending
-                                                        }
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300 transition-colors cursor-pointer hover:border-red-500/60 hover:bg-slate-800/60 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:cursor-not-allowed disabled:opacity-60"
-                                            onClick={() =>
-                                                setEditAttributes((prev) =>
-                                                    prev.filter(
-                                                        (_, i) => i !== idx,
-                                                    ),
-                                                )
-                                            }
-                                            disabled={
-                                                updateModifierMutation.isPending
-                                            }
-                                            title="Remove"
-                                            aria-label="Remove attribute"
-                                        >
-                                            <IconTrash size={18} />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </Popup>
+                    updateModifierMutation.mutate({
+                        name: trimmed,
+                        description: editDescription.trim()
+                            ? editDescription.trim()
+                            : null,
+                        flatBonus: flat,
+                        percentBonus: percent,
+                        multiplicativeBonus: mult,
+                        inputPercent,
+                        outputPercent,
+                        attributes: editAttributes.map((a) => ({
+                            puid: a.puid,
+                            flatBonus: Number(a.flatBonus),
+                            percentBonus: Number(a.percentBonus),
+                            multiplicativeBonus: Number(a.multiplicativeBonus),
+                        })),
+                    });
+                }}
+            />
         </ProjectPageLayout>
     );
 }

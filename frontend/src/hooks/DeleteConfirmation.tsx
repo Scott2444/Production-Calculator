@@ -56,15 +56,18 @@ export function useDeleteConfirmation<TId extends string = string>(
         setConfirmingId(id);
     }, []);
 
-    const confirmOrRequest = useCallback((id: TId, onConfirm: () => void) => {
-        setConfirmingId((current) => {
-            if (current === id) {
+    const confirmOrRequest = useCallback(
+        (id: TId, onConfirm: () => void) => {
+            if (confirmingId === id) {
+                setConfirmingId(null);
                 onConfirm();
-                return null;
+                return;
             }
-            return id;
-        });
-    }, []);
+
+            setConfirmingId(id);
+        },
+        [confirmingId],
+    );
 
     useEffect(() => {
         reset();
