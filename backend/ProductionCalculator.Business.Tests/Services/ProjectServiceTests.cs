@@ -27,7 +27,7 @@ public class ProjectServiceTests
         };
     }
 
-    private static Project CreateProject(int id = 1, int userId = 1, string puid = "projPuid", string name = "Project")
+    private static Project CreateProject(int id = 1, int userId = 1, string puid = "projPuid", string name = "Project", string? aliasPuid = null, int aliasCount = 0)
     {
         return new Project
         {
@@ -37,6 +37,8 @@ public class ProjectServiceTests
             Name = name,
             Description = "desc",
             Is_Public = false,
+            Alias_Project_Puid = aliasPuid,
+            Alias_Count = aliasCount,
             Created_At = DateTime.UtcNow,
             Last_Updated = DateTime.UtcNow
         };
@@ -132,6 +134,27 @@ public class ProjectServiceTests
 
         Assert.Equal(ServiceStatus.Created201, result.Status);
         A.CallTo(() => repo.AddProject(A<Project>._)).MustHaveHappenedOnceExactly();
+        A.CallTo(() => repo.IncrementAliasCount(A<string>._)).MustNotHaveHappened();
+    }
+
+    [Fact]
+    public async Task AddProject_WithAlias_IncrementsAliasCount()
+    {
+        var user = CreateUser();
+        var currentUser = A.Fake<ICurrentUserService>();
+        A.CallTo(() => currentUser.UserPuid).Returns(user.Puid);
+        var repo = A.Fake<IProjectRepository>();
+        var userRepo = A.Fake<IUserRepository>();
+        A.CallTo(() => userRepo.GetByPuid(user.Puid)).Returns(user);
+        A.CallTo(() => repo.GetProjectsByUserId(user.User_Id)).Returns(new List<Project>());
+        A.CallTo(() => repo.GetProjectByPuid("alias")).Returns(CreateProject(id: 2, userId: user.User_Id, puid: "alias"));
+        A.CallTo(() => repo.PuidExists(A<string>._)).Returns(false);
+        var service = CreateService(currentUser, repo, userRepo);
+
+        var result = await service.AddProject("name", "desc", false, "alias");
+
+        Assert.Equal(ServiceStatus.Created201, result.Status);
+        A.CallTo(() => repo.IncrementAliasCount("alias")).MustHaveHappenedOnceExactly();
     }
 
     // UpdateProject Tests
@@ -203,6 +226,73 @@ public class ProjectServiceTests
         Assert.Equal(ServiceStatus.Ok200, result.Status);
         Assert.Equal("NewName", project.Name);
         A.CallTo(() => repo.UpdateProject(project)).MustHaveHappenedOnceExactly();
+        A.CallTo(() => repo.IncrementAliasCount(A<string>._)).MustNotHaveHappened();
+        A.CallTo(() => repo.DecrementAliasCount(A<string>._)).MustNotHaveHappened();
+    }
+
+    [Fact]
+    public async Task UpdateProject_AliasAdded_IncrementsAliasCount()
+    {
+        var user = CreateUser();
+        var currentUser = A.Fake<ICurrentUserService>();
+        A.CallTo(() => currentUser.UserPuid).Returns(user.Puid);
+        var repo = A.Fake<IProjectRepository>();
+        var userRepo = A.Fake<IUserRepository>();
+        A.CallTo(() => userRepo.GetByPuid(user.Puid)).Returns(user);
+        var project = CreateProject(id: 1, puid: "puid", aliasPuid: null);
+        A.CallTo(() => repo.GetProjectByPuid("puid")).Returns(project);
+        A.CallTo(() => repo.GetProjectByPuid("newAlias")).Returns(CreateProject(id: 2, userId: user.User_Id, puid: "newAlias"));
+        A.CallTo(() => repo.GetProjectsByUserId(user.User_Id)).Returns(new List<Project> { project });
+        var service = CreateService(currentUser, repo, userRepo);
+
+        var result = await service.UpdateProject("puid", "NewName", "desc", false, "newAlias");
+
+        Assert.Equal(ServiceStatus.Ok200, result.Status);
+        A.CallTo(() => repo.IncrementAliasCount("newAlias")).MustHaveHappenedOnceExactly();
+        A.CallTo(() => repo.DecrementAliasCount(A<string>._)).MustNotHaveHappened();
+    }
+
+    [Fact]
+    public async Task UpdateProject_AliasRemoved_DecrementsAliasCount()
+    {
+        var user = CreateUser();
+        var currentUser = A.Fake<ICurrentUserService>();
+        A.CallTo(() => currentUser.UserPuid).Returns(user.Puid);
+        var repo = A.Fake<IProjectRepository>();
+        var userRepo = A.Fake<IUserRepository>();
+        A.CallTo(() => userRepo.GetByPuid(user.Puid)).Returns(user);
+        var project = CreateProject(id: 1, puid: "puid", aliasPuid: "oldAlias");
+        A.CallTo(() => repo.GetProjectByPuid("puid")).Returns(project);
+        A.CallTo(() => repo.GetProjectsByUserId(user.User_Id)).Returns(new List<Project> { project });
+        var service = CreateService(currentUser, repo, userRepo);
+
+        var result = await service.UpdateProject("puid", "NewName", "desc", false, null);
+
+        Assert.Equal(ServiceStatus.Ok200, result.Status);
+        A.CallTo(() => repo.DecrementAliasCount("oldAlias")).MustHaveHappenedOnceExactly();
+        A.CallTo(() => repo.IncrementAliasCount(A<string>._)).MustNotHaveHappened();
+    }
+
+    [Fact]
+    public async Task UpdateProject_AliasChanged_UpdatesBothAliasCounts()
+    {
+        var user = CreateUser();
+        var currentUser = A.Fake<ICurrentUserService>();
+        A.CallTo(() => currentUser.UserPuid).Returns(user.Puid);
+        var repo = A.Fake<IProjectRepository>();
+        var userRepo = A.Fake<IUserRepository>();
+        A.CallTo(() => userRepo.GetByPuid(user.Puid)).Returns(user);
+        var project = CreateProject(id: 1, puid: "puid", aliasPuid: "oldAlias");
+        A.CallTo(() => repo.GetProjectByPuid("puid")).Returns(project);
+        A.CallTo(() => repo.GetProjectByPuid("newAlias")).Returns(CreateProject(id: 2, userId: user.User_Id, puid: "newAlias"));
+        A.CallTo(() => repo.GetProjectsByUserId(user.User_Id)).Returns(new List<Project> { project });
+        var service = CreateService(currentUser, repo, userRepo);
+
+        var result = await service.UpdateProject("puid", "NewName", "desc", false, "newAlias");
+
+        Assert.Equal(ServiceStatus.Ok200, result.Status);
+        A.CallTo(() => repo.DecrementAliasCount("oldAlias")).MustHaveHappenedOnceExactly();
+        A.CallTo(() => repo.IncrementAliasCount("newAlias")).MustHaveHappenedOnceExactly();
     }
 
     // GetProjectByPuid Tests
@@ -337,6 +427,22 @@ public class ProjectServiceTests
         var result = await service.DeleteProject("puid");
 
         Assert.Equal(ServiceStatus.NoContent204, result.Status);
+        A.CallTo(() => repo.DecrementAliasCount(A<string>._)).MustNotHaveHappened();
+    }
+
+    [Fact]
+    public async Task DeleteProject_WithAlias_DecrementsAliasCount()
+    {
+        var project = CreateProject(id: 1, puid: "puid", aliasPuid: "alias");
+        var repo = A.Fake<IProjectRepository>();
+        A.CallTo(() => repo.GetProjectByPuid("puid")).Returns(project);
+        A.CallTo(() => repo.DeleteProject(1)).Returns(true);
+        var service = CreateService(A.Fake<ICurrentUserService>(), repo, A.Fake<IUserRepository>());
+
+        var result = await service.DeleteProject("puid");
+
+        Assert.Equal(ServiceStatus.NoContent204, result.Status);
+        A.CallTo(() => repo.DecrementAliasCount("alias")).MustHaveHappenedOnceExactly();
     }
 
     // ResolveProject Tests

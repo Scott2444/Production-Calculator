@@ -6,6 +6,8 @@ namespace ProductionCalculator.Business.Interfaces
     {
         Task AddProject(Project project);
         Task UpdateProject(Project project);
+        Task IncrementAliasCount(string puid);
+        Task DecrementAliasCount(string puid);
         Task<Project?> GetProjectById(int id);
         Task<Project?> GetProjectByPuid(string puid);
         Task<List<Project>> GetProjectsByUserId(int userId);

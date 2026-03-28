@@ -74,11 +74,13 @@ namespace ProductionCalculator.Business.Services
                 Description = description ?? string.Empty,
                 Is_Public = isPublic ?? false,
                 Alias_Project_Puid = aliasProjectPuid,
+                Alias_Count = 0,
                 Created_At = DateTime.UtcNow,
                 Last_Updated = DateTime.UtcNow
             };
 
             await _repo.AddProject(project);
+            await ApplyAliasCountDelta(null, project.Alias_Project_Puid);
             _logger.LogInformation("Project state change: change: Project '{ProjectName}' (PUID: {ProjectPuid}) created by user {UserPuid}.", project.Name, project.Puid, user.Puid);
             return ServiceResult<ProjectResponse>.SuccessResult(MapToResponse(project, user.Username), ServiceStatus.Created201);
         }
@@ -110,6 +112,7 @@ namespace ProductionCalculator.Business.Services
             name = TruncateHelper.TruncateString(name, 255);
             description = TruncateHelper.TruncateStringNullable(description, 1000);
 
+            var previousAliasProjectPuid = project.Alias_Project_Puid;
             project.Name = name;
             project.Description = description;
             project.Is_Public = isPublic ?? false;
@@ -117,6 +120,7 @@ namespace ProductionCalculator.Business.Services
             project.Last_Updated = DateTime.UtcNow;
 
             await _repo.UpdateProject(project);
+            await ApplyAliasCountDelta(previousAliasProjectPuid, project.Alias_Project_Puid);
             _logger.LogInformation("Project state change: change: Project '{ProjectName}' (PUID: {ProjectPuid}) updated by user {UserPuid}.", project.Name, project.Puid, user.Puid);
             return ServiceResult<ProjectResponse>.SuccessResult(MapToResponse(project, user.Username), ServiceStatus.Ok200);
         }
@@ -150,6 +154,8 @@ namespace ProductionCalculator.Business.Services
             var project = await _repo.GetProjectByPuid(puid);
             if (project == null) return ServiceResult.Fail(ServiceStatus.NotFound404, $"Project with PUID {puid} not found.");
 
+            var previousAliasProjectPuid = project.Alias_Project_Puid;
+
             var success = await _repo.DeleteProject(project.Project_Id);
             if (!success)
             {
@@ -157,6 +163,7 @@ namespace ProductionCalculator.Business.Services
                 return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete project.");
             }
 
+            await ApplyAliasCountDelta(previousAliasProjectPuid, null);
             _logger.LogInformation("Project state change: Project '{ProjectName}' (PUID: {ProjectPuid}) deleted.", project.Name, project.Puid);
             return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
         }
@@ -212,6 +219,21 @@ namespace ProductionCalculator.Business.Services
             if (aliasProject == null) return false;
             if (aliasProject.User_Id != userId && !aliasProject.Is_Public) return false; // Check authorization
             return true;
+        }
+
+        private async Task ApplyAliasCountDelta(string? previousAliasProjectPuid, string? newAliasProjectPuid)
+        {
+            if (string.Equals(previousAliasProjectPuid, newAliasProjectPuid, StringComparison.Ordinal)) return;
+
+            if (!string.IsNullOrWhiteSpace(previousAliasProjectPuid))
+            {
+                await _repo.DecrementAliasCount(previousAliasProjectPuid);
+            }
+
+            if (!string.IsNullOrWhiteSpace(newAliasProjectPuid))
+            {
+                await _repo.IncrementAliasCount(newAliasProjectPuid);
+            }
         }
     }
 }

@@ -54,6 +54,11 @@ namespace ProductionCalculator.Data.Configurations
             
             builder.Property(u => u.Alias_Project_Puid)
                 .HasColumnName("alias_project_puid");
+
+            builder.Property(u => u.Alias_Count)
+                .HasColumnName("alias_count")
+                .IsRequired()
+                .HasDefaultValue(0);
         }
     }
 }
