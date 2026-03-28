@@ -388,7 +388,7 @@ namespace ProductionCalculator.Business.Services
                 foreach (var rp in relatedRecipeProducts)
                 {
                     // Only calculate flow from outputs of recipes
-                    if (rp.Is_Input && rate == 0.0)
+                    if (rp.Is_Input)
                         continue;
                     double flow = rp.Quantity * rate;
                     if (!productFlowRates.ContainsKey(rp.Product_Id))
