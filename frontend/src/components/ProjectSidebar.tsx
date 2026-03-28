@@ -3,11 +3,9 @@
 import React, { useMemo, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useRouteParams } from "@/hooks/useRouteParams";
-import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/context/AuthContext";
 import { useProject } from "@/context/ProjectContext";
-import { useProtectedApi } from "@/lib/api";
-import { fetchWorkflows, type Workflow } from "@/lib/workflow";
+import { type Workflow } from "@/lib/workflow";
+import { useWorkflowsQuery } from "@/hooks/useQueries";
 import {
     IconAdjustments,
     IconBox,
@@ -74,17 +72,10 @@ export default function ProjectSidebar() {
     const { username: routeUsername, projectName: routeProjectName } =
         useRouteParams();
 
-    const { loggedIn } = useAuth();
     const { projectId, isOwner } = useProject();
-    const protectedApi = useProtectedApi();
     const [collapsed, setCollapsed] = useState(false);
 
-    const workflowsQuery = useQuery({
-        queryKey: ["sidebar-workflows", projectId],
-        queryFn: () => fetchWorkflows(projectId, protectedApi),
-        enabled: Boolean(projectId) && isOwner,
-        staleTime: 60 * 1000,
-    });
+    const workflowsQuery = useWorkflowsQuery(projectId, { enabled: isOwner });
 
     const workflows = useMemo(() => {
         const entries = coerceWorkflows(workflowsQuery.data);

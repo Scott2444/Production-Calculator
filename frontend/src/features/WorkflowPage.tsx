@@ -813,9 +813,7 @@ export default function WorkflowPage() {
         setNodeMachinePuid(selectedProcessNode.machinePuid ?? fallbackMachine);
 
         const count =
-            selectedProcessNode.actualMachineCount ??
-            selectedProcessNode.calculatedMachineCount ??
-            0;
+            selectedProcessNode.actualMachineCount ?? 0;
         setNodeActualMachineCount(`${count}`);
         setNodeModifierPuids(selectedProcessNode.modifierPuids ?? []);
     }, [selectedProcessNode, compatibleMachines]);

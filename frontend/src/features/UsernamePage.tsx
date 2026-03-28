@@ -2,7 +2,6 @@
 
 import CreateProject from "@/components/CreateProject";
 import ErrorDisplay from "@/components/ErrorDisplay";
-import ProjectPageLayout from "@/components/ProjectPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useRouteParams } from "@/hooks/useRouteParams";
 import { useProtectedApi } from "@/lib/api";

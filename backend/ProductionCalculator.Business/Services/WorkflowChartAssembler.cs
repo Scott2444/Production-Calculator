@@ -273,45 +273,36 @@ namespace ProductionCalculator.Business.Services
             var productOutFlowRates = solverSupplyResult.ProductOutFlowRates;
             foreach (var productNode in chart.ProductNodes)
             {
-                var specialCase = false;
+                var isTarget = chart.Targets.Any(t => t.Product_Id == productNode.Product_Id);
                 // Special cases for external and target product nodes
-                if (productNode.Is_External)
+                if (productNode.Is_External || isTarget)
                 {
-                    // For external nodes, the flow rate out is determined by the solver supply using "import recipe"
-                    // The actual flow rate in is determined by the user and should not be overwritten
-                    // Actual flow rate out is the flow from the solver supply result
-                    productNode.Actual_Flow_Rate_Out = productInFlowRates.ContainsKey(productNode.Product_Id) ? productInFlowRates[productNode.Product_Id] : 0.0;
-                    specialCase = true;
-                }
-                if (chart.Targets.Any(t => t.Product_Id == productNode.Product_Id))
-                {
-                    // For target product nodes, the flow rate in is determined by the solver supply using "sink recipe"
-                    // Actual flow rate out is the flow from the solver supply result
-                    productNode.Actual_Flow_Rate_Out = productOutFlowRates.ContainsKey(productNode.Product_Id) ? productOutFlowRates[productNode.Product_Id] : 0.0;
-                    specialCase = true;
-                }
-                if (specialCase)
-                {
-                    continue; // Skip the rest of the loop to avoid overwriting the special case flow rates
-                }
-
-                // In
-                if (productFlowRateIn.ContainsKey(productNode.Workflow_Product_Node_Id))
-                {
-                    productNode.Actual_Flow_Rate_In = productFlowRateIn[productNode.Workflow_Product_Node_Id];
+                    if (isTarget)
+                    {
+                        // For target product nodes, the flow rate in is determined by the solver supply using "sink recipe"
+                        // Actual flow rate out is the flow from the solver supply result
+                        productNode.Actual_Flow_Rate_Out = productOutFlowRates.ContainsKey(productNode.Product_Id) ? productOutFlowRates[productNode.Product_Id] : 0.0;
+                    }
+                    if (productNode.Is_External)
+                    {
+                        // For external nodes, the flow rate out is determined by the solver supply using "import recipe"
+                        // The actual flow rate in is determined by the user and should not be overwritten
+                        // Actual flow rate out is the flow from the solver supply result
+                        productNode.Actual_Flow_Rate_Out = productInFlowRates.ContainsKey(productNode.Product_Id) ? productInFlowRates[productNode.Product_Id] : 0.0;
+                    }
+                    if (isTarget && !productNode.Is_External)
+                    {
+                        // We cannot overwrite the user provided actual flow rate in for external nodes
+                        // Targets still need to have their actual flow rate in updated based on the solver supply result
+                        productNode.Actual_Flow_Rate_In = productFlowRateIn.TryGetValue(productNode.Workflow_Product_Node_Id, out double value) ? value : 0.0;
+                    }
                 }
                 else
                 {
-                    productNode.Actual_Flow_Rate_In = 0.0;
-                }
-                // Out
-                if (productFlowRateOut.ContainsKey(productNode.Workflow_Product_Node_Id))
-                {
-                    productNode.Actual_Flow_Rate_Out = productFlowRateOut[productNode.Workflow_Product_Node_Id];
-                }
-                else
-                {
-                    productNode.Actual_Flow_Rate_Out = 0.0;
+                    // In
+                    productNode.Actual_Flow_Rate_In = productFlowRateIn.TryGetValue(productNode.Workflow_Product_Node_Id, out double valueIn) ? valueIn : 0.0;
+                    // Out
+                    productNode.Actual_Flow_Rate_Out = productFlowRateOut.TryGetValue(productNode.Workflow_Product_Node_Id, out double valueOut) ? valueOut : 0.0;
                 }
             }
             return chart;
