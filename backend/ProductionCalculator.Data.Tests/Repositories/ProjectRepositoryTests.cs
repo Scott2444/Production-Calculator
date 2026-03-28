@@ -19,7 +19,7 @@ public class ProjectRepositoryTests
         return db;
     }
 
-    private static Project CreateProject(int id = 1, int userId = 1, string? puid = null, string name = "Test Project")
+    private static Project CreateProject(int id = 1, int userId = 1, string? puid = null, string name = "Test Project", string? aliasPuid = null, int aliasCount = 0)
     {
         return new Project
         {
@@ -29,6 +29,8 @@ public class ProjectRepositoryTests
             Name = name,
             Description = "Description",
             Is_Public = false,
+            Alias_Project_Puid = aliasPuid,
+            Alias_Count = aliasCount,
             Created_At = DateTime.UtcNow,
             Last_Updated = DateTime.UtcNow
         };
@@ -189,5 +191,36 @@ public class ProjectRepositoryTests
         var result = await repo.PuidExists("does-not-exist");
 
         Assert.False(result);
+    }
+
+    [Fact]
+    public async Task IncrementAliasCount_ProjectExists_IncrementsCount()
+    {
+        await using var db = CreateDbContext();
+        var repo = new ProjectRepository(db);
+        db.Set<Project>().Add(CreateProject(id: 1, puid: "alias", aliasCount: 0));
+        await db.SaveChangesAsync();
+
+        await repo.IncrementAliasCount("alias");
+
+        var result = await repo.GetProjectByPuid("alias");
+        Assert.NotNull(result);
+        Assert.Equal(1, result!.Alias_Count);
+    }
+
+    [Fact]
+    public async Task DecrementAliasCount_ProjectExists_DecrementsWithoutGoingBelowZero()
+    {
+        await using var db = CreateDbContext();
+        var repo = new ProjectRepository(db);
+        db.Set<Project>().Add(CreateProject(id: 1, puid: "alias", aliasCount: 1));
+        await db.SaveChangesAsync();
+
+        await repo.DecrementAliasCount("alias");
+        await repo.DecrementAliasCount("alias");
+
+        var result = await repo.GetProjectByPuid("alias");
+        Assert.NotNull(result);
+        Assert.Equal(0, result!.Alias_Count);
     }
 }

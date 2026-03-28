@@ -24,6 +24,16 @@ namespace ProductionCalculator.Data.Repositories
             await _db.SaveChangesAsync();
         }
 
+        public async Task IncrementAliasCount(string puid)
+        {
+            await AdjustAliasCount(puid, 1);
+        }
+
+        public async Task DecrementAliasCount(string puid)
+        {
+            await AdjustAliasCount(puid, -1);
+        }
+
         public async Task<Project?> GetProjectById(int id)
         {
             return await _db.Set<Project>().FindAsync(id);
@@ -47,6 +57,37 @@ namespace ProductionCalculator.Data.Repositories
         public async Task<bool> PuidExists(string puid)
         {
             return await _db.Set<Project>().AnyAsync(p => p.Puid == puid);
+        }
+
+        private async Task AdjustAliasCount(string puid, int delta)
+        {
+            if (string.IsNullOrWhiteSpace(puid)) return;
+
+            if (_db.Database.IsRelational())
+            {
+                if (delta >= 0)
+                {
+                    await _db.Database.ExecuteSqlInterpolatedAsync($@"
+                        update app.projects
+                        set alias_count = alias_count + {delta}
+                        where puid = {puid}");
+                }
+                else
+                {
+                    await _db.Database.ExecuteSqlInterpolatedAsync($@"
+                        update app.projects
+                        set alias_count = greatest(alias_count + {delta}, 0)
+                        where puid = {puid}");
+                }
+
+                return;
+            }
+
+            var project = await _db.Set<Project>().FirstOrDefaultAsync(p => p.Puid == puid);
+            if (project == null) return;
+
+            project.Alias_Count = Math.Max(project.Alias_Count + delta, 0);
+            await _db.SaveChangesAsync();
         }
     }
 }
