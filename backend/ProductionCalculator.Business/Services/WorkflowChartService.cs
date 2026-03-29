@@ -246,13 +246,6 @@ namespace ProductionCalculator.Business.Services
             var nodeChart = await _chartDataService.GetByWorkflowId(workflow.Workflow_Id);
             var projectObjects = await _projectDataService.GetProjectObjects(workflow.Project_Id);
 
-            // Check if chart is already up to date, early exit
-            if (_workflowChartValidator.WorkflowIsUpToDate(nodeChart, projectObjects))
-            {
-                var response = _workflowMapper.ToResponse(projectObjects, nodeChart);
-                return ServiceResult<WorkflowChartResponse>.SuccessResult(response, ServiceStatus.Ok200);
-            }
-
             // Keep any user specified values except anything that uses deleted components
             nodeChart = _workflowChartAssembler.PruneDeletedComponents(nodeChart, projectObjects);
 
