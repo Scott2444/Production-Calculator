@@ -41,6 +41,14 @@ namespace ProductionCalculator.API.Controllers
             return FromServiceResult(result);
         }
 
+        [Authorize(Policy = "IsUser")]
+        [HttpGet("search/public")]
+        public async Task<IActionResult> SearchPublicProjects([FromQuery] string query, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            var result = await _service.SearchPublicProjects(query, page, pageSize);
+            return FromServiceResult(result);
+        }
+
         [Authorize(Policy = "IsOwnerOrAdmin")]
         [HttpDelete("{projectPuid}")]
         public async Task<IActionResult> DeleteProject(string projectPuid)

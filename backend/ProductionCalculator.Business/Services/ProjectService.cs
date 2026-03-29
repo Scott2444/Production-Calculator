@@ -8,6 +8,8 @@ namespace ProductionCalculator.Business.Services
 {
     public class ProjectService : IProjectService
     {
+        private const int MaxSearchPageSize = 100;
+
         private readonly ICurrentUserService _currentUser;
         private readonly IProjectRepository _repo;
         private readonly IUserRepository _userRepo;
@@ -30,6 +32,7 @@ namespace ProductionCalculator.Business.Services
                 Description = project.Description,
                 IsPublic = project.Is_Public,
                 AliasProjectPuid = project.Alias_Project_Puid,
+                AliasCount = project.Alias_Count,
                 CreatedAt = project.Created_At,
                 UpdatedAt = project.Last_Updated
             };
@@ -147,6 +150,56 @@ namespace ProductionCalculator.Business.Services
             var projectResponses = projects.Select(p => MapToResponse(p, user.Username)).ToList();
             return ServiceResult<List<ProjectResponse>>.SuccessResult(projectResponses, ServiceStatus.Ok200);
         }
+
+        public async Task<ServiceResult<PublicProjectSearchPageResponse>> SearchPublicProjects(string query, int page, int pageSize)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return ServiceResult<PublicProjectSearchPageResponse>.Fail(ServiceStatus.BadRequest400, "Search query is required.");
+            }
+
+            if (page < 1)
+            {
+                return ServiceResult<PublicProjectSearchPageResponse>.Fail(ServiceStatus.BadRequest400, "Page must be at least 1.");
+            }
+
+            if (pageSize < 1 || pageSize > MaxSearchPageSize)
+            {
+                return ServiceResult<PublicProjectSearchPageResponse>.Fail(ServiceStatus.BadRequest400, $"Page size must be between 1 and {MaxSearchPageSize}.");
+            }
+
+            var normalizedQuery = query.Trim();
+            var (projects, totalCount) = await _repo.SearchPublicProjects(normalizedQuery, page, pageSize);
+
+            var ownerLookup = new Dictionary<int, string>();
+            foreach (var project in projects)
+            {
+                if (ownerLookup.ContainsKey(project.User_Id))
+                {
+                    continue;
+                }
+
+                var owner = await _userRepo.GetById(project.User_Id);
+                ownerLookup[project.User_Id] = owner?.Username ?? string.Empty;
+            }
+
+            var responses = projects
+                .Select(project => MapToResponse(project, ownerLookup.GetValueOrDefault(project.User_Id, string.Empty)))
+                .ToList();
+
+            var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);
+            var response = new PublicProjectSearchPageResponse
+            {
+                Projects = responses,
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = totalCount,
+                TotalPages = totalPages
+            };
+
+            return ServiceResult<PublicProjectSearchPageResponse>.SuccessResult(response, ServiceStatus.Ok200);
+        }
+
         public async Task<ServiceResult> DeleteProject(string puid)
         {
             if (string.IsNullOrWhiteSpace(puid)) return ServiceResult.Fail(ServiceStatus.BadRequest400);
