@@ -26,17 +26,7 @@ import { fetchAttributes } from "@/lib/attributes";
 import { fetchWorkflows, type Workflow } from "@/lib/workflow";
 import ReactMarkdown from "react-markdown";
 import { formatTimestamp } from "@/lib/timestamp";
-
-interface Project {
-    puid: string;
-    name: string;
-    description: string | null;
-    isPublic: boolean;
-    aliasProjectPuid: string | null;
-    ownerUsername: string;
-    createdAt: string;
-    updatedAt: string;
-}
+import { Project } from "@/types/projects";
 
 interface SummaryItem {
     label: string;

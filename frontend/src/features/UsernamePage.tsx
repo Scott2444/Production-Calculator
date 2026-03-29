@@ -11,21 +11,11 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { formatTimestamp } from "@/lib/timestamp";
 import NavBar from "@/components/NavBar";
+import { Project } from "@/types/projects";
 
 interface ResolvedProject {
     projectName: string;
     projectPuid: string;
-}
-
-interface Project {
-    puid: string;
-    name: string;
-    ownerUsername: string;
-    description: string | null;
-    isPublic: boolean;
-    aliasProjectPuid: string | null;
-    createdAt: string;
-    updatedAt: string;
 }
 
 interface UserProjectsData {
