@@ -156,7 +156,6 @@ export default function ExploreRoute() {
     const [aliasTarget, setAliasTarget] = useState<Project | null>(null);
     const [aliasName, setAliasName] = useState("");
     const [aliasDescription, setAliasDescription] = useState("");
-    const [aliasIsPublic, setAliasIsPublic] = useState(false);
     const [aliasError, setAliasError] = useState<string | null>(null);
     const aliasNameRef = useRef<HTMLInputElement>(null);
 
@@ -224,7 +223,6 @@ export default function ExploreRoute() {
             setAliasTarget(null);
             setAliasName("");
             setAliasDescription("");
-            setAliasIsPublic(false);
 
             await queryClient.invalidateQueries({
                 queryKey: ["projects", userId],
@@ -290,7 +288,6 @@ export default function ExploreRoute() {
         setAliasTarget(project);
         setAliasName(`${project.name} Alias`);
         setAliasDescription("");
-        setAliasIsPublic(false);
         setAliasError(null);
         setAliasOpen(true);
     }
@@ -318,7 +315,7 @@ export default function ExploreRoute() {
             description: aliasDescription.trim()
                 ? aliasDescription.trim()
                 : null,
-            isPublic: aliasIsPublic,
+            isPublic: false,
             aliasProjectPuid: target.puid,
         });
     }
@@ -585,7 +582,6 @@ export default function ExploreRoute() {
                         setAliasTarget(null);
                         setAliasName("");
                         setAliasDescription("");
-                        setAliasIsPublic(false);
                     }
                 }}
                 title="Create alias project"
@@ -665,10 +661,9 @@ export default function ExploreRoute() {
                     <label className="flex items-center gap-3 rounded-lg border border-slate-800 cursor-pointer bg-slate-900/40 px-3 py-2 text-sm text-slate-200">
                         <input
                             type="checkbox"
-                            checked={aliasIsPublic}
-                            onChange={(e) => setAliasIsPublic(e.target.checked)}
-                            disabled={createAliasMutation.isPending}
-                            className="h-4 w-4 accent-purple-500 cursor-pointer"
+                            checked={false}
+                            disabled={true}
+                            className="h-4 w-4 accent-purple-500 cursor-not-allowed"
                         />
                         <div className="min-w-0">
                             <div className="font-medium">Public project</div>

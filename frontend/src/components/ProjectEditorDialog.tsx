@@ -16,6 +16,7 @@ export interface ProjectEditorDialogProps {
     onNameChange: (value: string) => void;
     onDescriptionChange: (value: string) => void;
     onIsPublicChange: (value: boolean) => void;
+    alias: string | null;
     error: string | null;
     onDismissError: () => void;
     onSubmit: () => void;
@@ -36,6 +37,7 @@ export default function ProjectEditorDialog({
     onDescriptionChange,
     onIsPublicChange,
     error,
+    alias,
     onDismissError,
     onSubmit,
     onCancel,
@@ -128,8 +130,11 @@ export default function ProjectEditorDialog({
                         type="checkbox"
                         checked={isPublic}
                         onChange={(e) => onIsPublicChange(e.target.checked)}
-                        disabled={submitting}
-                        className="h-4 w-4 accent-purple-500 cursor-pointer"
+                        disabled={submitting || alias !== null}
+                        className={
+                            "h-4 w-4 accent-purple-500" +
+                            (alias !== null ? " cursor-not-allowed" : "")
+                        }
                     />
                     <div className="min-w-0">
                         <div className="font-medium">Public project</div>
