@@ -6,6 +6,9 @@
 
 /login /login/index.html 200
 /signup /signup/index.html 200
+/forgot-password /reset-password 301
+/reset-password /reset-password/index.html 200
+/change-password /change-password/index.html 200
 /verify /verify/index.html 200
 /docs /docs/index.html 200
 /explore /explore/index.html 200

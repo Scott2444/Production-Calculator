@@ -78,6 +78,14 @@ export default function LoginRoute() {
                             value={passwordEntry}
                             onChange={(e) => setPasswordEntry(e.target.value)}
                         />
+                        <div className="flex justify-end -mt-2">
+                            <Link
+                                to="/reset-password"
+                                className="text-sm text-purple-400 hover:text-purple-300 no-underline"
+                            >
+                                Forgot password?
+                            </Link>
+                        </div>
                         <button
                             type="submit"
                             className="w-full py-3 bg-purple-700 text-white rounded-md font-semibold cursor-pointer hover:bg-purple-600 transition-colors"
