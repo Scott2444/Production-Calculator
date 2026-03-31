@@ -59,6 +59,11 @@ namespace ProductionCalculator.Data.Configurations
                 .HasColumnName("alias_count")
                 .IsRequired()
                 .HasDefaultValue(0);
+
+            builder.Property(u => u.Search_Vector)
+                .HasColumnName("search_vector")
+                .HasColumnType("tsvector")
+                .ValueGeneratedOnAddOrUpdate();
         }
     }
 }

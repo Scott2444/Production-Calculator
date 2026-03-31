@@ -1,3 +1,5 @@
+import { Project } from "@/types/projects";
+
 export async function fetchProjects(
     userId: string,
     protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
@@ -108,4 +110,46 @@ export async function deleteProject(
         const message = "Failed to delete project.";
         throw new Error(message);
     }
+}
+
+export interface PublicProjectSearchResult {
+    projects: Project[];
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
+}
+
+export async function searchPublicProjects(
+    query: string,
+    page: number,
+    pageSize: number,
+    protectedApi: (input: RequestInfo, init?: RequestInit) => Promise<Response>,
+) {
+    const params = new URLSearchParams({
+        query,
+        page: String(page),
+        pageSize: String(pageSize),
+    });
+
+    const res = await protectedApi(`/projects/search/public?${params}`, {
+        method: "GET",
+    });
+
+    if (!res.ok) {
+        let message = "Failed to load projects.";
+        try {
+            const data = (await res.json()) as {
+                error?: string;
+                message?: string;
+            };
+            if (data?.error) message = data.error;
+            else if (data?.message) message = data.message;
+        } catch {
+            // ignore json parse errors
+        }
+        throw new Error(message);
+    }
+
+    return (await res.json()) as PublicProjectSearchResult;
 }

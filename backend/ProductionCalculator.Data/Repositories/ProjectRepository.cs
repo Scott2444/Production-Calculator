@@ -46,6 +46,23 @@ namespace ProductionCalculator.Data.Repositories
         {
             return await _db.Set<Project>().Where(p => p.User_Id == userId).ToListAsync();
         }
+
+        public async Task<(List<Project> Projects, int TotalCount)> SearchPublicProjects(string searchQuery, int page, int pageSize)
+        {
+            var normalizedQuery = (searchQuery ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(normalizedQuery))
+            {
+                return (new List<Project>(), 0);
+            }
+
+            if (string.Equals(_db.Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
+            {
+                return await SearchPublicProjectsPostgres(normalizedQuery, page, pageSize);
+            }
+
+            throw new NotSupportedException("SearchPublicProjects is only supported when using PostgreSQL.");
+        }
+
         public async Task<bool> DeleteProject(int id) {
             var project = await _db.Set<Project>().FindAsync(id);
             if (project == null) return false;
@@ -57,6 +74,47 @@ namespace ProductionCalculator.Data.Repositories
         public async Task<bool> PuidExists(string puid)
         {
             return await _db.Set<Project>().AnyAsync(p => p.Puid == puid);
+        }
+
+        private async Task<(List<Project> Projects, int TotalCount)> SearchPublicProjectsPostgres(string searchQuery, int page, int pageSize)
+        {
+            var offset = (page - 1) * pageSize;
+
+            var rankedQuery = _db.Set<Project>()
+                .AsNoTracking()
+                .Where(project => project.Is_Public)
+                .Select(project => new
+                {
+                    Project = project,
+                    SearchVector = project.Search_Vector
+                })
+                .Where(entry =>
+                    entry.SearchVector != null &&
+                    entry.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english", searchQuery)))
+                .Select(entry => new
+                {
+                    entry.Project,
+                    RelevanceScore = entry.SearchVector!.RankCoverDensity(EF.Functions.WebSearchToTsQuery("english", searchQuery)),
+                    PopularityScore = Math.Log(entry.Project.Alias_Count + 1.0)
+                });
+
+            var totalCount = await rankedQuery.CountAsync();
+
+            if (totalCount == 0)
+            {
+                return (new List<Project>(), 0);
+            }
+
+            var projects = await rankedQuery
+                .OrderByDescending(entry => entry.RelevanceScore + entry.PopularityScore)
+                .ThenByDescending(entry => entry.RelevanceScore)
+                .ThenBy(entry => entry.Project.Project_Id)
+                .Skip(offset)
+                .Take(pageSize)
+                .Select(entry => entry.Project)
+                .ToListAsync();
+
+            return (projects, totalCount);
         }
 
         private async Task AdjustAliasCount(string puid, int delta)

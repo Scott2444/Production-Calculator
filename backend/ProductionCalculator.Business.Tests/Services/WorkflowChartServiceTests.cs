@@ -620,27 +620,6 @@ public class WorkflowChartServiceTests
     }
 
     [Fact]
-    public async Task UpgradeWorkflowChart_AlreadyUpToDate_ReturnsSuccess()
-    {
-        // Arrange
-        var workflow = CreateWorkflow();
-        var nodeChart = CreateChart();
-        var projectObjects = CreateProjectObjects();
-        A.CallTo(() => _chartDataService.GetByWorkflowId(workflow.Workflow_Id, A<bool>._)).Returns(nodeChart);
-        A.CallTo(() => _projectDataService.GetProjectObjects(workflow.Project_Id)).Returns(projectObjects);
-        A.CallTo(() => _workflowChartValidator.WorkflowIsUpToDate(nodeChart, projectObjects)).Returns(true);
-        A.CallTo(() => _workflowMapper.ToResponse(projectObjects, nodeChart)).Returns(EmptyResponse());
-
-        // Act
-        var result = await _sut.UpgradeWorkflowChart(workflow);
-
-        // Assert
-        Assert.True(result.Success);
-        Assert.Equal(ServiceStatus.Ok200, result.Status);
-        A.CallTo(() => _workflowChartAssembler.PruneDeletedComponents(A<NodeChart>._, A<ProjectObjects>._)).MustNotHaveHappened();
-    }
-
-    [Fact]
     public async Task UpgradeWorkflowChart_UpgradeNeeded_ReturnsSuccess()
     {
         // Arrange

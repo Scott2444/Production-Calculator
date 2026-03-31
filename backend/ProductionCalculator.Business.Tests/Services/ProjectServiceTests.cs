@@ -378,6 +378,64 @@ public class ProjectServiceTests
         Assert.Equal(user.Username, result.Data![0].OwnerUsername);
     }
 
+    // SearchPublicProjects Tests
+    [Fact]
+    public async Task SearchPublicProjects_EmptyQuery_ReturnsBadRequest()
+    {
+        var service = CreateService(A.Fake<ICurrentUserService>(), A.Fake<IProjectRepository>(), A.Fake<IUserRepository>());
+
+        var result = await service.SearchPublicProjects("", 1, 20);
+
+        Assert.Equal(ServiceStatus.BadRequest400, result.Status);
+    }
+
+    [Fact]
+    public async Task SearchPublicProjects_InvalidPage_ReturnsBadRequest()
+    {
+        var service = CreateService(A.Fake<ICurrentUserService>(), A.Fake<IProjectRepository>(), A.Fake<IUserRepository>());
+
+        var result = await service.SearchPublicProjects("iron", 0, 20);
+
+        Assert.Equal(ServiceStatus.BadRequest400, result.Status);
+    }
+
+    [Fact]
+    public async Task SearchPublicProjects_InvalidPageSize_ReturnsBadRequest()
+    {
+        var service = CreateService(A.Fake<ICurrentUserService>(), A.Fake<IProjectRepository>(), A.Fake<IUserRepository>());
+
+        var result = await service.SearchPublicProjects("iron", 1, 101);
+
+        Assert.Equal(ServiceStatus.BadRequest400, result.Status);
+    }
+
+    [Fact]
+    public async Task SearchPublicProjects_ValidQuery_ReturnsPagedResults()
+    {
+        var owner = CreateUser(id: 1, puid: "ownerPuid");
+        var repo = A.Fake<IProjectRepository>();
+        var userRepo = A.Fake<IUserRepository>();
+        var project = CreateProject(id: 1, userId: 1, puid: "proj1", name: "Iron Factory", aliasCount: 7);
+
+        A.CallTo(() => repo.SearchPublicProjects("iron", 1, 20))
+            .Returns((new List<Project> { project }, 3));
+        A.CallTo(() => userRepo.GetById(1)).Returns(owner);
+
+        var service = CreateService(A.Fake<ICurrentUserService>(), repo, userRepo);
+
+        var result = await service.SearchPublicProjects("  iron  ", 1, 20);
+
+        Assert.Equal(ServiceStatus.Ok200, result.Status);
+        Assert.NotNull(result.Data);
+        Assert.Single(result.Data!.Projects);
+        Assert.Equal("proj1", result.Data.Projects[0].Puid);
+        Assert.Equal(owner.Username, result.Data.Projects[0].OwnerUsername);
+        Assert.Equal(7, result.Data.Projects[0].AliasCount);
+        Assert.Equal(3, result.Data.TotalCount);
+        Assert.Equal(1, result.Data.TotalPages);
+        A.CallTo(() => repo.SearchPublicProjects("iron", 1, 20)).MustHaveHappenedOnceExactly();
+    }
+
     // DeleteProject Tests
     [Fact]
     public async Task DeleteProject_EmptyPuid_ReturnsBadRequest()

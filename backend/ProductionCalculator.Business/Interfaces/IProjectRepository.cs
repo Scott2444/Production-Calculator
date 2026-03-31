@@ -11,6 +11,7 @@ namespace ProductionCalculator.Business.Interfaces
         Task<Project?> GetProjectById(int id);
         Task<Project?> GetProjectByPuid(string puid);
         Task<List<Project>> GetProjectsByUserId(int userId);
+        Task<(List<Project> Projects, int TotalCount)> SearchPublicProjects(string searchQuery, int page, int pageSize);
         Task<bool> DeleteProject(int id);
         Task<bool> PuidExists(string puid);
     }

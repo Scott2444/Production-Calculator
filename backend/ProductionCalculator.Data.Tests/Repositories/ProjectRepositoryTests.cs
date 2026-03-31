@@ -19,7 +19,7 @@ public class ProjectRepositoryTests
         return db;
     }
 
-    private static Project CreateProject(int id = 1, int userId = 1, string? puid = null, string name = "Test Project", string? aliasPuid = null, int aliasCount = 0)
+    private static Project CreateProject(int id = 1, int userId = 1, string? puid = null, string name = "Test Project", string? aliasPuid = null, int aliasCount = 0, bool isPublic = false)
     {
         return new Project
         {
@@ -28,7 +28,7 @@ public class ProjectRepositoryTests
             Puid = puid ?? $"puid{id}",
             Name = name,
             Description = "Description",
-            Is_Public = false,
+            Is_Public = isPublic,
             Alias_Project_Puid = aliasPuid,
             Alias_Count = aliasCount,
             Created_At = DateTime.UtcNow,
@@ -222,5 +222,14 @@ public class ProjectRepositoryTests
         var result = await repo.GetProjectByPuid("alias");
         Assert.NotNull(result);
         Assert.Equal(0, result!.Alias_Count);
+    }
+
+    [Fact]
+    public async Task SearchPublicProjects_NonPostgresProvider_ThrowsNotSupported()
+    {
+        await using var db = CreateDbContext();
+        var repo = new ProjectRepository(db);
+
+        await Assert.ThrowsAsync<NotSupportedException>(() => repo.SearchPublicProjects("search", 1, 20));
     }
 }

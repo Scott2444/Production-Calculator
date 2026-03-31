@@ -33,8 +33,21 @@ public class ProjectsControllerTests
             OwnerUsername = "testuser",
             Description = "desc",
             IsPublic = false,
+            AliasCount = 0,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
+        };
+    }
+
+    private static PublicProjectSearchPageResponse CreateSearchResponse()
+    {
+        return new PublicProjectSearchPageResponse
+        {
+            Projects = new List<ProjectResponse> { CreateProjectResponse(name: "Found") },
+            Page = 1,
+            PageSize = 20,
+            TotalCount = 1,
+            TotalPages = 1
         };
     }
 
@@ -145,6 +158,36 @@ public class ProjectsControllerTests
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(404, obj.StatusCode);
+    }
+
+    [Fact]
+    public async Task SearchPublicProjects_ValidRequest_ReturnsOk()
+    {
+        var service = A.Fake<IProjectService>();
+        var searchResult = CreateSearchResponse();
+        A.CallTo(() => service.SearchPublicProjects("iron", 1, 20))
+            .Returns(ServiceResult<PublicProjectSearchPageResponse>.SuccessResult(searchResult, ServiceStatus.Ok200));
+        var controller = CreateController(service);
+
+        var result = await controller.SearchPublicProjects("iron", 1, 20);
+
+        var obj = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(200, obj.StatusCode);
+        Assert.IsType<PublicProjectSearchPageResponse>(obj.Value);
+    }
+
+    [Fact]
+    public async Task SearchPublicProjects_InvalidRequest_ReturnsBadRequest()
+    {
+        var service = A.Fake<IProjectService>();
+        A.CallTo(() => service.SearchPublicProjects(A<string>._, A<int>._, A<int>._))
+            .Returns(ServiceResult<PublicProjectSearchPageResponse>.Fail(ServiceStatus.BadRequest400, "Search query is required."));
+        var controller = CreateController(service);
+
+        var result = await controller.SearchPublicProjects("", 1, 20);
+
+        var obj = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(400, obj.StatusCode);
     }
 
     [Fact]

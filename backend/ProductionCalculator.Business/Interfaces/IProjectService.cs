@@ -9,6 +9,7 @@ namespace ProductionCalculator.Business.Interfaces
         Task<ServiceResult<ProjectResponse>> UpdateProject(string projectPuid, string name, string? description, bool? isPublic, string? aliasProjectPuid);
         Task<ServiceResult<ProjectResponse>> GetProjectByPuid(string puid);
         Task<ServiceResult<List<ProjectResponse>>> GetProjectsByUserPuid(string userPuid);
+        Task<ServiceResult<PublicProjectSearchPageResponse>> SearchPublicProjects(string query, int page, int pageSize);
         Task<ServiceResult> DeleteProject(string puid);
         Task<ServiceResult<List<ProjectResponse>>> ResolveProject(string username, string? projectName);
     }

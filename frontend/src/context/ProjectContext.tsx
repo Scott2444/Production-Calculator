@@ -6,16 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "./AuthContext";
 import { fetchProject, resolveProject } from "@/lib/projects";
 import { useProtectedApi } from "@/lib/api";
-
-interface Project {
-    puid: string;
-    name: string;
-    description: string | null;
-    isPublic: boolean;
-    aliasProjectPuid: string | null;
-    createdAt: string;
-    updatedAt: string;
-}
+import { Project } from "@/types/projects";
 
 interface ProjectContextType {
     routeUsername: string;
