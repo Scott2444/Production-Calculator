@@ -1,0 +1,20 @@
+# Targets
+
+Targets define demanded output rates for selected products.
+
+## Structure
+
+Each target pairs:
+
+- Product
+- Desired rate
+
+## Behavior
+
+Updating targets re-runs demand solving and can reshape node rates and flow edges. <br/>
+If you have already filled out the current implementation of your factory,
+this action may be destructive as those process nodes may not be included in the new graph.
+
+## Guidance
+
+- Fill out targets first to create the graph shape

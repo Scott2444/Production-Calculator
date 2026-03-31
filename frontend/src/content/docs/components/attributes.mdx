@@ -1,0 +1,30 @@
+# Attributes
+
+Attributes are user-defined metrics attached to recipes, machines, and modifiers.
+
+Typical examples include:
+
+- Power usage
+- Pollution
+- Cost
+- Heat
+
+## Data
+
+- Name
+- Description
+- Unit
+
+Attributes are linked to recipes, machines, and modifiers. These links contain the numerical data.
+
+## Calculations
+
+Recipes and Machines can have base value. Modifiers can have a base value, additive scalar, and multiplicative scalar. <br/>
+The workflow calculation is per node: <br/>
+Attribute Value = (Recipe Value + Machine Value + ∑Modifier Value) x (1 + ∑Modifier Additive Scalar) x ∏Modifier Multiplicative Scalar
+
+More information available at [Formulas](/docs/calculation/formulas)
+
+## Design Note
+
+The current architecture intentionally keeps attributes off product entities to avoid graph-wide propagation ambiguity.

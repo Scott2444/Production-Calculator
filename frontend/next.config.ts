@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
         },
     }),
     trailingSlash: true,
+    pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
+    experimental: {
+        mdxRs: true,
+    },
     images: {
         unoptimized: true,
     },

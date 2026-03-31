@@ -1,0 +1,24 @@
+# Product Nodes
+
+Product nodes represent material flow state between process nodes.
+
+## Typical Fields
+
+- Product
+- Calculated flow rate (inflow and outflow are equal)
+- Actual inflow and outflow rates
+- External provided
+
+## Why Product Nodes Exist
+
+- In most factory games, products for multiple sources are accumulated onto a single bus and the total throughput is desired
+- It reduces the complexity of the workflow graphs. _Reduced edge count from NxM to N+M_
+
+## Interpretation
+
+- Less than ideal flow rate indicate bottlenecked supply
+- Positive net flow rate indiciate accumulation of products, potentially leading to a backlog
+
+## Related Pages
+
+- [External Products](/docs/projects/workflows/external-products)
