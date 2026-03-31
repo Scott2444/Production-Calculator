@@ -44,6 +44,11 @@ namespace ProductionCalculator.Business.Services
         {
             if (string.IsNullOrWhiteSpace(name)) return ServiceResult<ProjectResponse>.Fail(ServiceStatus.BadRequest400, "Project name is required.");
 
+            if (!string.IsNullOrEmpty(aliasProjectPuid) && isPublic.HasValue && isPublic.Value)
+            {
+                return ServiceResult<ProjectResponse>.Fail(ServiceStatus.BadRequest400, "Aliased projects cannot be public.");
+            }
+
             // Get userId from current user
             var userPuid = _currentUser.UserPuid;
             if (userPuid == null) return ServiceResult<ProjectResponse>.Fail(ServiceStatus.BadRequest400, "Unable to determine current user.");
@@ -90,6 +95,11 @@ namespace ProductionCalculator.Business.Services
         public async Task<ServiceResult<ProjectResponse>> UpdateProject(string projectPuid, string name, string? description, bool? isPublic, string? aliasProjectPuid)
         {
             if (string.IsNullOrWhiteSpace(name)) return ServiceResult<ProjectResponse>.Fail(ServiceStatus.BadRequest400, "Project name is required.");
+
+            if (!string.IsNullOrEmpty(aliasProjectPuid) && isPublic.HasValue && isPublic.Value)
+            {
+                return ServiceResult<ProjectResponse>.Fail(ServiceStatus.BadRequest400, "Aliased projects cannot be public.");
+            }
 
             // Get userId from current user
             var userPuid = _currentUser.UserPuid;

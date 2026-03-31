@@ -598,6 +598,7 @@ export default function ProjectPage() {
                 onNameChange={setEditName}
                 onDescriptionChange={setEditDescription}
                 onIsPublicChange={setEditIsPublic}
+                alias={currentProject?.aliasProjectPuid ?? null}
                 error={editError}
                 onDismissError={() => setEditError(null)}
                 initialFocusRef={editNameRef}

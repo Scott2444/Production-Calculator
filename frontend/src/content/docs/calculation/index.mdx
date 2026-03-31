@@ -1,0 +1,32 @@
+# Calculation
+
+This section explains how workflow rates are computed from project data and node configuration.
+
+## What Gets Calculated
+
+- Demand rates: ideal recipe rates required to meet target output rates
+- Supply rates: actual recipe rates possible with your entered machine counts
+- Product flows: inflow and outflow rates for product nodes
+- Attribute totals: per-node demand and supply values for user-defined attributes
+
+## Calculation Layers
+
+The workflow calculation runs in ordered layers.
+
+1. Pre-demand configuration: targets, preferred recipes, external product flags, and yield modifiers are collected.
+2. Demand solve (LP): recipe rates are solved to satisfy target constraints and written as `calculatedTargetRate`.
+3. Speed pass: solved recipe rates are converted into required machine counts as `calculatedMachineCount`.
+4. Supply solve (LP): actual machine counts and node modifiers are used to solve achievable throughput as `calculatedActualRate`.
+5. Attribute pass (frontend): node-level attribute values are calculated for demand and supply and then aggregated.
+
+## Why Demand And Supply Are Separate
+
+- Demand answers: "What should I build to hit my targets?"
+- Supply answers: "Given what I already built, what can I actually produce?"
+
+Keeping these separate lets you iterate safely on implementation without always reshaping the demand graph.
+
+## Related Pages
+
+- [Formulas](/docs/calculation/formulas)
+- [Solver](/docs/calculation/solver)

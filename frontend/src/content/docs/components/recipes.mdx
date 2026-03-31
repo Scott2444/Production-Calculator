@@ -1,0 +1,23 @@
+# Recipes
+
+Recipes define transformation rules between one product and another.
+
+## Key Fields
+
+- Base crafting time in seconds
+- Input products with quantities
+- Output products with quantities
+
+## Notes
+
+For raw resources, create a recipe with no input and the resource as an output. Otherwise, the solver will not be able to calculate a solution.\*
+
+\*You can externally provide resources, which will bypass the need for raw resource recipes. [External Products](/docs/projects/workflows/external-products)
+
+## Maintenance Advice
+
+When changing recipe IO or timing in an active project, expect workflow recalculation and possible node graph changes.
+
+## Related Pages
+
+- [Formulas](/docs/calculation/formulas)

@@ -1,0 +1,14 @@
+# External Products
+
+External products are treated as supplied from outside the workflow.
+
+## Use Cases
+
+- Imported resources
+- Shared bus materials from another factory block
+- Raw resource recipes do not exist in the project data
+
+## Effect
+
+When marked external, the solver will not explore this production path which simplifies the graph.
+Modifying the external products will recalculate the workflow on the demand layer, potentially leading to a loss of data.
