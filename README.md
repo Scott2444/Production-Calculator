@@ -8,15 +8,16 @@ This full-stack project will enable users to create projects of production pipel
 
 ### Frontend
 
-This uses React framework with client-side rendering.
+This uses static Next.js with client side dynamic routing.
 The styling is done in Tailwind CSS.
-The state management is done with React Context API + Hooks.
-For data visualization, this uses React Flow or D3.js???
+The state management is done with React.
+Data fetching, persistent local storage, and routing done with TanStack.
+Workflows use React Flow.
 
 ### Backend
 
 The framework is use .NET Core Web API and EF Core for database communication.
-Authentication will be done with JWT.
+Authentication with JWT.
 
 ### Database
 

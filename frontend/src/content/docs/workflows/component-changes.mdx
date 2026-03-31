@@ -1,0 +1,21 @@
+# Component Changes
+
+Project changes can temporarily invalidate existing workflows.
+
+## Updating Project Data
+
+Changing project data will require a recalculation of the workflow. This prevents invalid data from being used in your workflows.<br/>
+
+This is a recalculation on the demand and supply level, which can potentially be destructive of your data.
+
+## Behavior
+
+- Creating new components will not affect workflows
+- Updating names or descriptions will not affect workflows
+- Updating any other field on a component will require recalculation
+- Deleting a component will require recalculation
+
+## Guidelines
+
+- Do not delete components if your project has workflows or aliased projects
+- Avoid frequent updates of components

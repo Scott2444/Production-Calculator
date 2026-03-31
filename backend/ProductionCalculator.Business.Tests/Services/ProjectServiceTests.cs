@@ -68,6 +68,19 @@ public class ProjectServiceTests
     }
 
     [Fact]
+    public async Task AddProject_PublicAlias_ReturnsBadRequest()
+    {
+        var currentUser = A.Fake<ICurrentUserService>();
+        var repo = A.Fake<IProjectRepository>();
+        var userRepo = A.Fake<IUserRepository>();
+        var service = CreateService(currentUser, repo, userRepo);
+
+        var result = await service.AddProject("project", "desc", true, "alias");
+
+        Assert.Equal(ServiceStatus.BadRequest400, result.Status);
+    }
+
+    [Fact]
     public async Task AddProject_UserNotFound_ReturnsBadRequest()
     {
         var currentUser = A.Fake<ICurrentUserService>();
@@ -167,6 +180,19 @@ public class ProjectServiceTests
         var service = CreateService(currentUser, repo, userRepo);
 
         var result = await service.UpdateProject("puid", "", "desc", false, null);
+
+        Assert.Equal(ServiceStatus.BadRequest400, result.Status);
+    }
+
+    [Fact]
+    public async Task UpdateProject_PublicAlias_ReturnsBadRequest()
+    {
+        var currentUser = A.Fake<ICurrentUserService>();
+        var repo = A.Fake<IProjectRepository>();
+        var userRepo = A.Fake<IUserRepository>();
+        var service = CreateService(currentUser, repo, userRepo);
+
+        var result = await service.UpdateProject("puid", "project", "desc", true, "alias");
 
         Assert.Equal(ServiceStatus.BadRequest400, result.Status);
     }

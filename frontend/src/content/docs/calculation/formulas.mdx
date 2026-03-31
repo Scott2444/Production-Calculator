@@ -1,0 +1,173 @@
+# Formulas
+
+This page documents the formula set used by workflow calculations.
+
+## Notation
+
+- `sum(...)` means additive stacking
+- `prod(...)` means multiplicative stacking
+- Percent values are decimal scalars (`20% = 0.20`)
+- Recipe rates are in `recipes / second`
+
+## Additive vs Multiplicative Stacking
+
+Two stacking patterns are used in this project.
+
+### Additive Stacking
+
+Additive bonuses are summed first:
+
+```text
+additive_total = a1 + a2 + ... + an
+factor = 1 + additive_total
+```
+
+Example:
+
+```text
++20% and +30% additive => factor = 1 + (0.2 + 0.3) = 1.5
+```
+
+### Multiplicative Stacking
+
+Multipliers are chained by multiplication:
+
+```text
+multiplicative_total = prod(m1, m2, ..., mn)
+```
+
+Example:
+
+```text
+1.2x and 1.3x multiplicative => factor = 1.2 * 1.3 = 1.56
+```
+
+### Combined Pattern
+
+When both exist, the pattern is:
+
+```text
+value = base * (1 + sum(additive_bonuses)) * prod(multipliers)
+```
+
+This is the same shape used for speed and attributes.
+
+## Speed Formulas
+
+Speed is calculated from machine base speed plus speed-related modifier fields.
+
+```text
+effective_speed =
+	(base_speed + sum(flat_speed_bonus))
+	* (1 + sum(percent_speed_bonus))
+	* prod(multiplicative_speed_bonus)
+```
+
+Then:
+
+```text
+recipes_per_second_per_machine = effective_speed / base_crafting_time
+recipe_rate = machine_count * recipes_per_second_per_machine
+machine_count = target_recipe_rate / recipes_per_second_per_machine
+```
+
+Where:
+
+- `base_crafting_time` is recipe seconds per craft
+- `target_recipe_rate` is the solved demand rate for that recipe
+- `machine_count` may be fractional
+
+## Yield Formulas
+
+Yield scaling is input-output-specific and happens before LP constraints are solved.
+
+Yield stacks additively per node:
+
+```text
+input_factor = 1 + sum(input_percent)
+output_factor = 1 + sum(output_percent)
+```
+
+Per recipe cycle:
+
+```text
+scaled_input_quantity = base_input_quantity * input_factor
+scaled_output_quantity = base_output_quantity * output_factor
+```
+
+Solver sign convention:
+
+- Inputs contribute negative terms
+- Outputs contribute positive terms
+
+So each matrix coefficient is still net flow:
+
+```text
+coefficient = scaled_output_quantity - scaled_input_quantity
+```
+
+### Important Throughput Distinction
+
+Output yield and input yield can produce the same IO ratio, but they do not have the same machine requirement behavior.
+
+Output-side scaling changes how much output you get per recipe cycle:
+
+```text
+recipe_rate_needed_for_target_output = base_recipe_rate / output_factor
+machine_count_needed_for_target_output = base_machine_count / output_factor
+```
+
+Example: `+100%` output yield (`output_factor = 2`) means you need roughly half the recipe rate and half the machines for the same output target.
+
+Input-side scaling changes how much input each recipe cycle consumes, but not how much output each cycle produces:
+
+- For a fixed output target, recipe rate and machine count stay the same (assuming inputs are available).
+- Upstream input demand changes according to `input_factor`.
+
+Example: `-50%` input yield (`input_factor = 0.5`) keeps the same machine requirement for output, while reducing input consumption.
+
+### Same Ratio, Different Throughput Effect
+
+Starting from `1 input -> 1 output`:
+
+- `+100% output` becomes `1 input -> 2 output`
+- `-50% input` becomes `0.5 input -> 1 output`
+
+Both have the same input/output ratio (`0.5 input per output`), but only output scaling changes output-per-cycle and therefore machine requirement for output targets.
+
+## Attribute Formulas
+
+Attributes are calculated per process node and per attribute id.
+
+Base term:
+
+```text
+base =
+	(recipe_attribute_rate * recipe_rate)
+	+ (machine_attribute_rate * machine_count)
+	+ sum(modifier_attribute_flat_bonus)
+```
+
+Modifier stacking terms:
+
+```text
+percent_total = sum(modifier_attribute_percent_bonus)
+multiplicative_total = prod(modifier_attribute_multiplicative_bonus)
+```
+
+Final node amount:
+
+```text
+amount = base * (1 + percent_total) * multiplicative_total
+```
+
+Demand and supply values are both computed using the same formula, but with different node inputs:
+
+- Demand uses `calculatedMachineCount` and `calculatedTargetRate`
+- Supply uses `actualMachineCount` and `calculatedActualRate`
+
+## Formula Coverage In Solver
+
+- Speed affects machine count/rate conversions and supply capacity bounds
+- Yield directly changes the solver matrix coefficients
+- Attributes are computed after solve and do not change graph structure

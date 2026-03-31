@@ -1,0 +1,150 @@
+# Solver
+
+This project uses Linear Programming (LP) through Google OR-Tools.
+
+## Solver Type
+
+- Backend: `Google.OrTools.LinearSolver`
+- Engine: `GLOP`
+- Problem class: continuous linear optimization
+
+Important implication: solution variables are continuous, so recipe rates and machine counts can be fractional.
+
+## Why LP Fits This Problem
+
+Workflow balancing is naturally linear:
+
+- Product balance is linear (`production - consumption`)
+- Recipe rates are non-negative
+- Capacity limits are linear bounds
+- Preferences and priorities can be encoded in linear objective coefficients
+
+## Demand Solve
+
+Demand solve answers: "What recipe rates satisfy targets at minimum cost?"
+
+### Decision Variables
+
+- `x_r >= 0` for every recipe `r` (recipe rate)
+- `i_p >= 0` for every externally provided product `p` (import rate)
+
+### Matrix Coefficients
+
+For each recipe-product pair, coefficient `a_pr` is net product flow per recipe:
+
+- Inputs are negative
+- Outputs are positive
+- Yield modifiers rescale these terms before constraints are built
+
+### Constraints
+
+For every product `p`:
+
+```text
+sum_r(a_pr * x_r) + i_p >= demand_p
+```
+
+Where:
+
+- `demand_p = target_rate` if product is targeted
+- `demand_p = 0` for non-target products
+
+This enforces non-negative net intermediate flow while meeting target output floors.
+
+### Objective
+
+Demand uses minimization:
+
+```text
+minimize sum_r(cost_r * x_r) + sum_p(0.0001 * i_p)
+```
+
+Current recipe cost policy:
+
+- Preferred recipe: `0.01`
+- Default recipe: `1.0`
+
+This makes preferred recipes cheaper, but still allows alternatives when required by constraints.
+
+## Supply Solve
+
+Supply solve answers: "Given actual machine counts, what throughput is achievable?"
+
+### Decision Variables
+
+- `x_r` for each recipe present in the current chart
+- `i_p` for external imports, bounded by user-provided external inflow
+- `s_p` primary target sink (up to target)
+- `o_p` overflow sink (unbounded)
+
+### Bounds
+
+Each recipe variable is capacity bounded:
+
+```text
+0 <= x_r <= max_rate_r
+```
+
+`max_rate_r` is calculated from machine count, machine speed, recipe crafting time, and speed modifiers.
+
+### Constraints
+
+For every product `p`:
+
+```text
+sum_r(a_pr * x_r) + i_p - s_p - o_p >= 0
+```
+
+This guarantees the workflow never consumes more of a product than it can produce or import.
+
+### Objective
+
+Supply uses maximization:
+
+```text
+maximize
+	sum_r(1.0 * x_r)
+	+ sum_p(100000.0 * s_p)
+	+ sum_p(1000.0 * o_p)
+	- sum_p(0.0001 * i_p)
+```
+
+Interpretation:
+
+- Huge weight on primary sink strongly prioritizes meeting target demand
+- Overflow sink rewards extra target production after primary target is filled
+- Small import penalty avoids unnecessary import usage when other options exist
+
+## Yield Integration
+
+Yield is not post-processing. It directly changes `a_pr` coefficients before both demand and supply solves.
+
+That means yield changes can alter:
+
+- Which recipes are optimal
+- How much of each input is required
+- Overall graph rates and flow distribution
+
+Important distinction:
+
+- Output-side yield scaling changes output-per-cycle, so target output can be met with fewer or more machines.
+- Input-side yield scaling changes input consumption-per-cycle, while output-per-cycle stays the same.
+
+## Result Extraction
+
+After an optimal LP solution is found:
+
+- Recipe variables become node rates (`calculatedTargetRate` or `calculatedActualRate`)
+- Import variables become external inflow product rates
+- Sink variables determine target outflow rates (primary + overflow)
+
+## Practical Notes
+
+- Preferred recipes are soft constraints, not hard locks
+- Marking products external changes feasible solution space
+- LP can produce precise fractional rates; final in-game rounding is a user decision
+
+## Related Pages
+
+- [Formulas](/docs/calculation/formulas)
+- [Supply And Demand](/docs/projects/workflows/supply-demand)

@@ -10,6 +10,7 @@
     },
     "dependencies": {
         "@leeoniya/ufuzzy": "^1.0.19",
+        "@mdx-js/react": "^3.1.1",
         "@tabler/icons-react": "^3.36.1",
         "@tanstack/query-async-storage-persister": "^5.90.21",
         "@tanstack/react-query": "^5.90.19",

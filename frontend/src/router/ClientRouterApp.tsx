@@ -37,6 +37,14 @@ function ProjectRouteLayout() {
     );
 }
 
+function rejectDocsUsername<T extends { username?: string }>(params: T): T {
+    if (params.username?.toLowerCase() === "docs") {
+        throw new Error("The docs namespace is reserved.");
+    }
+
+    return params;
+}
+
 const rootRoute = createRootRoute({
     component: RootRouteComponent,
 });
@@ -77,6 +85,12 @@ const docsRoute = createRoute({
     component: DocsRoute,
 });
 
+const docsCatchAllRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/docs/$",
+    component: DocsRoute,
+});
+
 const settingsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/settings",
@@ -87,12 +101,24 @@ const usernameRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/$username",
     component: UsernamePage,
+    params: {
+        parse: rejectDocsUsername,
+    },
+    skipRouteOnParseError: {
+        params: true,
+    },
 });
 
 const projectLayoutRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/$username/$projectName",
     component: ProjectRouteLayout,
+    params: {
+        parse: rejectDocsUsername,
+    },
+    skipRouteOnParseError: {
+        params: true,
+    },
 });
 
 const projectOverviewRoute = createRoute({
@@ -150,6 +176,7 @@ const routeTree = rootRoute.addChildren([
     verifyRoute,
     exploreRoute,
     docsRoute,
+    docsCatchAllRoute,
     settingsRoute,
     usernameRoute,
     projectLayoutRoute.addChildren([
