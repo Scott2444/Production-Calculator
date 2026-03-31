@@ -65,6 +65,22 @@ namespace ProductionCalculator.API.Controllers
             return FromServiceResult(result, u => u);
         }
 
+        [Authorize(Policy = "None")]
+        [HttpPost("request-password-reset")]
+        public async Task<IActionResult> RequestPasswordReset([FromBody] RequestPasswordResetRequest req)
+        {
+            var result = await _authService.RequestPasswordReset(req.Email);
+            return FromServiceResult(result);
+        }
+
+        [Authorize(Policy = "None")]
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest req)
+        {
+            var result = await _authService.ResetPassword(req.Token, req.NewPassword);
+            return FromServiceResult(result);
+        }
+
         [Authorize(Policy = "IsAuthenticated")]
         [HttpPost("request-code")]
         public async Task<IActionResult> RequestVerificationCode()

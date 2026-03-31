@@ -11,6 +11,7 @@ services:
             - 5142:5000
         environment:
             - ASPNETCORE_ENVIRONMENT=Staging
+            - PasswordReset__FrontendBaseUrl=https://staging.production-calculator.com
 
     prometheus:
         container_name: prometheus-staging

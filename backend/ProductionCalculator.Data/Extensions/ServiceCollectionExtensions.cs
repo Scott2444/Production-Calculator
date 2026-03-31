@@ -34,6 +34,7 @@ namespace ProductionCalculator.Data.Extensions
             services.AddScoped<IWorkflowRecipeRepository, WorkflowRecipeRepository>();
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             services.AddScoped<IVerificationCodeRepository, VerificationCodeRepository>();
+            services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
             return services;
         }
     }

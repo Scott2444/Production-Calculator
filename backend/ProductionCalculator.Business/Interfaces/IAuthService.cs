@@ -8,6 +8,8 @@ namespace ProductionCalculator.Business.Interfaces
     {
         Task<(ServiceResult<AuthResponse> result, string? accessToken, RefreshToken? refreshToken)> Login(string username, string password);
         Task<(ServiceResult<AuthResponse> result, string? accessToken)> RefreshToken(string? refreshToken);
+        Task<ServiceResult> RequestPasswordReset(string email);
+        Task<ServiceResult> ResetPassword(string token, string newPassword);
         Task<ServiceResult> RequestVerificationCode();
         Task<ServiceResult> VerifyCode(string code);
         Task<bool> IsPublic();
