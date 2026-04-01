@@ -18,6 +18,7 @@ namespace ProductionCalculator.Business.Services
         private readonly IUserRepository _userRepo;
         private readonly IRoleRepository _roleRepo;
         private readonly IRefreshTokenRepository _refreshTokenRepo;
+        private readonly IPasswordResetTokenRepository _passwordResetTokenRepository;
         private readonly JwtHelper _jwtHelper;
         private readonly RefreshTokenHelper _refreshTokenHelper;
         private readonly IProjectRepository _projectRepository;
@@ -32,6 +33,7 @@ namespace ProductionCalculator.Business.Services
             IUserRepository userRepo, 
             IRoleRepository roleRepo, 
             IRefreshTokenRepository refreshTokenRepo,
+            IPasswordResetTokenRepository passwordResetTokenRepository,
             JwtHelper jwtHelper, 
             RefreshTokenHelper refreshTokenHelper,
             IProjectRepository projectRepository,
@@ -46,6 +48,7 @@ namespace ProductionCalculator.Business.Services
             _userRepo = userRepo;
             _roleRepo = roleRepo;
             _refreshTokenRepo = refreshTokenRepo;
+            _passwordResetTokenRepository = passwordResetTokenRepository;
             _jwtHelper = jwtHelper;
             _refreshTokenHelper = refreshTokenHelper;
             _projectRepository = projectRepository;
@@ -217,6 +220,135 @@ namespace ProductionCalculator.Business.Services
             return (ServiceResult<AuthResponse>.SuccessResult(new AuthResponse { Puid = user.Puid, Username = user.Username }), newAccessToken);
         }
 
+        public async Task<ServiceResult> RequestPasswordReset(string email)
+        {
+            email = (email ?? string.Empty).Trim().ToLower();
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return ServiceResult.SuccessResult();
+            }
+
+            if (!TryGetPasswordResetSettings(out int expireMinutes, out int requestCooldownMinutes))
+            {
+                _logger.LogError("RequestPasswordReset suppressed: PasswordReset settings are missing or invalid.");
+                return ServiceResult.SuccessResult();
+            }
+
+            var user = await _userRepo.GetByEmail(email);
+            if (user == null)
+            {
+                _logger.LogInformation("RequestPasswordReset handled: user not found for requested email.");
+                return ServiceResult.SuccessResult();
+            }
+
+            var now = DateTime.UtcNow;
+            var existingToken = await _passwordResetTokenRepository.GetPasswordResetTokenByUserId(user.User_Id);
+            if (existingToken != null && now < existingToken.Created_At.AddMinutes(requestCooldownMinutes))
+            {
+                _logger.LogInformation("RequestPasswordReset suppressed by cooldown for user {Username}.", user.Username);
+                return ServiceResult.SuccessResult();
+            }
+
+            var (token, tokenHash) = PasswordResetHelper.GenerateToken();
+            var expiresAt = now.AddMinutes(expireMinutes);
+
+            if (existingToken == null)
+            {
+                var newToken = new PasswordResetToken
+                {
+                    Reset_Id = Guid.NewGuid(),
+                    User_Id = user.User_Id,
+                    Token_Hash = tokenHash,
+                    Created_At = now,
+                    Expires_At = expiresAt
+                };
+                await _passwordResetTokenRepository.AddPasswordResetToken(newToken);
+            }
+            else
+            {
+                existingToken.Token_Hash = tokenHash;
+                existingToken.Created_At = now;
+                existingToken.Expires_At = expiresAt;
+                await _passwordResetTokenRepository.UpdatePasswordResetToken(existingToken);
+            }
+
+            var frontendBaseUrl = ResolvePasswordResetBaseUrl();
+            var resetUrl = PasswordResetHelper.BuildResetUrl(frontendBaseUrl, token);
+            try
+            {
+                await _resend.EmailSendAsync(PasswordResetHelper.GenerateEmail(user.Email, resetUrl, expireMinutes));
+                _logger.LogInformation("Password reset email sent to {Email} for user {Username}.", user.Email, user.Username);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "External service failure: Failed to send password reset email to {Email} for user {Username}. Error: {Message}", user.Email, user.Username, ex.Message);
+            }
+
+            return ServiceResult.SuccessResult();
+        }
+
+        public async Task<ServiceResult> ResetPassword(string token, string newPassword)
+        {
+            token = (token ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return ServiceResult.Fail(ServiceStatus.BadRequest400, "Invalid or expired reset token.");
+            }
+
+            if (string.IsNullOrWhiteSpace(newPassword))
+            {
+                return ServiceResult.Fail(ServiceStatus.BadRequest400, "Password is required.");
+            }
+            if (newPassword.Length < 8)
+            {
+                return ServiceResult.Fail(ServiceStatus.BadRequest400, "Password must be at least 8 characters long.");
+            }
+            if (newPassword.Length > 32)
+            {
+                return ServiceResult.Fail(ServiceStatus.BadRequest400, "Password must be no more than 32 characters long.");
+            }
+
+            var tokenHash = PasswordResetHelper.HashToken(token);
+            var resetToken = await _passwordResetTokenRepository.GetPasswordResetTokenByTokenHash(tokenHash);
+            if (resetToken == null)
+            {
+                _logger.LogInformation("ResetPassword failure: invalid token provided.");
+                return ServiceResult.Fail(ServiceStatus.BadRequest400, "Invalid or expired reset token.");
+            }
+
+            if (resetToken.Expires_At <= DateTime.UtcNow)
+            {
+                await _passwordResetTokenRepository.DeletePasswordResetToken(resetToken.Reset_Id);
+                _logger.LogInformation("ResetPassword failure: expired token used for user id {UserId}.", resetToken.User_Id);
+                return ServiceResult.Fail(ServiceStatus.BadRequest400, "Invalid or expired reset token.");
+            }
+
+            var user = await _userRepo.GetById(resetToken.User_Id);
+            if (user == null)
+            {
+                await _passwordResetTokenRepository.DeletePasswordResetToken(resetToken.Reset_Id);
+                _logger.LogInformation("ResetPassword failure: user id {UserId} not found for reset token.", resetToken.User_Id);
+                return ServiceResult.Fail(ServiceStatus.BadRequest400, "Invalid or expired reset token.");
+            }
+
+            user.Password_Hash = PasswordHelper.HashPassword(newPassword);
+            user.Failed_Login_Attempts = 0;
+            user.Lockout_Until = null;
+            user.Last_Updated = DateTime.UtcNow;
+            await _userRepo.UpdateUser(user);
+
+            var existingRefreshTokens = await _refreshTokenRepo.GetRefreshTokensByUserId(user.User_Id);
+            foreach (var refreshToken in existingRefreshTokens)
+            {
+                await _refreshTokenRepo.DeleteRefreshToken(refreshToken.Token_Id);
+            }
+
+            await _passwordResetTokenRepository.DeletePasswordResetToken(resetToken.Reset_Id);
+
+            _logger.LogInformation("User state change: Password reset succeeded for user {Username}.", user.Username);
+            return ServiceResult.SuccessResult();
+        }
+
         public async Task<ServiceResult> RequestVerificationCode()
         {
             var verificationCodeSettings = _configuration.GetSection("VerificationCode");
@@ -379,6 +511,48 @@ namespace ProductionCalculator.Business.Services
             await _refreshTokenRepo.AddRefreshToken(refreshToken);
             return refreshToken;
         }
+
+        private bool TryGetPasswordResetSettings(out int expireMinutes, out int requestCooldownMinutes)
+        {
+            expireMinutes = 0;
+            requestCooldownMinutes = 0;
+
+            var section = _configuration.GetSection("PasswordReset");
+            if (section == null)
+            {
+                return false;
+            }
+            if (!int.TryParse(section["ExpireMinutes"], out expireMinutes) || expireMinutes <= 0)
+            {
+                return false;
+            }
+            if (!int.TryParse(section["RequestCooldownMinutes"], out requestCooldownMinutes) || requestCooldownMinutes < 0)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private string ResolvePasswordResetBaseUrl()
+        {
+            var configuredBaseUrl = _configuration.GetSection("PasswordReset")["FrontendBaseUrl"];
+            if (!string.IsNullOrWhiteSpace(configuredBaseUrl))
+            {
+                return configuredBaseUrl;
+            }
+
+            var environmentName = _configuration["ASPNETCORE_ENVIRONMENT"]
+                ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+
+            return environmentName?.ToLower() switch
+            {
+                "development" => "https://dev.production-calculator.com",
+                "staging" => "https://staging.production-calculator.com",
+                _ => "https://production-calculator.com"
+            };
+        }
+
         private async Task SetUserToVerified(int userId)
         {
             var userRole = await _roleRepo.GetRole("User");

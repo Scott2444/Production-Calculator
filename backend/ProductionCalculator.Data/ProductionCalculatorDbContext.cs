@@ -38,6 +38,7 @@ namespace ProductionCalculator.Data
             modelBuilder.ApplyConfiguration(new WorkflowRecipeConfiguration());
             modelBuilder.ApplyConfiguration(new RefreshTokenConfiguration());
             modelBuilder.ApplyConfiguration(new VerificationCodeConfiguration());
+            modelBuilder.ApplyConfiguration(new PasswordResetTokenConfiguration());
 
             if (!string.Equals(Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
             {

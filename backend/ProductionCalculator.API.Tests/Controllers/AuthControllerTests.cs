@@ -136,6 +136,53 @@ public class AuthControllerTests
     }
 
     [Fact]
+    public async Task RequestPasswordReset_ValidRequest_ReturnsOk()
+    {
+        // Arrange
+        A.CallTo(() => _authService.RequestPasswordReset("test@example.com"))
+            .Returns(ServiceResult.SuccessResult());
+
+        // Act
+        var result = await _controller.RequestPasswordReset(new RequestPasswordResetRequest { Email = "test@example.com" });
+
+        // Assert
+        var statusCodeResult = Assert.IsType<StatusCodeResult>(result);
+        Assert.Equal(200, statusCodeResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task ResetPassword_ValidRequest_ReturnsOk()
+    {
+        // Arrange
+        var req = new ResetPasswordRequest { Token = "token", NewPassword = "password123" };
+        A.CallTo(() => _authService.ResetPassword(req.Token, req.NewPassword))
+            .Returns(ServiceResult.SuccessResult());
+
+        // Act
+        var result = await _controller.ResetPassword(req);
+
+        // Assert
+        var statusCodeResult = Assert.IsType<StatusCodeResult>(result);
+        Assert.Equal(200, statusCodeResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task ResetPassword_InvalidToken_ReturnsBadRequest()
+    {
+        // Arrange
+        var req = new ResetPasswordRequest { Token = "bad", NewPassword = "password123" };
+        A.CallTo(() => _authService.ResetPassword(req.Token, req.NewPassword))
+            .Returns(ServiceResult.Fail(ServiceStatus.BadRequest400, "Invalid"));
+
+        // Act
+        var result = await _controller.ResetPassword(req);
+
+        // Assert
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(400, objectResult.StatusCode);
+    }
+
+    [Fact]
     public async Task VerifyCode_ValidCode_ReturnsOk()
     {
         // Arrange

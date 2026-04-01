@@ -24,7 +24,11 @@ function getCurrentNavSection(pathname: string) {
     if (
         firstSlug === "settings" ||
         firstSlug === "verify" ||
-        firstSlug === "login"
+        firstSlug === "login" ||
+        firstSlug === "signup" ||
+        firstSlug === "reset-password" ||
+        firstSlug === "forgot-password" ||
+        firstSlug === "change-password"
     )
         return "";
 

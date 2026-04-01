@@ -21,6 +21,7 @@ public class AuthServiceTests
     private readonly IUserRepository _userRepo;
     private readonly IRoleRepository _roleRepo;
     private readonly IRefreshTokenRepository _refreshTokenRepo;
+    private readonly IPasswordResetTokenRepository _passwordResetTokenRepository;
     private readonly IProjectRepository _projectRepository;
     private readonly IVerificationCodeRepository _verificationCodeRepository;
     private readonly IResend _resend;
@@ -37,6 +38,7 @@ public class AuthServiceTests
         _userRepo = A.Fake<IUserRepository>();
         _roleRepo = A.Fake<IRoleRepository>();
         _refreshTokenRepo = A.Fake<IRefreshTokenRepository>();
+        _passwordResetTokenRepository = A.Fake<IPasswordResetTokenRepository>();
         _projectRepository = A.Fake<IProjectRepository>();
         _verificationCodeRepository = A.Fake<IVerificationCodeRepository>();
         _resend = A.Fake<IResend>();
@@ -63,6 +65,12 @@ public class AuthServiceTests
         A.CallTo(() => vcSection["MaxAttempts"]).Returns("3");
         A.CallTo(() => _configuration.GetSection("VerificationCode")).Returns(vcSection);
 
+        var prSection = A.Fake<IConfigurationSection>();
+        A.CallTo(() => prSection["ExpireMinutes"]).Returns("30");
+        A.CallTo(() => prSection["RequestCooldownMinutes"]).Returns("180");
+        A.CallTo(() => prSection["FrontendBaseUrl"]).Returns("https://dev.production-calculator.com");
+        A.CallTo(() => _configuration.GetSection("PasswordReset")).Returns(prSection);
+
         _jwtHelper = new JwtHelper(_configuration);
         _refreshTokenHelper = new RefreshTokenHelper(_configuration);
 
@@ -71,6 +79,7 @@ public class AuthServiceTests
             _userRepo,
             _roleRepo,
             _refreshTokenRepo,
+            _passwordResetTokenRepository,
             _jwtHelper,
             _refreshTokenHelper,
             _projectRepository,
@@ -311,6 +320,156 @@ public class AuthServiceTests
 
         // Assert
         Assert.Equal(ServiceStatus.InternalServerError500, result.Status);
+    }
+
+    [Fact]
+    public async Task RequestPasswordReset_UserDoesNotExist_ReturnsSuccessWithoutEmail()
+    {
+        // Arrange
+        A.CallTo(() => _userRepo.GetByEmail("missing@example.com")).Returns((User?)null);
+
+        // Act
+        var result = await _authService.RequestPasswordReset("missing@example.com");
+
+        // Assert
+        Assert.Equal(ServiceStatus.Ok200, result.Status);
+        A.CallTo(_resend).Where(x => x.Method.Name == "EmailSendAsync").MustNotHaveHappened();
+    }
+
+    [Fact]
+    public async Task RequestPasswordReset_ExistingTokenWithinCooldown_ReturnsSuccessWithoutSending()
+    {
+        // Arrange
+        var user = CreateTestUser(email: "test@example.com");
+        var existingToken = new PasswordResetToken
+        {
+            Reset_Id = Guid.NewGuid(),
+            User_Id = user.User_Id,
+            Token_Hash = "existing-hash",
+            Created_At = DateTime.UtcNow.AddMinutes(-5),
+            Expires_At = DateTime.UtcNow.AddMinutes(25)
+        };
+
+        A.CallTo(() => _userRepo.GetByEmail(user.Email)).Returns(user);
+        A.CallTo(() => _passwordResetTokenRepository.GetPasswordResetTokenByUserId(user.User_Id)).Returns(existingToken);
+
+        // Act
+        var result = await _authService.RequestPasswordReset(user.Email);
+
+        // Assert
+        Assert.Equal(ServiceStatus.Ok200, result.Status);
+        A.CallTo(() => _passwordResetTokenRepository.UpdatePasswordResetToken(A<PasswordResetToken>._)).MustNotHaveHappened();
+        A.CallTo(_resend).Where(x => x.Method.Name == "EmailSendAsync").MustNotHaveHappened();
+    }
+
+    [Fact]
+    public async Task RequestPasswordReset_ExpiredTokenWithinCooldown_ReturnsSuccessWithoutSending()
+    {
+        // Arrange
+        var user = CreateTestUser(email: "test@example.com");
+        var existingToken = new PasswordResetToken
+        {
+            Reset_Id = Guid.NewGuid(),
+            User_Id = user.User_Id,
+            Token_Hash = "existing-hash",
+            Created_At = DateTime.UtcNow.AddMinutes(-30),
+            Expires_At = DateTime.UtcNow.AddMinutes(-1)
+        };
+
+        A.CallTo(() => _userRepo.GetByEmail(user.Email)).Returns(user);
+        A.CallTo(() => _passwordResetTokenRepository.GetPasswordResetTokenByUserId(user.User_Id)).Returns(existingToken);
+
+        // Act
+        var result = await _authService.RequestPasswordReset(user.Email);
+
+        // Assert
+        Assert.Equal(ServiceStatus.Ok200, result.Status);
+        A.CallTo(() => _passwordResetTokenRepository.UpdatePasswordResetToken(A<PasswordResetToken>._)).MustNotHaveHappened();
+        A.CallTo(_resend).Where(x => x.Method.Name == "EmailSendAsync").MustNotHaveHappened();
+    }
+
+    [Fact]
+    public async Task RequestPasswordReset_OutsideCooldown_UpdatesTokenAndSendsEmail()
+    {
+        // Arrange
+        var user = CreateTestUser(email: "test@example.com");
+        const string oldHash = "old-hash";
+        var existingToken = new PasswordResetToken
+        {
+            Reset_Id = Guid.NewGuid(),
+            User_Id = user.User_Id,
+            Token_Hash = oldHash,
+            Created_At = DateTime.UtcNow.AddHours(-4),
+            Expires_At = DateTime.UtcNow.AddMinutes(10)
+        };
+
+        A.CallTo(() => _userRepo.GetByEmail(user.Email)).Returns(user);
+        A.CallTo(() => _passwordResetTokenRepository.GetPasswordResetTokenByUserId(user.User_Id)).Returns(existingToken);
+
+        // Act
+        var result = await _authService.RequestPasswordReset(user.Email);
+
+        // Assert
+        Assert.Equal(ServiceStatus.Ok200, result.Status);
+        A.CallTo(() => _passwordResetTokenRepository.UpdatePasswordResetToken(
+            A<PasswordResetToken>.That.Matches(prt => prt.User_Id == user.User_Id && prt.Token_Hash != oldHash)))
+            .MustHaveHappenedOnceExactly();
+        A.CallTo(_resend).Where(x => x.Method.Name == "EmailSendAsync").MustHaveHappened();
+    }
+
+    [Fact]
+    public async Task ResetPassword_ValidToken_UpdatesPasswordAndDeletesTokens()
+    {
+        // Arrange
+        var user = CreateTestUser(password: "oldpassword", email: "test@example.com");
+        var originalPasswordHash = user.Password_Hash;
+        var rawToken = "token-value";
+        var tokenHash = PasswordResetHelper.HashToken(rawToken);
+        var resetToken = new PasswordResetToken
+        {
+            Reset_Id = Guid.NewGuid(),
+            User_Id = user.User_Id,
+            Token_Hash = tokenHash,
+            Created_At = DateTime.UtcNow.AddMinutes(-2),
+            Expires_At = DateTime.UtcNow.AddMinutes(20)
+        };
+        var refreshToken = new RefreshToken
+        {
+            Token_Id = Guid.NewGuid(),
+            User_Id = user.User_Id,
+            Token = "refresh-token",
+            Created_At = DateTime.UtcNow,
+            Expires_At = DateTime.UtcNow.AddDays(1)
+        };
+
+        A.CallTo(() => _passwordResetTokenRepository.GetPasswordResetTokenByTokenHash(tokenHash)).Returns(resetToken);
+        A.CallTo(() => _userRepo.GetById(user.User_Id)).Returns(user);
+        A.CallTo(() => _refreshTokenRepo.GetRefreshTokensByUserId(user.User_Id)).Returns(new List<RefreshToken> { refreshToken });
+
+        // Act
+        var result = await _authService.ResetPassword(rawToken, "newpassword123");
+
+        // Assert
+        Assert.Equal(ServiceStatus.Ok200, result.Status);
+        A.CallTo(() => _userRepo.UpdateUser(
+            A<User>.That.Matches(u => u.User_Id == user.User_Id && u.Password_Hash != originalPasswordHash)))
+            .MustHaveHappenedOnceExactly();
+        A.CallTo(() => _refreshTokenRepo.DeleteRefreshToken(refreshToken.Token_Id)).MustHaveHappenedOnceExactly();
+        A.CallTo(() => _passwordResetTokenRepository.DeletePasswordResetToken(resetToken.Reset_Id)).MustHaveHappened();
+    }
+
+    [Fact]
+    public async Task ResetPassword_InvalidToken_ReturnsBadRequest()
+    {
+        // Arrange
+        var tokenHash = PasswordResetHelper.HashToken("invalid-token");
+        A.CallTo(() => _passwordResetTokenRepository.GetPasswordResetTokenByTokenHash(tokenHash)).Returns((PasswordResetToken?)null);
+
+        // Act
+        var result = await _authService.ResetPassword("invalid-token", "newpassword123");
+
+        // Assert
+        Assert.Equal(ServiceStatus.BadRequest400, result.Status);
     }
 
     [Fact]

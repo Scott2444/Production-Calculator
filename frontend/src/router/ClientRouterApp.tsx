@@ -20,6 +20,8 @@ import AttributesPage from "@/features/AttributesPage";
 import HomeRoute from "@/routes/HomeRoute";
 import LoginRoute from "@/routes/LoginRoute";
 import SignUpRoute from "@/routes/SignUpRoute";
+import ForgotPasswordRoute from "../routes/ForgotPasswordRoute";
+import ChangePasswordRoute from "../routes/ChangePasswordRoute";
 import VerifyRoute from "@/routes/VerifyRoute";
 import ExploreRoute from "@/routes/ExploreRoute";
 import DocsRoute from "@/routes/DocsRoute";
@@ -65,6 +67,18 @@ const signUpRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/signup",
     component: SignUpRoute,
+});
+
+const forgotPasswordRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/reset-password",
+    component: ForgotPasswordRoute,
+});
+
+const changePasswordRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/change-password",
+    component: ChangePasswordRoute,
 });
 
 const verifyRoute = createRoute({
@@ -173,6 +187,8 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     loginRoute,
     signUpRoute,
+    forgotPasswordRoute,
+    changePasswordRoute,
     verifyRoute,
     exploreRoute,
     docsRoute,
