@@ -137,7 +137,7 @@ const featureCards: FeatureCard[] = [
 
 function statusBadgeClasses(status: RoadmapStatus): string {
     if (status === "In Progress") {
-        return "border-cyan-300/60 bg-cyan-500/20 text-cyan-100";
+        return "border-indigo-300/60 bg-indigo-500/20 text-indigo-100";
     }
 
     return "border-emerald-300/60 bg-emerald-500/20 text-emerald-100";
@@ -147,7 +147,7 @@ export default function HomeRoute() {
     return (
         <div className="relative min-h-screen overflow-x-hidden bg-slate-950 text-slate-100">
             <div className="pointer-events-none absolute inset-0">
-                <div className="absolute -top-30 left-1/2 h-136 w-136 -translate-x-1/2 rounded-full bg-cyan-500/16 blur-3xl" />
+                <div className="absolute -top-30 left-1/2 h-136 w-136 -translate-x-1/2 rounded-full bg-indigo-500/16 blur-3xl" />
                 <div className="absolute top-48 -left-24 h-72 w-72 rounded-full bg-blue-500/10 blur-3xl" />
                 <div className="absolute bottom-12 right-0 h-96 w-96 rounded-full bg-indigo-500/10 blur-3xl" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(148,163,184,0.14)_1px,transparent_1px)] bg-size-[22px_22px] opacity-35" />
@@ -158,7 +158,7 @@ export default function HomeRoute() {
             <main className="relative mx-auto flex w-full max-w-7xl flex-col gap-24 px-6 pb-24 pt-16 md:px-10">
                 <section className="landing-reveal grid items-center gap-12 lg:grid-cols-[1.06fr_0.94fr]">
                     <div className="space-y-8">
-                        <span className="inline-flex items-center gap-2 rounded-full border border-cyan-300/35 bg-cyan-500/12 px-4 py-2 text-xs font-semibold tracking-[0.11em] text-cyan-100 uppercase">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-indigo-300/35 bg-indigo-500/12 px-4 py-2 text-xs font-semibold tracking-[0.11em] text-indigo-100 uppercase">
                             Logistics Planning For Automation Games
                         </span>
 
@@ -178,7 +178,7 @@ export default function HomeRoute() {
                         <div className="flex flex-wrap items-center gap-4">
                             <Link
                                 to="/explore"
-                                className="inline-flex items-center gap-2 rounded-xl border border-cyan-300/50 bg-cyan-500/20 px-5 py-3 text-sm font-semibold text-cyan-50 transition-colors hover:bg-cyan-500/30"
+                                className="inline-flex items-center gap-2 rounded-xl border border-indigo-300/50 bg-indigo-500/20 px-5 py-3 text-sm font-semibold text-indigo-50 transition-colors hover:bg-indigo-500/30"
                             >
                                 Explore Public Projects
                                 <IconArrowRight size={16} />
@@ -194,7 +194,7 @@ export default function HomeRoute() {
 
                         <div className="grid gap-4 sm:grid-cols-3">
                             <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-4 py-4">
-                                <p className="text-xs font-semibold tracking-widest text-cyan-200 uppercase">
+                                <p className="text-xs font-semibold tracking-widest text-indigo-200 uppercase">
                                     Linear Solver
                                 </p>
                                 <p className="mt-1 text-sm text-slate-200">
@@ -202,7 +202,7 @@ export default function HomeRoute() {
                                 </p>
                             </div>
                             <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-4 py-4">
-                                <p className="text-xs font-semibold tracking-widest text-cyan-200 uppercase">
+                                <p className="text-xs font-semibold tracking-widest text-indigo-200 uppercase">
                                     Persistent
                                 </p>
                                 <p className="mt-1 text-sm text-slate-200">
@@ -210,7 +210,7 @@ export default function HomeRoute() {
                                 </p>
                             </div>
                             <div className="rounded-xl border border-slate-700/80 bg-slate-900/70 px-4 py-4">
-                                <p className="text-xs font-semibold tracking-widest text-cyan-200 uppercase">
+                                <p className="text-xs font-semibold tracking-widest text-indigo-200 uppercase">
                                     Editable Model
                                 </p>
                                 <p className="mt-1 text-sm text-slate-200">
@@ -225,7 +225,7 @@ export default function HomeRoute() {
                             <p className="text-sm font-semibold text-slate-100">
                                 Workflow Overview
                             </p>
-                            <span className="rounded-full border border-cyan-300/30 bg-cyan-500/15 px-3 py-1 text-xs font-medium text-cyan-100">
+                            <span className="rounded-full border border-indigo-300/30 bg-indigo-500/15 px-3 py-1 text-xs font-medium text-indigo-100">
                                 Graph Context
                             </span>
                         </div>
@@ -242,7 +242,7 @@ export default function HomeRoute() {
 
                 <section className="landing-reveal landing-reveal-delay-1 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
                     <div className="rounded-2xl border border-slate-700/70 bg-slate-900/75 p-7 backdrop-blur-sm">
-                        <p className="text-xs font-semibold tracking-[0.11em] text-cyan-200 uppercase">
+                        <p className="text-xs font-semibold tracking-[0.11em] text-indigo-200 uppercase">
                             Purpose
                         </p>
                         <h2 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">
@@ -265,7 +265,7 @@ export default function HomeRoute() {
                                         className="rounded-xl border border-slate-700/70 bg-slate-950/65 p-4"
                                     >
                                         <div className="flex items-start gap-3">
-                                            <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-cyan-400/40 bg-cyan-500/20 text-cyan-100">
+                                            <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-indigo-400/40 bg-indigo-500/20 text-indigo-100">
                                                 <StepIcon size={17} />
                                             </span>
                                             <div>
@@ -299,7 +299,7 @@ export default function HomeRoute() {
                                         className="rounded-xl border border-slate-700/70 bg-slate-950/65 p-4"
                                     >
                                         <div className="flex items-start gap-3">
-                                            <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-indigo-400/40 bg-indigo-500/20 text-indigo-100">
+                                            <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-cyan-400/40 bg-cyan-500/20 text-cyan-100">
                                                 <UseCaseIcon size={17} />
                                             </span>
                                             <div>
@@ -320,7 +320,7 @@ export default function HomeRoute() {
 
                 <section className="landing-reveal landing-reveal-delay-2 space-y-6">
                     <div className="max-w-3xl">
-                        <p className="text-xs font-semibold tracking-[0.11em] text-cyan-200 uppercase">
+                        <p className="text-xs font-semibold tracking-[0.11em] text-indigo-200 uppercase">
                             Features
                         </p>
                         <h2 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">
@@ -348,7 +348,7 @@ export default function HomeRoute() {
                                     </div>
 
                                     <div className="flex flex-col justify-center">
-                                        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-cyan-300/35 bg-cyan-500/12 px-3 py-1 text-xs font-semibold tracking-[0.07em] text-cyan-100 uppercase">
+                                        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-indigo-300/35 bg-indigo-500/12 px-3 py-1 text-xs font-semibold tracking-[0.07em] text-indigo-100 uppercase">
                                             <FeatureIcon size={14} />
                                             Feature
                                         </div>
@@ -364,7 +364,7 @@ export default function HomeRoute() {
                                                     key={bullet}
                                                     className="flex items-start gap-2 text-sm text-slate-200"
                                                 >
-                                                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-300" />
+                                                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-300" />
                                                     <span>{bullet}</span>
                                                 </li>
                                             ))}
@@ -380,7 +380,7 @@ export default function HomeRoute() {
                     <div className="rounded-2xl border border-slate-700/70 bg-slate-900/75 p-7 backdrop-blur-sm">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <p className="text-xs font-semibold tracking-[0.11em] text-cyan-200 uppercase">
+                                <p className="text-xs font-semibold tracking-[0.11em] text-indigo-200 uppercase">
                                     Changelog
                                 </p>
                                 <h2 className="mt-2 text-3xl font-semibold text-white">
@@ -399,7 +399,7 @@ export default function HomeRoute() {
                                     className="rounded-xl border border-slate-700/70 bg-slate-950/65 p-4"
                                 >
                                     <div className="flex flex-wrap items-center justify-between gap-2">
-                                        <span className="inline-flex rounded-md border border-cyan-300/35 bg-cyan-500/12 px-2.5 py-1 text-xs font-semibold text-cyan-100">
+                                        <span className="inline-flex rounded-md border border-indigo-300/35 bg-indigo-500/12 px-2.5 py-1 text-xs font-semibold text-indigo-100">
                                             {entry.version}
                                         </span>
                                         <span className="text-xs text-slate-400">
@@ -426,7 +426,7 @@ export default function HomeRoute() {
                     </div>
 
                     <div className="rounded-2xl border border-slate-700/70 bg-slate-900/75 p-7 backdrop-blur-sm">
-                        <p className="text-xs font-semibold tracking-[0.11em] text-cyan-200 uppercase">
+                        <p className="text-xs font-semibold tracking-[0.11em] text-indigo-200 uppercase">
                             Future Plans
                         </p>
                         <h2 className="mt-2 text-3xl font-semibold text-white">
