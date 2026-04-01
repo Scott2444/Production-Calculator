@@ -1,0 +1,27 @@
+{
+    "lastUpdated": "2026-04-01",
+    "changelog": [
+        {
+            "version": "v1.0.0",
+            "date": "2026-03-28",
+            "title": "Initial Release!",
+            "items": [
+                "First public release of Production Calculator.",
+                "Products, Recipes, Machines, Modifiers, and Attributes are supported.",
+                "Users are able to create workflows, alias projects, and define project models."
+            ]
+        }
+    ],
+    "futurePlans": [
+        {
+            "title": "Belt Model",
+            "description": "Automatically calculate the required belt types and counts based on throughput.",
+            "status": "In Progress"
+        },
+        {
+            "title": "Submit Feedback",
+            "description": "Want to see a feature? Soon you'll be able to let us know directly.",
+            "status": "Planned"
+        }
+    ]
+}
