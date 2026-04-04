@@ -15,6 +15,7 @@ namespace ProductionCalculator.Business.Services
         private readonly IMachineAttributeRepository _machineAttributeRepo;
         private readonly IModifierRepository _modifierRepo;
         private readonly IModifierAttributeRepository _modifierAttributeRepo;
+        private readonly IProjectRepository _projectRepo;
 
         public ProjectDataService(
             IProductRepository productRepo,
@@ -26,7 +27,8 @@ namespace ProductionCalculator.Business.Services
             IMachineRecipeRepository machineRecipeRepo,
             IMachineAttributeRepository machineAttributeRepo,
             IModifierRepository modifierRepo,
-            IModifierAttributeRepository modifierAttributeRepo)
+            IModifierAttributeRepository modifierAttributeRepo,
+            IProjectRepository projectRepo)
         {
             _productRepo = productRepo;
             _attributeRepo = attributeRepo;
@@ -38,6 +40,7 @@ namespace ProductionCalculator.Business.Services
             _machineAttributeRepo = machineAttributeRepo;
             _modifierRepo = modifierRepo;
             _modifierAttributeRepo = modifierAttributeRepo;
+            _projectRepo = projectRepo;
         }
 
         /// <summary>
@@ -48,9 +51,10 @@ namespace ProductionCalculator.Business.Services
         /// <returns>Aggregation of all project-related objects for the specified project ID.</returns>
         public async Task<ProjectObjects> GetProjectObjects(int projectId)
         {
-            var products = await _productRepo.GetProductsByProjectId(projectId);
-            var attributes = await _attributeRepo.GetAttributesByProjectId(projectId);
-            var recipes = await _recipeRepo.GetByProjectId(projectId);
+            var componentProjectId = await ResolveComponentProjectId(projectId);
+            var products = await _productRepo.GetProductsByProjectId(componentProjectId);
+            var attributes = await _attributeRepo.GetAttributesByProjectId(componentProjectId);
+            var recipes = await _recipeRepo.GetByProjectId(componentProjectId);
             var recipeProducts = new List<RecipeProduct>();
             var recipeAttributes = new List<RecipeAttribute>();
             foreach (var recipe in recipes)
@@ -61,7 +65,7 @@ namespace ProductionCalculator.Business.Services
                 var rAttributes = await _recipeAttributeRepo.GetByRecipeId(recipe.Recipe_Id);
                 recipeAttributes.AddRange(rAttributes);
             }
-            var machines = await _machineRepo.GetMachinesByProjectId(projectId);
+            var machines = await _machineRepo.GetMachinesByProjectId(componentProjectId);
             var machineRecipes = new List<MachineRecipe>();
             var machineAttributes = new List<MachineAttribute>();
             foreach (var machine in machines)
@@ -72,7 +76,7 @@ namespace ProductionCalculator.Business.Services
                 var mAttributes = await _machineAttributeRepo.GetByMachineId(machine.Machine_Id);
                 machineAttributes.AddRange(mAttributes);
             }
-            var modifiers = await _modifierRepo.GetModifiersByProjectId(projectId);
+            var modifiers = await _modifierRepo.GetModifiersByProjectId(componentProjectId);
             var modifierAttributes = new List<ModifierAttribute>();
             foreach (var modifier in modifiers)
             {
@@ -92,6 +96,23 @@ namespace ProductionCalculator.Business.Services
                 Modifiers = modifiers,
                 ModifierAttributes = modifierAttributes
             };
+        }
+
+        private async Task<int> ResolveComponentProjectId(int projectId)
+        {
+            var project = await _projectRepo.GetProjectById(projectId);
+            if (project == null || string.IsNullOrWhiteSpace(project.Alias_Project_Puid))
+                return projectId;
+
+            var sourceProject = await _projectRepo.GetProjectByPuid(project.Alias_Project_Puid);
+            if (sourceProject == null)
+                return projectId;
+
+            // Security: only follow alias when it still satisfies alias authorization rules
+            if (sourceProject.User_Id != project.User_Id && !sourceProject.Is_Public)
+                return projectId;
+
+            return sourceProject.Project_Id;
         }
     }
 }

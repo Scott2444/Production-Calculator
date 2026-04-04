@@ -24,6 +24,7 @@ public class ProjectDataServiceTests
         var machineAttributeRepo = A.Fake<IMachineAttributeRepository>();
         var modifierRepo = A.Fake<IModifierRepository>();
         var modifierAttributeRepo = A.Fake<IModifierAttributeRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
 
         var recipes = new List<Recipe> 
         { 
@@ -50,9 +51,22 @@ public class ProjectDataServiceTests
         A.CallTo(() => machineAttributeRepo.GetByMachineId(20)).Returns(new List<MachineAttribute> { new MachineAttribute { Machine_Attribute_Id = 1, Machine_Id = 20, Attribute_Id = 1, Rate = 1, Version = 1, Created_At = DateTime.UtcNow, Last_Updated = DateTime.UtcNow } });
         A.CallTo(() => modifierAttributeRepo.GetByModifierId(30)).Returns(new List<ModifierAttribute> { new ModifierAttribute { Modifier_Attribute_Id = 1, Modifier_Id = 30, Attribute_Id = 1, Flat_Bonus = 0, Percent_Bonus = 0, Multiplicative_Bonus = 1, Version = 1, Created_At = DateTime.UtcNow, Last_Updated = DateTime.UtcNow } });
 
+        A.CallTo(() => projectRepo.GetProjectById(projectId)).Returns(new Project
+        {
+            Project_Id = projectId,
+            User_Id = 1,
+            Puid = "proj",
+            Name = "Project",
+            Description = null,
+            Is_Public = false,
+            Alias_Project_Puid = null,
+            Created_At = DateTime.UtcNow,
+            Last_Updated = DateTime.UtcNow
+        });
+
         var service = new ProjectDataService(
             productRepo, attributeRepo, recipeRepo, recipeProductRepo, recipeAttributeRepo,
-            machineRepo, machineRecipeRepo, machineAttributeRepo, modifierRepo, modifierAttributeRepo);
+            machineRepo, machineRecipeRepo, machineAttributeRepo, modifierRepo, modifierAttributeRepo, projectRepo);
 
         // Act
         var result = await service.GetProjectObjects(projectId);
@@ -79,5 +93,121 @@ public class ProjectDataServiceTests
         A.CallTo(() => machineAttributeRepo.GetByMachineId(20)).MustHaveHappenedOnceExactly();
         A.CallTo(() => modifierRepo.GetModifiersByProjectId(projectId)).MustHaveHappenedOnceExactly();
         A.CallTo(() => modifierAttributeRepo.GetByModifierId(30)).MustHaveHappenedOnceExactly();
+    }
+
+    [Fact]
+    public async Task GetProjectObjects_AliasedProject_UsesSourceProjectComponents()
+    {
+        var projectId = 1;
+        var sourceProjectId = 2;
+        var productRepo = A.Fake<IProductRepository>();
+        var attributeRepo = A.Fake<IAttributeRepository>();
+        var recipeRepo = A.Fake<IRecipeRepository>();
+        var recipeProductRepo = A.Fake<IRecipeProductRepository>();
+        var recipeAttributeRepo = A.Fake<IRecipeAttributeRepository>();
+        var machineRepo = A.Fake<IMachineRepository>();
+        var machineRecipeRepo = A.Fake<IMachineRecipeRepository>();
+        var machineAttributeRepo = A.Fake<IMachineAttributeRepository>();
+        var modifierRepo = A.Fake<IModifierRepository>();
+        var modifierAttributeRepo = A.Fake<IModifierAttributeRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+
+        A.CallTo(() => projectRepo.GetProjectById(projectId)).Returns(new Project
+        {
+            Project_Id = projectId,
+            User_Id = 10,
+            Puid = "alias",
+            Name = "Alias Project",
+            Description = null,
+            Is_Public = false,
+            Alias_Project_Puid = "source",
+            Created_At = DateTime.UtcNow,
+            Last_Updated = DateTime.UtcNow
+        });
+        A.CallTo(() => projectRepo.GetProjectByPuid("source")).Returns(new Project
+        {
+            Project_Id = sourceProjectId,
+            User_Id = 10,
+            Puid = "source",
+            Name = "Source Project",
+            Description = null,
+            Is_Public = false,
+            Alias_Project_Puid = null,
+            Created_At = DateTime.UtcNow,
+            Last_Updated = DateTime.UtcNow
+        });
+
+        A.CallTo(() => productRepo.GetProductsByProjectId(sourceProjectId)).Returns(new List<Product>());
+        A.CallTo(() => attributeRepo.GetAttributesByProjectId(sourceProjectId)).Returns(new List<ProjectAttribute>());
+        A.CallTo(() => recipeRepo.GetByProjectId(sourceProjectId)).Returns(new List<Recipe>());
+        A.CallTo(() => machineRepo.GetMachinesByProjectId(sourceProjectId)).Returns(new List<Machine>());
+        A.CallTo(() => modifierRepo.GetModifiersByProjectId(sourceProjectId)).Returns(new List<Modifier>());
+
+        var service = new ProjectDataService(
+            productRepo, attributeRepo, recipeRepo, recipeProductRepo, recipeAttributeRepo,
+            machineRepo, machineRecipeRepo, machineAttributeRepo, modifierRepo, modifierAttributeRepo, projectRepo);
+
+        await service.GetProjectObjects(projectId);
+
+        A.CallTo(() => productRepo.GetProductsByProjectId(sourceProjectId)).MustHaveHappenedOnceExactly();
+        A.CallTo(() => productRepo.GetProductsByProjectId(projectId)).MustNotHaveHappened();
+    }
+
+    [Fact]
+    public async Task GetProjectObjects_AliasedProjectToPrivateOtherUser_DoesNotUseSourceProjectComponents()
+    {
+        var projectId = 1;
+        var sourceProjectId = 2;
+        var productRepo = A.Fake<IProductRepository>();
+        var attributeRepo = A.Fake<IAttributeRepository>();
+        var recipeRepo = A.Fake<IRecipeRepository>();
+        var recipeProductRepo = A.Fake<IRecipeProductRepository>();
+        var recipeAttributeRepo = A.Fake<IRecipeAttributeRepository>();
+        var machineRepo = A.Fake<IMachineRepository>();
+        var machineRecipeRepo = A.Fake<IMachineRecipeRepository>();
+        var machineAttributeRepo = A.Fake<IMachineAttributeRepository>();
+        var modifierRepo = A.Fake<IModifierRepository>();
+        var modifierAttributeRepo = A.Fake<IModifierAttributeRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+
+        A.CallTo(() => projectRepo.GetProjectById(projectId)).Returns(new Project
+        {
+            Project_Id = projectId,
+            User_Id = 10,
+            Puid = "alias",
+            Name = "Alias Project",
+            Description = null,
+            Is_Public = false,
+            Alias_Project_Puid = "source",
+            Created_At = DateTime.UtcNow,
+            Last_Updated = DateTime.UtcNow
+        });
+        A.CallTo(() => projectRepo.GetProjectByPuid("source")).Returns(new Project
+        {
+            Project_Id = sourceProjectId,
+            User_Id = 11,
+            Puid = "source",
+            Name = "Source Project",
+            Description = null,
+            Is_Public = false,
+            Alias_Project_Puid = null,
+            Created_At = DateTime.UtcNow,
+            Last_Updated = DateTime.UtcNow
+        });
+
+        A.CallTo(() => productRepo.GetProductsByProjectId(projectId)).Returns(new List<Product>());
+        A.CallTo(() => attributeRepo.GetAttributesByProjectId(projectId)).Returns(new List<ProjectAttribute>());
+        A.CallTo(() => recipeRepo.GetByProjectId(projectId)).Returns(new List<Recipe>());
+        A.CallTo(() => machineRepo.GetMachinesByProjectId(projectId)).Returns(new List<Machine>());
+        A.CallTo(() => modifierRepo.GetModifiersByProjectId(projectId)).Returns(new List<Modifier>());
+
+        var service = new ProjectDataService(
+            productRepo, attributeRepo, recipeRepo, recipeProductRepo, recipeAttributeRepo,
+            machineRepo, machineRecipeRepo, machineAttributeRepo, modifierRepo, modifierAttributeRepo, projectRepo);
+
+        await service.GetProjectObjects(projectId);
+
+        A.CallTo(() => productRepo.GetProductsByProjectId(projectId)).MustHaveHappenedOnceExactly();
+        A.CallTo(() => productRepo.GetProductsByProjectId(sourceProjectId)).MustNotHaveHappened();
     }
 }
