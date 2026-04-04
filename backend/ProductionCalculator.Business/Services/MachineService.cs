@@ -259,6 +259,12 @@ namespace ProductionCalculator.Business.Services
             var project = await _projectRepo.GetProjectByPuid(projectPuid);
             if (project == null) return ServiceResult<MachineResponse>.Fail(ServiceStatus.NotFound404, "Project not found.");
 
+            // Redirect aliased project to canonical project PUID
+            if (!string.IsNullOrWhiteSpace(project.Alias_Project_Puid))
+            {
+                return ServiceResult<MachineResponse>.Redirection(ServiceStatus.SeeOther303, $"/projects/{project.Alias_Project_Puid}/machines/{puid}");
+            }
+
             // Check if machine exists and belongs to project (IMPORTANT FOR AUTHORIZATION!)
             var machine = await _repo.GetMachineByPuid(puid);
             if (machine == null || machine.Project_Id != project.Project_Id) return ServiceResult<MachineResponse>.Fail(ServiceStatus.NotFound404, "Machine not found.");
@@ -309,6 +315,12 @@ namespace ProductionCalculator.Business.Services
             // Get projectId from projectPuid
             var project = await _projectRepo.GetProjectByPuid(projectPuid);
             if (project == null) return ServiceResult<List<MachineResponse>>.Fail(ServiceStatus.NotFound404, "Project not found.");
+
+            // Redirect aliased project to canonical project PUID
+            if (!string.IsNullOrWhiteSpace(project.Alias_Project_Puid))
+            {
+                return ServiceResult<List<MachineResponse>>.Redirection(ServiceStatus.SeeOther303, $"/projects/{project.Alias_Project_Puid}/machines");
+            }
 
             // Check if machine exists and belongs to project (IMPORTANT FOR AUTHORIZATION!)
             var machines = await _repo.GetMachinesByProjectId(project.Project_Id);
