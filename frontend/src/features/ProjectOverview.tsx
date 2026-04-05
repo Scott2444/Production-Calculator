@@ -2,7 +2,6 @@
 
 import ProjectPageLayout from "@/components/ProjectPageLayout";
 import ProjectStatusGate from "@/components/ProjectStatusGate";
-import ErrorDisplay from "@/components/ErrorDisplay";
 import { useProject } from "@/context/ProjectContext";
 import Popup from "@/components/Popup";
 import ProjectEditorDialog from "@/components/ProjectEditorDialog";
@@ -18,11 +17,6 @@ import {
     updateProject,
     deleteProject,
 } from "@/lib/projects";
-import { fetchProducts } from "@/lib/products";
-import { fetchRecipes } from "@/lib/recipes";
-import { fetchMachines } from "@/lib/machines";
-import { fetchModifiers } from "@/lib/modifiers";
-import { fetchAttributes } from "@/lib/attributes";
 import { fetchWorkflows, type Workflow } from "@/lib/workflow";
 import ReactMarkdown from "react-markdown";
 import { formatTimestamp } from "@/lib/timestamp";
@@ -32,16 +26,6 @@ interface SummaryItem {
     label: string;
     value: number | null;
     helper?: string;
-}
-
-function getCount(value: unknown): number | null {
-    if (!value) return 0;
-    if (Array.isArray(value)) return value.length;
-    if (typeof value === "object") {
-        const maybeItems = (value as { items?: unknown }).items;
-        if (Array.isArray(maybeItems)) return maybeItems.length;
-    }
-    return null;
 }
 
 function coerceWorkflows(value: unknown): Workflow[] {
@@ -70,41 +54,6 @@ export default function ProjectPage() {
 
     const projectId = currentProject?.puid ?? "";
 
-    const productsQuery = useQuery({
-        queryKey: ["products", projectId],
-        queryFn: () => fetchProducts(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
-
-    const recipesQuery = useQuery({
-        queryKey: ["recipes", projectId],
-        queryFn: () => fetchRecipes(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
-
-    const machinesQuery = useQuery({
-        queryKey: ["machines", projectId],
-        queryFn: () => fetchMachines(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
-
-    const modifiersQuery = useQuery({
-        queryKey: ["modifiers", projectId],
-        queryFn: () => fetchModifiers(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
-
-    const attributesQuery = useQuery({
-        queryKey: ["attributes", projectId],
-        queryFn: () => fetchAttributes(projectId, protectedApi),
-        enabled: Boolean(projectId),
-        staleTime: 60 * 1000,
-    });
-
     const workflowsQuery = useQuery({
         queryKey: ["workflows", projectId],
         queryFn: () => fetchWorkflows(projectId, protectedApi),
@@ -120,11 +69,11 @@ export default function ProjectPage() {
         staleTime: 5 * 60 * 1000,
     });
 
-    const productsCount = getCount(productsQuery.data);
-    const recipesCount = getCount(recipesQuery.data);
-    const machinesCount = getCount(machinesQuery.data);
-    const modifiersCount = getCount(modifiersQuery.data);
-    const attributesCount = getCount(attributesQuery.data);
+    const productsCount = currentProject?.productCount ?? null;
+    const recipesCount = currentProject?.recipeCount ?? null;
+    const machinesCount = currentProject?.machineCount ?? null;
+    const modifiersCount = currentProject?.modifierCount ?? null;
+    const attributesCount = currentProject?.attributeCount ?? null;
 
     const workflows = useMemo(
         () => coerceWorkflows(workflowsQuery.data),
@@ -255,20 +204,6 @@ export default function ProjectPage() {
             attributesCount,
         ],
     );
-
-    const countsLoading =
-        productsQuery.isLoading ||
-        recipesQuery.isLoading ||
-        machinesQuery.isLoading ||
-        modifiersQuery.isLoading ||
-        attributesQuery.isLoading;
-
-    const countsError =
-        productsQuery.error ||
-        recipesQuery.error ||
-        machinesQuery.error ||
-        modifiersQuery.error ||
-        attributesQuery.error;
 
     const workflowsListHref: string = `/${encodeURIComponent(routeUsername ?? "")}/${encodeURIComponent(routeProjectName ?? "")}/workflows`;
 
@@ -436,10 +371,7 @@ export default function ProjectPage() {
                                         {item.label}
                                     </div>
                                     <div className="mt-2 text-3xl font-semibold text-slate-100">
-                                        {countsLoading &&
-                                        item.label !== "Workflows"
-                                            ? "…"
-                                            : displayValue}
+                                        {displayValue}
                                     </div>
                                     {item.helper && (
                                         <div className="mt-1 text-xs text-slate-500">
@@ -467,18 +399,6 @@ export default function ProjectPage() {
                             );
                         })}
                     </div>
-
-                    {countsError && (
-                        <ErrorDisplay
-                            errors={[
-                                {
-                                    id: "counts-error",
-                                    message:
-                                        "Failed to load one or more project components.",
-                                },
-                            ]}
-                        />
-                    )}
 
                     <div className="mt-6 flex items-center justify-between gap-3">
                         <div>

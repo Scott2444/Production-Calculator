@@ -5,6 +5,12 @@ export interface Project {
     isPublic: boolean;
     aliasProjectPuid: string | null;
     aliasCount: number;
+    productCount: number;
+    recipeCount: number;
+    machineCount: number;
+    modifierCount: number;
+    attributeCount: number;
+    workflowCount: number;
     ownerUsername: string;
     createdAt: string;
     updatedAt: string;
