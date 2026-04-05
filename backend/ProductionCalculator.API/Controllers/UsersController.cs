@@ -40,6 +40,7 @@ namespace ProductionCalculator.API.Controllers
                 Email = tuple.Item1.Email,
                 Puid = tuple.Item1.Puid,
                 CreatedAt = tuple.Item1.Created_At,
+                ProjectCount = tuple.Item1.Project_Count,
                 UpdatedAt = tuple.Item1.Last_Updated,
                 IsVerified = tuple.Item2
             });

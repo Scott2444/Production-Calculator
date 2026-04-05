@@ -39,6 +39,12 @@ namespace ProductionCalculator.Business.Services
                 IsPublic = project.Is_Public,
                 AliasProjectPuid = project.Alias_Project_Puid,
                 AliasCount = project.Alias_Count,
+                ProductCount = project.Product_Count,
+                RecipeCount = project.Recipe_Count,
+                MachineCount = project.Machine_Count,
+                ModifierCount = project.Modifier_Count,
+                AttributeCount = project.Attribute_Count,
+                WorkflowCount = project.Workflow_Count,
                 CreatedAt = project.Created_At,
                 UpdatedAt = project.Last_Updated
             };
