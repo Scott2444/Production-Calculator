@@ -3,6 +3,7 @@ using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Helpers;
 using ProductionCalculator.Business.APIModels;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 
 namespace ProductionCalculator.Business.Services
 {
@@ -14,12 +15,17 @@ namespace ProductionCalculator.Business.Services
         private readonly IProjectRepository _repo;
         private readonly IUserRepository _userRepo;
         private readonly ILogger<ProjectService> _logger;
-        public ProjectService(ICurrentUserService currentUser, IProjectRepository repo, IUserRepository userRepo, ILogger<ProjectService> logger) 
+        private readonly int _maxProjectsPerUser;
+
+        public ProjectService(ICurrentUserService currentUser, IProjectRepository repo, IUserRepository userRepo, ILogger<ProjectService> logger, IConfiguration? configuration = null) 
         { 
             _currentUser = currentUser; 
             _repo = repo;
             _userRepo = userRepo;
             _logger = logger;
+
+            var objectLimits = ObjectLimitSettings.FromConfiguration(configuration);
+            _maxProjectsPerUser = objectLimits.MaxProjectsPerUser;
         }
 
         private ProjectResponse MapToResponse(Project project, string ownerUsername)
@@ -33,6 +39,12 @@ namespace ProductionCalculator.Business.Services
                 IsPublic = project.Is_Public,
                 AliasProjectPuid = project.Alias_Project_Puid,
                 AliasCount = project.Alias_Count,
+                ProductCount = project.Product_Count,
+                RecipeCount = project.Recipe_Count,
+                MachineCount = project.Machine_Count,
+                ModifierCount = project.Modifier_Count,
+                AttributeCount = project.Attribute_Count,
+                WorkflowCount = project.Workflow_Count,
                 CreatedAt = project.Created_At,
                 UpdatedAt = project.Last_Updated
             };
@@ -66,6 +78,11 @@ namespace ProductionCalculator.Business.Services
                 return ServiceResult<ProjectResponse>.Fail(ServiceStatus.BadRequest400, "Alias project PUID is invalid.");
             }
 
+            if (!await _userRepo.TryIncrementProjectCount(user.Puid, _maxProjectsPerUser))
+            {
+                return ServiceResult<ProjectResponse>.Fail(ServiceStatus.Conflict409, $"Project limit reached. Maximum allowed per user is {_maxProjectsPerUser}.");
+            }
+
             // Limit string lengths
             name = TruncateHelper.TruncateString(name, 255);
             description = TruncateHelper.TruncateStringNullable(description, 1000);
@@ -87,7 +104,16 @@ namespace ProductionCalculator.Business.Services
                 Last_Updated = DateTime.UtcNow
             };
 
-            await _repo.AddProject(project);
+            try
+            {
+                await _repo.AddProject(project);
+            }
+            catch
+            {
+                await _userRepo.DecrementProjectCount(user.Puid);
+                throw;
+            }
+
             await ApplyAliasCountDelta(null, project.Alias_Project_Puid);
             _logger.LogInformation("Project state change: change: Project '{ProjectName}' (PUID: {ProjectPuid}) created by user {UserPuid}.", project.Name, project.Puid, user.Puid);
             return ServiceResult<ProjectResponse>.SuccessResult(MapToResponse(project, user.Username), ServiceStatus.Created201);
@@ -222,13 +248,37 @@ namespace ProductionCalculator.Business.Services
                 // Transfer ownership to user of oldest alias
                 // Preserve both projects
                 var oldestAlias = await _repo.GetOldestAliasOfProject(puid);
-                project.User_Id = oldestAlias!.User_Id;
+                if (oldestAlias == null)
+                {
+                    _logger.LogError("DeleteProject failure: Expected an alias for project {ProjectPuid}, but none was found.", puid);
+                    return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to transfer ownership during project deletion.");
+                }
+
+                var previousOwnerId = project.User_Id;
+                project.User_Id = oldestAlias.User_Id;
                 _logger.LogInformation("Project deletion: Project '{ProjectName}' (PUID: {ProjectPuid}) ownership transferred to user {UserId} due to deletion of original owner.", project.Name, project.Puid, oldestAlias.User_Id);
                 await _repo.UpdateProject(project);
+
+                if (previousOwnerId != oldestAlias.User_Id)
+                {
+                    var previousOwner = await _userRepo.GetById(previousOwnerId);
+                    if (previousOwner != null)
+                    {
+                        await _userRepo.DecrementProjectCount(previousOwner.Puid);
+                    }
+
+                    var newOwner = await _userRepo.GetById(oldestAlias.User_Id);
+                    if (newOwner != null)
+                    {
+                        await _userRepo.IncrementProjectCount(newOwner.Puid);
+                    }
+                }
+
                 return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
             }
 
             var previousAliasProjectPuid = project.Alias_Project_Puid;
+            var projectOwner = await _userRepo.GetById(project.User_Id);
 
             var success = await _repo.DeleteProject(project.Project_Id);
             if (!success)
@@ -238,6 +288,12 @@ namespace ProductionCalculator.Business.Services
             }
 
             await ApplyAliasCountDelta(previousAliasProjectPuid, null);
+
+            if (projectOwner != null)
+            {
+                await _userRepo.DecrementProjectCount(projectOwner.Puid);
+            }
+
             _logger.LogInformation("Project state change: Project '{ProjectName}' (PUID: {ProjectPuid}) deleted.", project.Name, project.Puid);
             return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
         }

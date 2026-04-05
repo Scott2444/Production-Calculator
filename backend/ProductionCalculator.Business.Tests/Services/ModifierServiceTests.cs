@@ -97,6 +97,23 @@ public class ModifierServiceTests
     }
 
     [Fact]
+    public async Task AddModifier_LimitReached_ReturnsConflict()
+    {
+        var repo = A.Fake<IModifierRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var service = CreateService(repo, projectRepo);
+        var project = CreateProject(id: 10, puid: "projPuid");
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetModifiersByProjectId(10)).Returns(new List<Modifier>());
+        A.CallTo(() => projectRepo.TryIncrementModifierCount("projPuid", A<int>._)).Returns(false);
+
+        var result = await service.AddModifier("projPuid", "NewMod", "desc", 1.0, 2.0, 3.0);
+
+        Assert.Equal(ServiceStatus.Conflict409, result.Status);
+        A.CallTo(() => repo.AddModifier(A<Modifier>._)).MustNotHaveHappened();
+    }
+
+    [Fact]
     public async Task AddModifier_ValidRequest_ReturnsCreatedAndSavesToRepo()
     {
         var repo = A.Fake<IModifierRepository>();
@@ -105,12 +122,14 @@ public class ModifierServiceTests
         var project = CreateProject(id: 10, puid: "projPuid");
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetModifiersByProjectId(10)).Returns(new List<Modifier>());
+        A.CallTo(() => projectRepo.TryIncrementModifierCount("projPuid", A<int>._)).Returns(true);
         A.CallTo(() => repo.PuidExists(A<string>._)).Returns(false);
 
         var result = await service.AddModifier("projPuid", "NewMod", "desc", 1.0, 2.0, 3.0);
 
         Assert.True(result.Success);
         Assert.Equal(ServiceStatus.Created201, result.Status);
+        A.CallTo(() => projectRepo.TryIncrementModifierCount("projPuid", A<int>._)).MustHaveHappenedOnceExactly();
         A.CallTo(() => repo.AddModifier(A<Modifier>.That.Matches(m => m.Name == "NewMod" && m.Project_Id == 10))).MustHaveHappenedOnceExactly();
         A.CallTo(() => projectRepo.UpdateProject(A<Project>.That.Matches(p => p.Project_Id == 10))).MustHaveHappenedOnceExactly();
     }
@@ -422,6 +441,7 @@ public class ModifierServiceTests
         var result = await service.DeleteModifier("projPuid", "modPuid");
 
         Assert.Equal(ServiceStatus.NoContent204, result.Status);
+        A.CallTo(() => projectRepo.DecrementModifierCount("projPuid")).MustHaveHappenedOnceExactly();
         A.CallTo(() => projectRepo.UpdateProject(A<Project>.That.Matches(p => p.Project_Id == 10))).MustHaveHappenedOnceExactly();
     }
 }

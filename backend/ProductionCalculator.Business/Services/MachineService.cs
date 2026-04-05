@@ -2,6 +2,7 @@ using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Helpers;
+using Microsoft.Extensions.Configuration;
 
 namespace ProductionCalculator.Business.Services
 {
@@ -14,6 +15,8 @@ namespace ProductionCalculator.Business.Services
         private readonly IRecipeRepository _recipeRepo;
         private readonly IAttributeRepository _attributeRepo;
         private readonly IProjectRepository _projectRepo;
+        private readonly int _maxMachinesPerProject;
+
         public MachineService(
             ICurrentUserService currentUser, 
             IMachineRepository repo, 
@@ -21,7 +24,8 @@ namespace ProductionCalculator.Business.Services
             IMachineAttributeRepository machineAttributeRepo,
             IRecipeRepository recipeRepo,
             IAttributeRepository attributeRepo,
-            IProjectRepository projectRepo
+            IProjectRepository projectRepo,
+            IConfiguration? configuration = null
             ) 
         { 
             _currentUser = currentUser; 
@@ -31,6 +35,9 @@ namespace ProductionCalculator.Business.Services
             _recipeRepo = recipeRepo;
             _attributeRepo = attributeRepo;
             _projectRepo = projectRepo;
+
+            var objectLimits = ObjectLimitSettings.FromConfiguration(configuration);
+            _maxMachinesPerProject = objectLimits.MaxMachinesPerProject;
         }
 
         public async Task<ServiceResult<MachineResponse>> AddMachine(string projectPuid, string name, string? description, double baseSpeed, List<string> recipePuids, List<AttributeRateRequest>? attributes = null)
@@ -68,6 +75,11 @@ namespace ProductionCalculator.Business.Services
                 return ServiceResult<MachineResponse>.Fail(ServiceStatus.BadRequest400, validatedAttributes.error);
             }
 
+            if (!await _projectRepo.TryIncrementMachineCount(project.Puid, _maxMachinesPerProject))
+            {
+                return ServiceResult<MachineResponse>.Fail(ServiceStatus.Conflict409, $"Machine limit reached. Maximum allowed per project is {_maxMachinesPerProject}.");
+            }
+
             // Limit string lengths
             name = TruncateHelper.TruncateString(name, 255);
             description = TruncateHelper.TruncateStringNullable(description, 1000);
@@ -87,7 +99,15 @@ namespace ProductionCalculator.Business.Services
                 Created_At = DateTime.UtcNow,
                 Last_Updated = DateTime.UtcNow
             };
-            await _repo.AddMachine(machine);
+            try
+            {
+                await _repo.AddMachine(machine);
+            }
+            catch
+            {
+                await _projectRepo.DecrementMachineCount(project.Puid);
+                throw;
+            }
 
             // Create machine_recipe relations and save to database
             var machineRecipe = recipePuids.Select(rp => new MachineRecipe
@@ -397,6 +417,8 @@ namespace ProductionCalculator.Business.Services
             
             var isDeleted = await _repo.DeleteMachine(machine.Machine_Id);
             if (!isDeleted) return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete machine.");
+
+            await _projectRepo.DecrementMachineCount(project.Puid);
             await UpdateProjectLastUpdated(project);
             return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
         }

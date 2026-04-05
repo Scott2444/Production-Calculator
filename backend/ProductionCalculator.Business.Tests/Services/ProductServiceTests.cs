@@ -84,6 +84,23 @@ public class ProductServiceTests
     }
 
     [Fact]
+    public async Task AddProduct_LimitReached_ReturnsConflict()
+    {
+        var repo = A.Fake<IProductRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var service = CreateService(repo, projectRepo);
+        var project = CreateProject(id: 10, puid: "projPuid");
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetProductsByProjectId(10)).Returns(new List<Product>());
+        A.CallTo(() => projectRepo.TryIncrementProductCount("projPuid", A<int>._)).Returns(false);
+
+        var result = await service.AddProduct("projPuid", "NewProd", "desc");
+
+        Assert.Equal(ServiceStatus.Conflict409, result.Status);
+        A.CallTo(() => repo.AddProduct(A<Product>._)).MustNotHaveHappened();
+    }
+
+    [Fact]
     public async Task AddProduct_ValidRequest_ReturnsCreatedAndSavesToRepo()
     {
         var repo = A.Fake<IProductRepository>();
@@ -92,12 +109,14 @@ public class ProductServiceTests
         var project = CreateProject(id: 10, puid: "projPuid");
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetProductsByProjectId(10)).Returns(new List<Product>());
+        A.CallTo(() => projectRepo.TryIncrementProductCount("projPuid", A<int>._)).Returns(true);
         A.CallTo(() => repo.PuidExists(A<string>._)).Returns(false);
 
         var result = await service.AddProduct("projPuid", "NewProd", "desc");
 
         Assert.True(result.Success);
         Assert.Equal(ServiceStatus.Created201, result.Status);
+        A.CallTo(() => projectRepo.TryIncrementProductCount("projPuid", A<int>._)).MustHaveHappenedOnceExactly();
         A.CallTo(() => repo.AddProduct(A<Product>.That.Matches(p => p.Name == "NewProd" && p.Project_Id == 10))).MustHaveHappenedOnceExactly();
         A.CallTo(() => projectRepo.UpdateProject(A<Project>.That.Matches(p => p.Project_Id == 10))).MustHaveHappenedOnceExactly();
     }
@@ -380,6 +399,7 @@ public class ProductServiceTests
 
         Assert.True(result.Success);
         Assert.Equal(ServiceStatus.NoContent204, result.Status);
+        A.CallTo(() => projectRepo.DecrementProductCount("proj")).MustHaveHappenedOnceExactly();
         A.CallTo(() => projectRepo.UpdateProject(project)).MustHaveHappenedOnceExactly();
     }
 }

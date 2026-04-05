@@ -113,6 +113,29 @@ public class RecipeServiceTests
     }
 
     [Fact]
+    public async Task AddRecipe_LimitReached_ReturnsConflict()
+    {
+        var repo = A.Fake<IRecipeRepository>();
+        var productRepo = A.Fake<IProductRepository>();
+        var recipeProductRepo = A.Fake<IRecipeProductRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var service = CreateService(repo, productRepo, A.Fake<IAttributeRepository>(), recipeProductRepo, A.Fake<IRecipeAttributeRepository>(), projectRepo);
+        var project = CreateProject(id: 10, puid: "projPuid");
+        var product = CreateProduct(id: 5, projectId: 10, puid: "p1");
+
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetByProjectId(10)).Returns(new List<Recipe>());
+        A.CallTo(() => productRepo.GetProductByPuid("p1")).Returns(product);
+        A.CallTo(() => projectRepo.TryIncrementRecipeCount("projPuid", A<int>._)).Returns(false);
+
+        var inputs = new List<RecipeProductExchange> { new() { Puid = "p1", Quantity = 1 } };
+        var result = await service.AddRecipe("projPuid", "NewRecipe", "desc", 2.0, inputs, new());
+
+        Assert.Equal(ServiceStatus.Conflict409, result.Status);
+        A.CallTo(() => repo.AddRecipe(A<Recipe>._)).MustNotHaveHappened();
+    }
+
+    [Fact]
     public async Task AddRecipe_ValidRequest_ReturnsCreatedAndSavesToRepo()
     {
         var repo = A.Fake<IRecipeRepository>();
@@ -141,6 +164,7 @@ public class RecipeServiceTests
         A.CallTo(() => repo.GetByProjectId(10)).Returns(new List<Recipe>());
         A.CallTo(() => productRepo.GetProductByPuid("p1")).Returns(product);
         A.CallTo(() => attributeRepo.GetAttributeByPuid("a1")).Returns(attribute);
+        A.CallTo(() => projectRepo.TryIncrementRecipeCount("projPuid", A<int>._)).Returns(true);
         A.CallTo(() => repo.PuidExists(A<string>._)).Returns(false);
 
         var inputs = new List<RecipeProductExchange> { new() { Puid = "p1", Quantity = 5 } };
@@ -151,6 +175,7 @@ public class RecipeServiceTests
 
         Assert.True(result.Success);
         Assert.Equal(ServiceStatus.Created201, result.Status);
+        A.CallTo(() => projectRepo.TryIncrementRecipeCount("projPuid", A<int>._)).MustHaveHappenedOnceExactly();
         A.CallTo(() => repo.AddRecipe(A<Recipe>.That.Matches(r => r.Name == "NewRecipe" && r.Project_Id == 10))).MustHaveHappenedOnceExactly();
         A.CallTo(() => recipeProductRepo.AddRecipeProducts(A<IEnumerable<RecipeProduct>>.That.Matches(rp => rp.Any(x => x.Product_Id == 5 && x.Is_Input)))).MustHaveHappenedOnceExactly();
         A.CallTo(() => recipeAttributeRepo.AddRecipeAttributes(A<IEnumerable<RecipeAttribute>>.That.Matches(ra => ra.Any(x => x.Attribute_Id == 7 && x.Rate == 2)))).MustHaveHappenedOnceExactly();
@@ -376,6 +401,7 @@ public class RecipeServiceTests
         var result = await service.DeleteRecipe("proj", "r1");
 
         Assert.Equal(ServiceStatus.NoContent204, result.Status);
+        A.CallTo(() => projectRepo.DecrementRecipeCount("project123")).MustHaveHappenedOnceExactly();
         A.CallTo(() => projectRepo.UpdateProject(A<Project>._)).MustHaveHappenedOnceExactly();
     }
 }

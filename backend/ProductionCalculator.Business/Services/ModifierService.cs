@@ -2,6 +2,7 @@ using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Helpers;
+using Microsoft.Extensions.Configuration;
 
 namespace ProductionCalculator.Business.Services
 {
@@ -12,19 +13,24 @@ namespace ProductionCalculator.Business.Services
         private readonly IModifierRepository _repo;
         private readonly IModifierAttributeRepository _modifierAttributeRepo;
         private readonly IAttributeRepository _attributeRepo;
+        private readonly int _maxModifiersPerProject;
     
         public ModifierService(
             ICurrentUserService currentUser,
             IProjectRepository projectRepo,
             IModifierRepository repo,
             IModifierAttributeRepository modifierAttributeRepo,
-            IAttributeRepository attributeRepo)
+            IAttributeRepository attributeRepo,
+            IConfiguration? configuration = null)
         {
             _currentUser = currentUser;
             _projectRepo = projectRepo;
             _repo = repo;
             _modifierAttributeRepo = modifierAttributeRepo;
             _attributeRepo = attributeRepo;
+
+            var objectLimits = ObjectLimitSettings.FromConfiguration(configuration);
+            _maxModifiersPerProject = objectLimits.MaxModifiersPerProject;
         }
         public async Task<ServiceResult<ModifierResponse>> AddModifier(string projectPuid, string name, string? description, double flatBonus, double percentBonus, double multiplicativeBonus, double inputPercent = 1.0, double outputPercent = 1.0, List<ModifierAttributeRequest>? attributes = null)
         {
@@ -43,6 +49,11 @@ namespace ProductionCalculator.Business.Services
             if (validatedAttributes.error != null)
             {
                 return ServiceResult<ModifierResponse>.Fail(ServiceStatus.BadRequest400, validatedAttributes.error);
+            }
+
+            if (!await _projectRepo.TryIncrementModifierCount(project.Puid, _maxModifiersPerProject))
+            {
+                return ServiceResult<ModifierResponse>.Fail(ServiceStatus.Conflict409, $"Modifier limit reached. Maximum allowed per project is {_maxModifiersPerProject}.");
             }
 
             // Limit string lengths
@@ -69,7 +80,15 @@ namespace ProductionCalculator.Business.Services
                 Last_Updated = DateTime.UtcNow
             };
 
-            await _repo.AddModifier(modifier);
+            try
+            {
+                await _repo.AddModifier(modifier);
+            }
+            catch
+            {
+                await _projectRepo.DecrementModifierCount(project.Puid);
+                throw;
+            }
 
             var modifierAttributes = validatedAttributes.attributes.Select(attribute => new ModifierAttribute
             {
@@ -227,6 +246,7 @@ namespace ProductionCalculator.Business.Services
             var isDeleted = await _repo.DeleteModifier(modifier.Modifier_Id);
             if (!isDeleted) return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete modifier.");
 
+            await _projectRepo.DecrementModifierCount(project.Puid);
             await UpdateProjectLastUpdated(project);
             return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
         }

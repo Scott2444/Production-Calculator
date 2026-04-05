@@ -157,6 +157,28 @@ public class MachineServiceTests
     }
 
     [Fact]
+    public async Task AddMachine_LimitReached_ReturnsConflict()
+    {
+        var repo = A.Fake<IMachineRepository>();
+        var machineRecipeRepo = A.Fake<IMachineRecipeRepository>();
+        var recipeRepo = A.Fake<IRecipeRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var service = CreateService(repo, machineRecipeRepo, A.Fake<IMachineAttributeRepository>(), recipeRepo, A.Fake<IAttributeRepository>(), projectRepo);
+        var project = CreateProject(id: 10, puid: "projPuid");
+        var recipe = CreateRecipe(id: 20, projectId: 10, puid: "recPuid");
+
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetMachinesByProjectId(10)).Returns(new List<Machine>());
+        A.CallTo(() => recipeRepo.GetByPuid("recPuid")).Returns(recipe);
+        A.CallTo(() => projectRepo.TryIncrementMachineCount("projPuid", A<int>._)).Returns(false);
+
+        var result = await service.AddMachine("projPuid", "NewMach", "desc", 10.0, new List<string> { "recPuid" });
+
+        Assert.Equal(ServiceStatus.Conflict409, result.Status);
+        A.CallTo(() => repo.AddMachine(A<Machine>._)).MustNotHaveHappened();
+    }
+
+    [Fact]
     public async Task AddMachine_ValidRequest_ReturnsCreatedAndSavesToRepo()
     {
         var repo = A.Fake<IMachineRepository>();
@@ -184,11 +206,13 @@ public class MachineServiceTests
         A.CallTo(() => repo.GetMachinesByProjectId(10)).Returns(new List<Machine>());
         A.CallTo(() => recipeRepo.GetByPuid("recPuid")).Returns(recipe);
         A.CallTo(() => attributeRepo.GetAttributeByPuid("a1")).Returns(attribute);
+        A.CallTo(() => projectRepo.TryIncrementMachineCount("projPuid", A<int>._)).Returns(true);
 
         var result = await service.AddMachine("projPuid", "NewMach", "desc", 10.0, new List<string> { "recPuid" }, [new AttributeRateRequest { Puid = "a1", Rate = 2 }]);
 
         Assert.True(result.Success);
         Assert.Equal(ServiceStatus.Created201, result.Status);
+        A.CallTo(() => projectRepo.TryIncrementMachineCount("projPuid", A<int>._)).MustHaveHappenedOnceExactly();
         A.CallTo(() => repo.AddMachine(A<Machine>.That.Matches(m => m.Name == "NewMach" && m.Project_Id == 10))).MustHaveHappenedOnceExactly();
         A.CallTo(() => machineRecipeRepo.AddMachineRecipes(A<IEnumerable<MachineRecipe>>.That.Matches(mrs => mrs.Any(mr => mr.Recipe_Id == 20)))).MustHaveHappenedOnceExactly();
         A.CallTo(() => machineAttributeRepo.AddMachineAttributes(A<IEnumerable<MachineAttribute>>.That.Matches(mas => mas.Any(ma => ma.Attribute_Id == 15 && ma.Rate == 2)))).MustHaveHappenedOnceExactly();
@@ -515,6 +539,7 @@ public class MachineServiceTests
         var result = await service.DeleteMachine("projPuid", "mach1");
 
         Assert.Equal(ServiceStatus.NoContent204, result.Status);
+        A.CallTo(() => projectRepo.DecrementMachineCount("projPuid")).MustHaveHappenedOnceExactly();
         A.CallTo(() => projectRepo.UpdateProject(A<Project>.That.Matches(p => p.Project_Id == 10))).MustHaveHappenedOnceExactly();
     }
 }

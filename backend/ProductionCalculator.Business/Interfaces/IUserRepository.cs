@@ -11,6 +11,9 @@ namespace ProductionCalculator.Business.Interfaces
         Task<User?> GetByEmail(string email);
         Task AddUser(User user);
         Task UpdateUser(User user);
+        Task<bool> TryIncrementProjectCount(string puid, int maxAllowed);
+        Task IncrementProjectCount(string puid);
+        Task DecrementProjectCount(string puid);
         Task<bool> DeleteUser(int id);
         Task<string> GetPasswordHash(int id);
         Task<bool> PuidExists(string puid);

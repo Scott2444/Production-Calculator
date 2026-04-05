@@ -2,6 +2,7 @@ using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Helpers;
+using Microsoft.Extensions.Configuration;
 
 namespace ProductionCalculator.Business.Services
 {
@@ -11,13 +12,17 @@ namespace ProductionCalculator.Business.Services
 		private readonly IWorkflowRepository _repo;
 		private readonly IProjectRepository _projectRepo;
 		private readonly IWorkflowChartService _workflowChartService;
+		private readonly int _maxWorkflowsPerProject;
 
-		public WorkflowService(ICurrentUserService currentUser, IWorkflowRepository repo, IProjectRepository projectRepo, IWorkflowChartService workflowChartService)
+		public WorkflowService(ICurrentUserService currentUser, IWorkflowRepository repo, IProjectRepository projectRepo, IWorkflowChartService workflowChartService, IConfiguration? configuration = null)
 		{
 			_currentUser = currentUser;
 			_repo = repo;
 			_projectRepo = projectRepo;
 			_workflowChartService = workflowChartService;
+
+			var objectLimits = ObjectLimitSettings.FromConfiguration(configuration);
+			_maxWorkflowsPerProject = objectLimits.MaxWorkflowsPerProject;
 		}
 
 		public async Task<ServiceResult<Workflow>> AddWorkflow(string projectPuid, string name, string? description)
@@ -31,6 +36,11 @@ namespace ProductionCalculator.Business.Services
             // Check if name already exists for this project
 			var existingWorkflows = await _repo.GetWorkflowsByProjectId(project.Project_Id);
 			if (existingWorkflows.Any(w => w.Name == name)) return ServiceResult<Workflow>.Fail(ServiceStatus.Conflict409, "Workflow name already exists for this project.");
+
+			if (!await _projectRepo.TryIncrementWorkflowCount(project.Puid, _maxWorkflowsPerProject))
+			{
+				return ServiceResult<Workflow>.Fail(ServiceStatus.Conflict409, $"Workflow limit reached. Maximum allowed per project is {_maxWorkflowsPerProject}.");
+			}
 
             // Limit string lengths
 			name = TruncateHelper.TruncateString(name, 255);
@@ -49,7 +59,16 @@ namespace ProductionCalculator.Business.Services
 				Last_Updated = DateTime.UtcNow
 			};
 
-			await _repo.AddWorkflow(workflow);
+			try
+			{
+				await _repo.AddWorkflow(workflow);
+			}
+			catch
+			{
+				await _projectRepo.DecrementWorkflowCount(project.Puid);
+				throw;
+			}
+
 			await UpdateProjectLastUpdated(project);
 			return ServiceResult<Workflow>.SuccessResult(workflow, ServiceStatus.Created201);
 		}
@@ -113,6 +132,7 @@ namespace ProductionCalculator.Business.Services
 			var isDeleted = await _repo.DeleteWorkflow(workflow.Workflow_Id);
 			if (!isDeleted) return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete workflow.");
 
+			await _projectRepo.DecrementWorkflowCount(project.Puid);
 			await UpdateProjectLastUpdated(project);
 			return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
 		}

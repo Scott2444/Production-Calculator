@@ -61,6 +61,11 @@ namespace ProductionCalculator.Data.Configurations
             builder.HasIndex(u => u.Puid)
                 .IsUnique()
                 .HasDatabaseName("projects_puid_key");
+
+            builder.Property(u => u.Project_Count)
+                .HasColumnName("project_count")
+                .HasDefaultValue(0)
+                .IsRequired();
             
             builder.Property(u => u.Failed_Login_Attempts)
                 .HasColumnName("failed_login_attempts")

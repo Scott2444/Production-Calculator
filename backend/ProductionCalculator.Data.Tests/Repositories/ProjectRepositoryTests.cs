@@ -19,7 +19,21 @@ public class ProjectRepositoryTests
         return db;
     }
 
-    private static Project CreateProject(int id = 1, int userId = 1, string? puid = null, string name = "Test Project", string? aliasPuid = null, int aliasCount = 0, bool isPublic = false, DateTime? createdAt = null)
+    private static Project CreateProject(
+        int id = 1,
+        int userId = 1,
+        string? puid = null,
+        string name = "Test Project",
+        string? aliasPuid = null,
+        int aliasCount = 0,
+        int productCount = 0,
+        int recipeCount = 0,
+        int machineCount = 0,
+        int modifierCount = 0,
+        int attributeCount = 0,
+        int workflowCount = 0,
+        bool isPublic = false,
+        DateTime? createdAt = null)
     {
         return new Project
         {
@@ -31,6 +45,12 @@ public class ProjectRepositoryTests
             Is_Public = isPublic,
             Alias_Project_Puid = aliasPuid,
             Alias_Count = aliasCount,
+            Product_Count = productCount,
+            Recipe_Count = recipeCount,
+            Machine_Count = machineCount,
+            Modifier_Count = modifierCount,
+            Attribute_Count = attributeCount,
+            Workflow_Count = workflowCount,
             Created_At = createdAt ?? DateTime.UtcNow,
             Last_Updated = DateTime.UtcNow
         };
@@ -222,6 +242,60 @@ public class ProjectRepositoryTests
         var result = await repo.GetProjectByPuid("alias");
         Assert.NotNull(result);
         Assert.Equal(0, result!.Alias_Count);
+    }
+
+    [Fact]
+    public async Task ProjectObjectCounters_IncrementWithLimitAndDecrementWithoutGoingBelowZero()
+    {
+        await using var db = CreateDbContext();
+        var repo = new ProjectRepository(db);
+        db.Set<Project>().Add(CreateProject(id: 1, puid: "project"));
+        await db.SaveChangesAsync();
+
+        Assert.True(await repo.TryIncrementProductCount("project", 1));
+        Assert.True(await repo.TryIncrementRecipeCount("project", 1));
+        Assert.True(await repo.TryIncrementMachineCount("project", 1));
+        Assert.True(await repo.TryIncrementModifierCount("project", 1));
+        Assert.True(await repo.TryIncrementAttributeCount("project", 1));
+        Assert.True(await repo.TryIncrementWorkflowCount("project", 1));
+
+        Assert.False(await repo.TryIncrementProductCount("project", 1));
+        Assert.False(await repo.TryIncrementRecipeCount("project", 1));
+        Assert.False(await repo.TryIncrementMachineCount("project", 1));
+        Assert.False(await repo.TryIncrementModifierCount("project", 1));
+        Assert.False(await repo.TryIncrementAttributeCount("project", 1));
+        Assert.False(await repo.TryIncrementWorkflowCount("project", 1));
+
+        var afterIncrement = await repo.GetProjectByPuid("project");
+        Assert.NotNull(afterIncrement);
+        Assert.Equal(1, afterIncrement!.Product_Count);
+        Assert.Equal(1, afterIncrement.Recipe_Count);
+        Assert.Equal(1, afterIncrement.Machine_Count);
+        Assert.Equal(1, afterIncrement.Modifier_Count);
+        Assert.Equal(1, afterIncrement.Attribute_Count);
+        Assert.Equal(1, afterIncrement.Workflow_Count);
+
+        await repo.DecrementProductCount("project");
+        await repo.DecrementProductCount("project");
+        await repo.DecrementRecipeCount("project");
+        await repo.DecrementRecipeCount("project");
+        await repo.DecrementMachineCount("project");
+        await repo.DecrementMachineCount("project");
+        await repo.DecrementModifierCount("project");
+        await repo.DecrementModifierCount("project");
+        await repo.DecrementAttributeCount("project");
+        await repo.DecrementAttributeCount("project");
+        await repo.DecrementWorkflowCount("project");
+        await repo.DecrementWorkflowCount("project");
+
+        var afterDecrement = await repo.GetProjectByPuid("project");
+        Assert.NotNull(afterDecrement);
+        Assert.Equal(0, afterDecrement!.Product_Count);
+        Assert.Equal(0, afterDecrement.Recipe_Count);
+        Assert.Equal(0, afterDecrement.Machine_Count);
+        Assert.Equal(0, afterDecrement.Modifier_Count);
+        Assert.Equal(0, afterDecrement.Attribute_Count);
+        Assert.Equal(0, afterDecrement.Workflow_Count);
     }
 
     [Fact]

@@ -60,6 +60,36 @@ namespace ProductionCalculator.Data.Configurations
                 .IsRequired()
                 .HasDefaultValue(0);
 
+            builder.Property(u => u.Product_Count)
+                .HasColumnName("product_count")
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            builder.Property(u => u.Recipe_Count)
+                .HasColumnName("recipe_count")
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            builder.Property(u => u.Machine_Count)
+                .HasColumnName("machine_count")
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            builder.Property(u => u.Modifier_Count)
+                .HasColumnName("modifier_count")
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            builder.Property(u => u.Attribute_Count)
+                .HasColumnName("attribute_count")
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            builder.Property(u => u.Workflow_Count)
+                .HasColumnName("workflow_count")
+                .IsRequired()
+                .HasDefaultValue(0);
+
             builder.Property(u => u.Search_Vector)
                 .HasColumnName("search_vector")
                 .HasColumnType("tsvector")

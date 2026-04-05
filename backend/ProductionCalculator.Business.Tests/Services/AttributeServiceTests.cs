@@ -54,13 +54,32 @@ public class AttributeServiceTests
         var project = CreateProject(id: 10, puid: "projPuid");
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetAttributesByProjectId(10)).Returns(new List<ProjectAttribute>());
+        A.CallTo(() => projectRepo.TryIncrementAttributeCount("projPuid", A<int>._)).Returns(true);
         A.CallTo(() => repo.PuidExists(A<string>._)).Returns(false);
 
         var result = await service.AddAttribute("projPuid", "NewAttr", "desc", "m/s");
 
         Assert.True(result.Success);
         Assert.Equal(ServiceStatus.Created201, result.Status);
+        A.CallTo(() => projectRepo.TryIncrementAttributeCount("projPuid", A<int>._)).MustHaveHappenedOnceExactly();
         A.CallTo(() => repo.AddAttribute(A<ProjectAttribute>.That.Matches(p => p.Name == "NewAttr" && p.Project_Id == 10))).MustHaveHappenedOnceExactly();
+    }
+
+    [Fact]
+    public async Task AddAttribute_LimitReached_ReturnsConflict()
+    {
+        var repo = A.Fake<IAttributeRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var service = CreateService(repo, projectRepo);
+        var project = CreateProject(id: 10, puid: "projPuid");
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetAttributesByProjectId(10)).Returns(new List<ProjectAttribute>());
+        A.CallTo(() => projectRepo.TryIncrementAttributeCount("projPuid", A<int>._)).Returns(false);
+
+        var result = await service.AddAttribute("projPuid", "NewAttr", "desc", "m/s");
+
+        Assert.Equal(ServiceStatus.Conflict409, result.Status);
+        A.CallTo(() => repo.AddAttribute(A<ProjectAttribute>._)).MustNotHaveHappened();
     }
 
     [Fact]
@@ -128,5 +147,6 @@ public class AttributeServiceTests
         var result = await service.DeleteAttribute("proj", "attrPuid");
 
         Assert.Equal(ServiceStatus.NoContent204, result.Status);
+        A.CallTo(() => projectRepo.DecrementAttributeCount("proj")).MustHaveHappenedOnceExactly();
     }
 }

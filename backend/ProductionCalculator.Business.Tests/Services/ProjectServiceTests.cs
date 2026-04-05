@@ -131,6 +131,25 @@ public class ProjectServiceTests
     }
 
     [Fact]
+    public async Task AddProject_ProjectLimitReached_ReturnsConflict()
+    {
+        var user = CreateUser();
+        var currentUser = A.Fake<ICurrentUserService>();
+        A.CallTo(() => currentUser.UserPuid).Returns(user.Puid);
+        var repo = A.Fake<IProjectRepository>();
+        var userRepo = A.Fake<IUserRepository>();
+        A.CallTo(() => userRepo.GetByPuid(user.Puid)).Returns(user);
+        A.CallTo(() => repo.GetProjectsByUserId(user.User_Id)).Returns(new List<Project>());
+        A.CallTo(() => userRepo.TryIncrementProjectCount(user.Puid, A<int>._)).Returns(false);
+        var service = CreateService(currentUser, repo, userRepo);
+
+        var result = await service.AddProject("name", "desc", false, null);
+
+        Assert.Equal(ServiceStatus.Conflict409, result.Status);
+        A.CallTo(() => repo.AddProject(A<Project>._)).MustNotHaveHappened();
+    }
+
+    [Fact]
     public async Task AddProject_ValidRequest_ReturnsCreated()
     {
         var user = CreateUser();
@@ -140,6 +159,7 @@ public class ProjectServiceTests
         var userRepo = A.Fake<IUserRepository>();
         A.CallTo(() => userRepo.GetByPuid(user.Puid)).Returns(user);
         A.CallTo(() => repo.GetProjectsByUserId(user.User_Id)).Returns(new List<Project>());
+        A.CallTo(() => userRepo.TryIncrementProjectCount(user.Puid, A<int>._)).Returns(true);
         A.CallTo(() => repo.PuidExists(A<string>._)).Returns(false);
         var service = CreateService(currentUser, repo, userRepo);
 
@@ -147,6 +167,7 @@ public class ProjectServiceTests
 
         Assert.Equal(ServiceStatus.Created201, result.Status);
         A.CallTo(() => repo.AddProject(A<Project>._)).MustHaveHappenedOnceExactly();
+        A.CallTo(() => userRepo.TryIncrementProjectCount(user.Puid, A<int>._)).MustHaveHappenedOnceExactly();
         A.CallTo(() => repo.IncrementAliasCount(A<string>._)).MustNotHaveHappened();
     }
 
@@ -161,6 +182,7 @@ public class ProjectServiceTests
         A.CallTo(() => userRepo.GetByPuid(user.Puid)).Returns(user);
         A.CallTo(() => repo.GetProjectsByUserId(user.User_Id)).Returns(new List<Project>());
         A.CallTo(() => repo.GetProjectByPuid("alias")).Returns(CreateProject(id: 2, userId: user.User_Id, puid: "alias"));
+        A.CallTo(() => userRepo.TryIncrementProjectCount(user.Puid, A<int>._)).Returns(true);
         A.CallTo(() => repo.PuidExists(A<string>._)).Returns(false);
         var service = CreateService(currentUser, repo, userRepo);
 
@@ -503,15 +525,19 @@ public class ProjectServiceTests
     public async Task DeleteProject_Valid_ReturnsNoContent()
     {
         var project = CreateProject(id: 1, puid: "puid");
+        var owner = CreateUser(id: project.User_Id, puid: "ownerPuid");
         var repo = A.Fake<IProjectRepository>();
+        var userRepo = A.Fake<IUserRepository>();
         A.CallTo(() => repo.GetProjectByPuid("puid")).Returns(project);
         A.CallTo(() => repo.DeleteProject(1)).Returns(true);
-        var service = CreateService(A.Fake<ICurrentUserService>(), repo, A.Fake<IUserRepository>());
+        A.CallTo(() => userRepo.GetById(project.User_Id)).Returns(owner);
+        var service = CreateService(A.Fake<ICurrentUserService>(), repo, userRepo);
 
         var result = await service.DeleteProject("puid");
 
         Assert.Equal(ServiceStatus.NoContent204, result.Status);
         A.CallTo(() => repo.DecrementAliasCount(A<string>._)).MustNotHaveHappened();
+        A.CallTo(() => userRepo.DecrementProjectCount("ownerPuid")).MustHaveHappenedOnceExactly();
     }
 
     [Fact]

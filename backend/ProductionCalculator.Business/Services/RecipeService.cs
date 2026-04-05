@@ -2,6 +2,7 @@ using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.APIModels;
 using ProductionCalculator.Business.Helpers;
+using Microsoft.Extensions.Configuration;
 
 namespace ProductionCalculator.Business.Services
 {
@@ -14,6 +15,8 @@ namespace ProductionCalculator.Business.Services
         private readonly IRecipeProductRepository _recipeProductRepo;
         private readonly IRecipeAttributeRepository _recipeAttributeRepo;
         private readonly IProjectRepository _projectRepo;
+        private readonly int _maxRecipesPerProject;
+
         public RecipeService(
             ICurrentUserService currentUser, 
             IProductRepository productRepo, 
@@ -21,7 +24,8 @@ namespace ProductionCalculator.Business.Services
             IRecipeRepository repo, 
             IRecipeProductRepository recipeProductRepo, 
             IRecipeAttributeRepository recipeAttributeRepo,
-            IProjectRepository projectRepo
+            IProjectRepository projectRepo,
+            IConfiguration? configuration = null
             ) 
         { 
             _currentUser = currentUser; 
@@ -31,6 +35,9 @@ namespace ProductionCalculator.Business.Services
             _recipeProductRepo = recipeProductRepo;
             _recipeAttributeRepo = recipeAttributeRepo;
             _projectRepo = projectRepo;
+
+            var objectLimits = ObjectLimitSettings.FromConfiguration(configuration);
+            _maxRecipesPerProject = objectLimits.MaxRecipesPerProject;
         }
 
         public async Task<ServiceResult<RecipeResponse>> AddRecipe(string projectPuid, string name, string? description, double baseCraftingTime, List<RecipeProductExchange> inputs, List<RecipeProductExchange> outputs, List<AttributeRateRequest>? attributes = null)
@@ -67,6 +74,11 @@ namespace ProductionCalculator.Business.Services
             // Check baseCraftingTime is positive
             if (baseCraftingTime <= 0) return ServiceResult<RecipeResponse>.Fail(ServiceStatus.BadRequest400, "Base crafting time must be positive.");
 
+            if (!await _projectRepo.TryIncrementRecipeCount(project.Puid, _maxRecipesPerProject))
+            {
+                return ServiceResult<RecipeResponse>.Fail(ServiceStatus.Conflict409, $"Recipe limit reached. Maximum allowed per project is {_maxRecipesPerProject}.");
+            }
+
             // Limit string lengths
             name = TruncateHelper.TruncateString(name, 255);
             description = TruncateHelper.TruncateStringNullable(description, 1000);
@@ -87,7 +99,15 @@ namespace ProductionCalculator.Business.Services
                 Created_At = DateTime.UtcNow,
                 Last_Updated = DateTime.UtcNow
             };
-            await _repo.AddRecipe(recipe);
+            try
+            {
+                await _repo.AddRecipe(recipe);
+            }
+            catch
+            {
+                await _projectRepo.DecrementRecipeCount(project.Puid);
+                throw;
+            }
 
             // Generate recipe products
             var recipeProducts = new List<RecipeProduct>();
@@ -304,6 +324,7 @@ namespace ProductionCalculator.Business.Services
             var isDeleted = await _repo.DeleteRecipe(recipe.Recipe_Id);
             if (!isDeleted) return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete recipe.");
 
+            await _projectRepo.DecrementRecipeCount(project.Puid);
             await UpdateProjectLastUpdated(project);
             return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
         }

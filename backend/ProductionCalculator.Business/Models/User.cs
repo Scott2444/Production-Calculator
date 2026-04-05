@@ -12,6 +12,7 @@ namespace ProductionCalculator.Business.Models
         public required string Puid { get; set; }
         public required DateTime Created_At { get; set; }
         public required DateTime Last_Updated { get; set; }
+        public int Project_Count { get; set; }
         public int Failed_Login_Attempts { get; set; }
         public DateTime? Lockout_Until { get; set; }
     }
