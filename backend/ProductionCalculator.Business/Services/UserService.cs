@@ -9,12 +9,14 @@ namespace ProductionCalculator.Business.Services
         private readonly IUserRepository _repo;
         private readonly IRoleRepository _roleRepo;
         private readonly ILogger<UserService> _logger;
+        private readonly IProjectService _projectService;
 
-        public UserService(IUserRepository repo, IRoleRepository roleRepo, ILogger<UserService> logger)
+        public UserService(IUserRepository repo, IRoleRepository roleRepo, ILogger<UserService> logger, IProjectService projectService)
         {
             _repo = repo;
             _roleRepo = roleRepo;
             _logger = logger;
+            _projectService = projectService;
         }
 
         public async Task<ServiceResult<User>> Register(string username, string email, string password)
@@ -105,6 +107,24 @@ namespace ProductionCalculator.Business.Services
             var user = await _repo.GetByPuid(puid);
             if (user == null)
                 return ServiceResult.Fail(ServiceStatus.NotFound404, $"User with PUID {puid} not found.");
+
+            // Delete projects owner by user
+            // The DB has cascade delete set up, but canoncial projects need to be transferred and alias project reference counting updated
+            var projects = await _projectService.GetProjectsByUserPuid(user.Puid);
+            if (!projects.Success || projects.Data == null)
+            {
+                _logger.LogError("Failed to retrieve projects for user '{Username}' (PUID: {UserPuid}) during deletion. Error: {ErrorMessage}", user.Username, user.Puid, projects.ErrorMessage);
+                return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to retrieve user's projects.");
+            }
+            foreach (var project in projects.Data)
+            {
+                var deleteResult = await _projectService.DeleteProject(project.Puid);
+                if (!deleteResult.Success)
+                {
+                    _logger.LogError("Failed to delete project '{ProjectName}' (PUID: {ProjectPuid}) owned by user '{Username}' (PUID: {UserPuid}) during user deletion. Error: {ErrorMessage}", project.Name, project.Puid, user.Username, user.Puid, deleteResult.ErrorMessage);
+                    return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete user's projects.");
+                }
+            }
 
             var deleted = await _repo.DeleteUser(user.User_Id);
             if (!deleted)

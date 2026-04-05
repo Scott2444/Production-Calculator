@@ -238,7 +238,7 @@ public class UsersControllerTests
         A.CallTo(() => service.DeleteUserById("user123456"))
             .Returns(ServiceResult.SuccessResult(ServiceStatus.NoContent204));
 
-        var result = await controller.DeleteBypuid("user123456");
+        var result = await controller.DeleteByPuid("user123456");
 
         var status = Assert.IsType<StatusCodeResult>(result);
         Assert.Equal(204, status.StatusCode);
@@ -253,7 +253,7 @@ public class UsersControllerTests
         A.CallTo(() => service.DeleteUserById("user123456"))
             .Returns(ServiceResult.Fail(ServiceStatus.NotFound404, "no"));
 
-        var result = await controller.DeleteBypuid("user123456");
+        var result = await controller.DeleteByPuid("user123456");
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(404, obj.StatusCode);
@@ -268,7 +268,7 @@ public class UsersControllerTests
         A.CallTo(() => service.DeleteUserById(A<string>._))
             .Returns(ServiceResult.Fail(ServiceStatus.BadRequest400, "bad"));
 
-        var result = await controller.DeleteBypuid("user123456");
+        var result = await controller.DeleteByPuid("user123456");
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(400, obj.StatusCode);

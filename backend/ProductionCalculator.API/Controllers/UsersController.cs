@@ -56,7 +56,7 @@ namespace ProductionCalculator.API.Controllers
 
         [Authorize(Policy = "IsOwnerOrAdmin")]
         [HttpDelete("{userPuid}")]
-        public async Task<IActionResult> DeleteBypuid(string userPuid)
+        public async Task<IActionResult> DeleteByPuid(string userPuid)
         {
             var result = await _service.DeleteUserById(userPuid);
             return FromServiceResult(result);

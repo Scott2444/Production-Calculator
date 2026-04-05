@@ -13,6 +13,8 @@ public class UserServiceTests
     private readonly IUserRepository _repo;
     private readonly IRoleRepository _roleRepo;
     private readonly ILogger<UserService> _logger;
+    private readonly IProjectService _projectService;
+
     private readonly UserService _service;
 
     public UserServiceTests()
@@ -20,7 +22,8 @@ public class UserServiceTests
         _repo = A.Fake<IUserRepository>();
         _roleRepo = A.Fake<IRoleRepository>();
         _logger = A.Fake<ILogger<UserService>>();
-        _service = new UserService(_repo, _roleRepo, _logger);
+        _projectService = A.Fake<IProjectService>();
+        _service = new UserService(_repo, _roleRepo, _logger, _projectService);
     }
 
     private User CreateTestUser(string username = "test", string email = "test@test.com", string puid = "user123456", int roleId = 1)
@@ -250,6 +253,21 @@ public class UserServiceTests
     }
 
     [Fact]
+    public async Task DeleteUserById_ProjectRetrievalFails_ReturnsInternalServerError()
+    {
+        // Arrange
+        var user = CreateTestUser();
+        A.CallTo(() => _repo.GetByPuid("valid")).Returns(user);
+        A.CallTo(() => _projectService.GetProjectsByUserPuid(user.Puid)).Returns(Task.FromResult(ServiceResult<List<APIModels.ProjectResponse>>.Fail(ServiceStatus.InternalServerError500, "Failed to retrieve projects.")));
+
+        // Act
+        var result = await _service.DeleteUserById("valid");
+
+        // Assert
+        Assert.Equal(ServiceStatus.InternalServerError500, result.Status);
+    }
+
+    [Fact]
     public async Task DeleteUserById_RepoReturnsFalse_ReturnsInternalServerError()
     {
         // Arrange
@@ -271,6 +289,7 @@ public class UserServiceTests
         var user = CreateTestUser();
         A.CallTo(() => _repo.GetByPuid("valid")).Returns(user);
         A.CallTo(() => _repo.DeleteUser(user.User_Id)).Returns(true);
+        A.CallTo(() => _projectService.GetProjectsByUserPuid(user.Puid)).Returns(Task.FromResult(ServiceResult<List<APIModels.ProjectResponse>>.SuccessResult(new List<APIModels.ProjectResponse>(), ServiceStatus.Ok200)));
 
         // Act
         var result = await _service.DeleteUserById("valid");
