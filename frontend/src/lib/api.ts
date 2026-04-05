@@ -3,6 +3,15 @@ import { useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getApiUrl } from "./apiUrl";
 
+export interface ProtectedApiInit extends RequestInit {
+    skipRefreshOn401?: boolean;
+}
+
+export type ProtectedApi = (
+    input: RequestInfo,
+    init?: ProtectedApiInit,
+) => Promise<Response>;
+
 /**
  * Makes a protected API request using the access_token cookie
  * If a 401 is received, attempts to refresh the access_token using the refresh_token cookie
@@ -15,11 +24,9 @@ import { getApiUrl } from "./apiUrl";
 export function useProtectedApi() {
     const { setLoggedIn, setUserId, setUsername } = useAuth();
 
-    return useCallback(
-        async function protectedApi(
-            input: RequestInfo,
-            init: RequestInit = {},
-        ) {
+    return useCallback<ProtectedApi>(
+        async function protectedApi(input: RequestInfo, init = {}) {
+            const { skipRefreshOn401 = false, ...requestInit } = init;
             const resolvedInput =
                 typeof input === "string" ? getApiUrl(input) : input;
 
@@ -32,9 +39,9 @@ export function useProtectedApi() {
                     ...options,
                 });
 
-            let response = await fetchWithCookies(resolvedInput, init);
+            let response = await fetchWithCookies(resolvedInput, requestInit);
 
-            if (response.status === 401) {
+            if (response.status === 401 && !skipRefreshOn401) {
                 // Try to refresh the access token
                 const refreshResponse = await fetchWithCookies(
                     getApiUrl("/auth/refresh"),
@@ -48,7 +55,7 @@ export function useProtectedApi() {
                     return refreshResponse;
                 }
                 // Retry original request after refresh
-                response = await fetchWithCookies(resolvedInput, init);
+                response = await fetchWithCookies(resolvedInput, requestInit);
                 if (response.status === 401) {
                     // Still unauthorized, log out
                     setLoggedIn(false);
