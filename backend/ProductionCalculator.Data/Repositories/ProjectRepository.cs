@@ -34,6 +34,66 @@ namespace ProductionCalculator.Data.Repositories
             await AdjustAliasCount(puid, -1);
         }
 
+        public async Task<bool> TryIncrementProductCount(string puid, int maxAllowed)
+        {
+            return await TryIncrementProjectCounterWithLimit(puid, maxAllowed, ProjectCounterType.Product);
+        }
+
+        public async Task DecrementProductCount(string puid)
+        {
+            await AdjustProjectCounter(puid, -1, ProjectCounterType.Product);
+        }
+
+        public async Task<bool> TryIncrementRecipeCount(string puid, int maxAllowed)
+        {
+            return await TryIncrementProjectCounterWithLimit(puid, maxAllowed, ProjectCounterType.Recipe);
+        }
+
+        public async Task DecrementRecipeCount(string puid)
+        {
+            await AdjustProjectCounter(puid, -1, ProjectCounterType.Recipe);
+        }
+
+        public async Task<bool> TryIncrementMachineCount(string puid, int maxAllowed)
+        {
+            return await TryIncrementProjectCounterWithLimit(puid, maxAllowed, ProjectCounterType.Machine);
+        }
+
+        public async Task DecrementMachineCount(string puid)
+        {
+            await AdjustProjectCounter(puid, -1, ProjectCounterType.Machine);
+        }
+
+        public async Task<bool> TryIncrementModifierCount(string puid, int maxAllowed)
+        {
+            return await TryIncrementProjectCounterWithLimit(puid, maxAllowed, ProjectCounterType.Modifier);
+        }
+
+        public async Task DecrementModifierCount(string puid)
+        {
+            await AdjustProjectCounter(puid, -1, ProjectCounterType.Modifier);
+        }
+
+        public async Task<bool> TryIncrementAttributeCount(string puid, int maxAllowed)
+        {
+            return await TryIncrementProjectCounterWithLimit(puid, maxAllowed, ProjectCounterType.Attribute);
+        }
+
+        public async Task DecrementAttributeCount(string puid)
+        {
+            await AdjustProjectCounter(puid, -1, ProjectCounterType.Attribute);
+        }
+
+        public async Task<bool> TryIncrementWorkflowCount(string puid, int maxAllowed)
+        {
+            return await TryIncrementProjectCounterWithLimit(puid, maxAllowed, ProjectCounterType.Workflow);
+        }
+
+        public async Task DecrementWorkflowCount(string puid)
+        {
+            await AdjustProjectCounter(puid, -1, ProjectCounterType.Workflow);
+        }
+
         public async Task<Project?> GetProjectById(int id)
         {
             return await _db.Set<Project>().FindAsync(id);
@@ -123,6 +183,131 @@ namespace ProductionCalculator.Data.Repositories
                 .Where(p => p.Alias_Project_Puid == puid)
                 .OrderBy(p => p.Created_At)
                 .FirstOrDefaultAsync();
+        }
+
+        private enum ProjectCounterType
+        {
+            Product,
+            Recipe,
+            Machine,
+            Modifier,
+            Attribute,
+            Workflow
+        }
+
+        private async Task<bool> TryIncrementProjectCounterWithLimit(string puid, int maxAllowed, ProjectCounterType counter)
+        {
+            if (string.IsNullOrWhiteSpace(puid) || maxAllowed <= 0) return false;
+
+            if (_db.Database.IsRelational())
+            {
+                var column = GetProjectCounterColumn(counter);
+                var sql = $@"
+                    update app.projects
+                    set {column} = {column} + 1
+                    where puid = {{0}}
+                      and {column} < {{1}}";
+
+                var affected = await _db.Database.ExecuteSqlRawAsync(sql, puid, maxAllowed);
+                return affected > 0;
+            }
+
+            var project = await _db.Set<Project>().FirstOrDefaultAsync(p => p.Puid == puid);
+            if (project == null) return false;
+
+            var currentCount = GetProjectCounterValue(project, counter);
+            if (currentCount >= maxAllowed) return false;
+
+            SetProjectCounterValue(project, counter, currentCount + 1);
+            await _db.SaveChangesAsync();
+            return true;
+        }
+
+        private async Task AdjustProjectCounter(string puid, int delta, ProjectCounterType counter)
+        {
+            if (string.IsNullOrWhiteSpace(puid)) return;
+
+            if (_db.Database.IsRelational())
+            {
+                var column = GetProjectCounterColumn(counter);
+                var sql = delta >= 0
+                    ? $@"
+                        update app.projects
+                        set {column} = {column} + {{1}}
+                        where puid = {{0}}"
+                    : $@"
+                        update app.projects
+                        set {column} = greatest({column} + {{1}}, 0)
+                        where puid = {{0}}";
+
+                await _db.Database.ExecuteSqlRawAsync(sql, puid, delta);
+                return;
+            }
+
+            var project = await _db.Set<Project>().FirstOrDefaultAsync(p => p.Puid == puid);
+            if (project == null) return;
+
+            var currentCount = GetProjectCounterValue(project, counter);
+            SetProjectCounterValue(project, counter, Math.Max(currentCount + delta, 0));
+            await _db.SaveChangesAsync();
+        }
+
+        private static string GetProjectCounterColumn(ProjectCounterType counter)
+        {
+            return counter switch
+            {
+                ProjectCounterType.Product => "product_count",
+                ProjectCounterType.Recipe => "recipe_count",
+                ProjectCounterType.Machine => "machine_count",
+                ProjectCounterType.Modifier => "modifier_count",
+                ProjectCounterType.Attribute => "attribute_count",
+                ProjectCounterType.Workflow => "workflow_count",
+                _ => throw new ArgumentOutOfRangeException(nameof(counter), counter, null)
+            };
+        }
+
+        private static int GetProjectCounterValue(Project project, ProjectCounterType counter)
+        {
+            return counter switch
+            {
+                ProjectCounterType.Product => project.Product_Count,
+                ProjectCounterType.Recipe => project.Recipe_Count,
+                ProjectCounterType.Machine => project.Machine_Count,
+                ProjectCounterType.Modifier => project.Modifier_Count,
+                ProjectCounterType.Attribute => project.Attribute_Count,
+                ProjectCounterType.Workflow => project.Workflow_Count,
+                _ => throw new ArgumentOutOfRangeException(nameof(counter), counter, null)
+            };
+        }
+
+        /// <summary> 
+        /// Required for unit testing when not using a relational database. 
+        /// </summary>
+        private static void SetProjectCounterValue(Project project, ProjectCounterType counter, int value)
+        {
+            switch (counter)
+            {
+                case ProjectCounterType.Product:
+                    project.Product_Count = value;
+                    break;
+                case ProjectCounterType.Recipe:
+                    project.Recipe_Count = value;
+                    break;
+                case ProjectCounterType.Machine:
+                    project.Machine_Count = value;
+                    break;
+                case ProjectCounterType.Modifier:
+                    project.Modifier_Count = value;
+                    break;
+                case ProjectCounterType.Attribute:
+                    project.Attribute_Count = value;
+                    break;
+                case ProjectCounterType.Workflow:
+                    project.Workflow_Count = value;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(counter), counter, null);
+            }
         }
 
         private async Task AdjustAliasCount(string puid, int delta)

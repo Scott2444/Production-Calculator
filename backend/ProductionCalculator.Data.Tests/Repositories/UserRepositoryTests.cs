@@ -19,7 +19,7 @@ public class UserRepositoryTests
         return db;
     }
 
-    private static User CreateUser(int id = 1, string? puid = null, string? username = null, string? email = null)
+    private static User CreateUser(int id = 1, string? puid = null, string? username = null, string? email = null, int projectCount = 0)
     {
         return new User
         {
@@ -29,6 +29,7 @@ public class UserRepositoryTests
             Password_Hash = $"hash{id}",
             Role_Id = 1,
             Puid = puid ?? $"puid{id}",
+            Project_Count = projectCount,
             Created_At = DateTime.UtcNow,
             Last_Updated = DateTime.UtcNow
         };
@@ -233,5 +234,26 @@ public class UserRepositoryTests
         var exists = await repo.PuidExists("missing");
 
         Assert.False(exists);
+    }
+
+    [Fact]
+    public async Task ProjectCountMethods_RespectLimitAndDoNotGoBelowZero()
+    {
+        await using var db = CreateDbContext();
+        var repo = new UserRepository(db);
+        db.Users.Add(CreateUser(id: 1, puid: "userPuid", projectCount: 0));
+        await db.SaveChangesAsync();
+
+        Assert.True(await repo.TryIncrementProjectCount("userPuid", 1));
+        Assert.False(await repo.TryIncrementProjectCount("userPuid", 1));
+
+        await repo.IncrementProjectCount("userPuid");
+        await repo.DecrementProjectCount("userPuid");
+        await repo.DecrementProjectCount("userPuid");
+        await repo.DecrementProjectCount("userPuid");
+
+        var user = await repo.GetByPuid("userPuid");
+        Assert.NotNull(user);
+        Assert.Equal(0, user!.Project_Count);
     }
 }

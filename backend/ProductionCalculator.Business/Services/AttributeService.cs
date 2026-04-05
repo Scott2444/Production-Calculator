@@ -1,6 +1,7 @@
 using ProductionCalculator.Business.Helpers;
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
+using Microsoft.Extensions.Configuration;
 
 namespace ProductionCalculator.Business.Services
 {
@@ -9,12 +10,16 @@ namespace ProductionCalculator.Business.Services
         private readonly ICurrentUserService _currentUser;
         private readonly IAttributeRepository _repo;
         private readonly IProjectRepository _projectRepo;
+        private readonly int _maxAttributesPerProject;
 
-        public AttributeService(ICurrentUserService currentUser, IAttributeRepository repo, IProjectRepository projectRepo)
+        public AttributeService(ICurrentUserService currentUser, IAttributeRepository repo, IProjectRepository projectRepo, IConfiguration? configuration = null)
         {
             _currentUser = currentUser;
             _repo = repo;
             _projectRepo = projectRepo;
+
+            var objectLimits = ObjectLimitSettings.FromConfiguration(configuration);
+            _maxAttributesPerProject = objectLimits.MaxAttributesPerProject;
         }
 
         public async Task<ServiceResult<ProjectAttribute>> AddAttribute(string projectPuid, string name, string? description, string? unit)
@@ -26,6 +31,11 @@ namespace ProductionCalculator.Business.Services
 
             var existingAttributes = await _repo.GetAttributesByProjectId(project.Project_Id);
             if (existingAttributes.Any(p => p.Name == name)) return ServiceResult<ProjectAttribute>.Fail(ServiceStatus.Conflict409, "Attribute name already exists for this project.");
+
+            if (!await _projectRepo.TryIncrementAttributeCount(project.Puid, _maxAttributesPerProject))
+            {
+                return ServiceResult<ProjectAttribute>.Fail(ServiceStatus.Conflict409, $"Attribute limit reached. Maximum allowed per project is {_maxAttributesPerProject}.");
+            }
 
             name = TruncateHelper.TruncateString(name, 255);
             description = TruncateHelper.TruncateStringNullable(description, 1000);
@@ -46,7 +56,16 @@ namespace ProductionCalculator.Business.Services
                 Last_Updated = DateTime.UtcNow
             };
 
-            await _repo.AddAttribute(attribute);
+            try
+            {
+                await _repo.AddAttribute(attribute);
+            }
+            catch
+            {
+                await _projectRepo.DecrementAttributeCount(project.Puid);
+                throw;
+            }
+
             await UpdateProjectLastUpdated(project);
             return ServiceResult<ProjectAttribute>.SuccessResult(attribute, ServiceStatus.Created201);
         }
@@ -121,6 +140,7 @@ namespace ProductionCalculator.Business.Services
             var isDeleted = await _repo.DeleteAttribute(attribute.Attribute_Id);
             if (!isDeleted) return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete attribute.");
 
+            await _projectRepo.DecrementAttributeCount(project.Puid);
             await UpdateProjectLastUpdated(project);
             return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
         }

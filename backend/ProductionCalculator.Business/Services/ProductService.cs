@@ -1,6 +1,7 @@
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Helpers;
+using Microsoft.Extensions.Configuration;
 
 
 namespace ProductionCalculator.Business.Services
@@ -10,11 +11,16 @@ namespace ProductionCalculator.Business.Services
         private readonly ICurrentUserService _currentUser;
         private readonly IProductRepository _repo;
         private readonly IProjectRepository _projectRepo;
-        public ProductService(ICurrentUserService currentUser, IProductRepository repo, IProjectRepository projectRepo) 
+        private readonly int _maxProductsPerProject;
+
+        public ProductService(ICurrentUserService currentUser, IProductRepository repo, IProjectRepository projectRepo, IConfiguration? configuration = null) 
         { 
             _currentUser = currentUser; 
             _repo = repo;
             _projectRepo = projectRepo;
+
+            var objectLimits = ObjectLimitSettings.FromConfiguration(configuration);
+            _maxProductsPerProject = objectLimits.MaxProductsPerProject;
         }
 
         // Use _currentUser.UserId or _currentUser.Username as needed
@@ -30,6 +36,11 @@ namespace ProductionCalculator.Business.Services
             // Check if name already exists for this project
             var existingProducts = await _repo.GetProductsByProjectId(project.Project_Id);
             if (existingProducts.Any(p => p.Name == name)) return ServiceResult<Product>.Fail(ServiceStatus.Conflict409, "Product name already exists for this project.");
+
+            if (!await _projectRepo.TryIncrementProductCount(project.Puid, _maxProductsPerProject))
+            {
+                return ServiceResult<Product>.Fail(ServiceStatus.Conflict409, $"Product limit reached. Maximum allowed per project is {_maxProductsPerProject}.");
+            }
 
             // Limit string lengths
             name = TruncateHelper.TruncateString(name, 255);
@@ -49,7 +60,16 @@ namespace ProductionCalculator.Business.Services
                 Last_Updated = DateTime.UtcNow
             };
 
-            await _repo.AddProduct(product);
+            try
+            {
+                await _repo.AddProduct(product);
+            }
+            catch
+            {
+                await _projectRepo.DecrementProductCount(project.Puid);
+                throw;
+            }
+
             await UpdateProjectLastUpdated(project);
             return ServiceResult<Product>.SuccessResult(product, ServiceStatus.Created201);
         }
@@ -130,6 +150,7 @@ namespace ProductionCalculator.Business.Services
             var isDeleted = await _repo.DeleteProduct(product.Product_Id);
             if (!isDeleted) return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete product.");
 
+            await _projectRepo.DecrementProductCount(project.Puid);
             await UpdateProjectLastUpdated(project);
             return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
         }

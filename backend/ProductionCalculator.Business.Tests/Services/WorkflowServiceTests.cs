@@ -109,6 +109,24 @@ public class WorkflowServiceTests
     }
 
     [Fact]
+    public async Task AddWorkflow_LimitReached_ReturnsConflict()
+    {
+        var repo = A.Fake<IWorkflowRepository>();
+        var projectRepo = A.Fake<IProjectRepository>();
+        var nodeService = A.Fake<IWorkflowChartService>();
+        var service = CreateService(repo, projectRepo, nodeService);
+        var project = CreateProject(id: 10, puid: "projPuid");
+        A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
+        A.CallTo(() => repo.GetWorkflowsByProjectId(10)).Returns(new List<Workflow>());
+        A.CallTo(() => projectRepo.TryIncrementWorkflowCount("projPuid", A<int>._)).Returns(false);
+
+        var result = await service.AddWorkflow("projPuid", "NewWF", "desc");
+
+        Assert.Equal(ServiceStatus.Conflict409, result.Status);
+        A.CallTo(() => repo.AddWorkflow(A<Workflow>._)).MustNotHaveHappened();
+    }
+
+    [Fact]
     public async Task AddWorkflow_ValidRequest_ReturnsCreatedAndSavesToRepo()
     {
         var repo = A.Fake<IWorkflowRepository>();
@@ -118,12 +136,14 @@ public class WorkflowServiceTests
         var project = CreateProject(id: 10, puid: "projPuid");
         A.CallTo(() => projectRepo.GetProjectByPuid("projPuid")).Returns(project);
         A.CallTo(() => repo.GetWorkflowsByProjectId(10)).Returns(new List<Workflow>());
+        A.CallTo(() => projectRepo.TryIncrementWorkflowCount("projPuid", A<int>._)).Returns(true);
         A.CallTo(() => repo.PuidExists(A<string>._)).Returns(false);
 
         var result = await service.AddWorkflow("projPuid", "NewWF", "desc");
 
         Assert.True(result.Success);
         Assert.Equal(ServiceStatus.Created201, result.Status);
+        A.CallTo(() => projectRepo.TryIncrementWorkflowCount("projPuid", A<int>._)).MustHaveHappenedOnceExactly();
         A.CallTo(() => repo.AddWorkflow(A<Workflow>.That.Matches(w => w.Name == "NewWF" && w.Project_Id == 10))).MustHaveHappenedOnceExactly();
         A.CallTo(() => projectRepo.UpdateProject(A<Project>.That.Matches(p => p.Project_Id == 10))).MustHaveHappenedOnceExactly();
     }
@@ -388,6 +408,7 @@ public class WorkflowServiceTests
         var result = await service.DeleteWorkflow("projPuid", "wfPuid");
 
         Assert.Equal(ServiceStatus.NoContent204, result.Status);
+        A.CallTo(() => projectRepo.DecrementWorkflowCount("projPuid")).MustHaveHappenedOnceExactly();
         A.CallTo(() => projectRepo.UpdateProject(project)).MustHaveHappenedOnceExactly();
     }
 
