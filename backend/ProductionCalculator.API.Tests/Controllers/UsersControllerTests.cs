@@ -235,10 +235,10 @@ public class UsersControllerTests
         var service = A.Fake<IUserService>();
         var controller = CreateController(service);
 
-        A.CallTo(() => service.DeleteUserById("user123456"))
+        A.CallTo(() => service.DeleteUserById("user123456", "username", "password"))
             .Returns(ServiceResult.SuccessResult(ServiceStatus.NoContent204));
 
-        var result = await controller.DeleteByPuid("user123456");
+        var result = await controller.DeleteByPuid("user123456", new LoginRequest { Username = "username", Password = "password" });
 
         var status = Assert.IsType<StatusCodeResult>(result);
         Assert.Equal(204, status.StatusCode);
@@ -250,10 +250,10 @@ public class UsersControllerTests
         var service = A.Fake<IUserService>();
         var controller = CreateController(service);
 
-        A.CallTo(() => service.DeleteUserById("user123456"))
+        A.CallTo(() => service.DeleteUserById("user123456", "username", "password"))
             .Returns(ServiceResult.Fail(ServiceStatus.NotFound404, "no"));
 
-        var result = await controller.DeleteByPuid("user123456");
+        var result = await controller.DeleteByPuid("user123456", new LoginRequest { Username = "username", Password = "password" });
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(404, obj.StatusCode);
@@ -265,10 +265,10 @@ public class UsersControllerTests
         var service = A.Fake<IUserService>();
         var controller = CreateController(service);
 
-        A.CallTo(() => service.DeleteUserById(A<string>._))
+        A.CallTo(() => service.DeleteUserById(A<string>._, A<string>._, A<string>._))
             .Returns(ServiceResult.Fail(ServiceStatus.BadRequest400, "bad"));
 
-        var result = await controller.DeleteByPuid("user123456");
+        var result = await controller.DeleteByPuid("user123456", new LoginRequest { Username = "username", Password = "password" });
 
         var obj = Assert.IsType<ObjectResult>(result);
         Assert.Equal(400, obj.StatusCode);

@@ -132,7 +132,7 @@ namespace ProductionCalculator.Business.Services
             // Check if user is admin
             return roleName != null && roleName.Equals("Admin", StringComparison.OrdinalIgnoreCase);
         }
-        public async Task<(ServiceResult<AuthResponse> result, string? accessToken, RefreshToken? refreshToken)> Login(string username, string password)
+        public async Task<(ServiceResult<AuthResponse> result, string? accessToken, RefreshToken? refreshToken)> Login(string username, string password, bool generateToken=true)
         {
             // Validate user credentials
             var user = await _userRepo.GetByUsername(username);
@@ -169,16 +169,21 @@ namespace ProductionCalculator.Business.Services
                 return (ServiceResult<AuthResponse>.Fail(ServiceStatus.InternalServerError500, $"User id {user.Role_Id} not found."), null, null);
             }
 
+            // Clear failed login attempts and lockout
+            user.Failed_Login_Attempts = 0;
+            user.Lockout_Until = null;
+            await _userRepo.UpdateUser(user);
+
+            if (!generateToken)
+            {
+                return (ServiceResult<AuthResponse>.SuccessResult(new AuthResponse { Puid = puid, Username = user.Username }), null, null);
+            }
+
             // Generate JWT
             var accessToken = _jwtHelper.GenerateToken(puid, role.Role_Name);
 
             // Refresh Token
             var refreshToken = await GenerateRefreshToken(user.User_Id);
-
-            // Clear failed login attempts and lockout
-            user.Failed_Login_Attempts = 0;
-            user.Lockout_Until = null;
-            await _userRepo.UpdateUser(user);
 
             _logger.LogInformation("Login success: User {Username} logged in.", username);
 

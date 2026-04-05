@@ -53,7 +53,7 @@ public class AuthControllerTests
             Created_At = DateTime.UtcNow 
         };
         
-        A.CallTo(() => _authService.Login(req.Username, req.Password))
+        A.CallTo(() => _authService.Login(req.Username, req.Password, true))
             .Returns((ServiceResult<AuthResponse>.SuccessResult(authResponse), "at-123", refreshToken));
 
         // Act
@@ -75,7 +75,7 @@ public class AuthControllerTests
     {
         // Arrange
         var req = new LoginRequest { Username = "user", Password = "wrong" };
-        A.CallTo(() => _authService.Login(req.Username, req.Password))
+        A.CallTo(() => _authService.Login(req.Username, req.Password, true))
             .Returns((ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "Invalid"), null, null));
 
         // Act
