@@ -117,6 +117,14 @@ namespace ProductionCalculator.Data.Repositories
             return (projects, totalCount);
         }
 
+        public async Task<Project?> GetOldestAliasOfProject(string puid)
+        {
+            return await _db.Set<Project>()
+                .Where(p => p.Alias_Project_Puid == puid)
+                .OrderBy(p => p.Created_At)
+                .FirstOrDefaultAsync();
+        }
+
         private async Task AdjustAliasCount(string puid, int delta)
         {
             if (string.IsNullOrWhiteSpace(puid)) return;
