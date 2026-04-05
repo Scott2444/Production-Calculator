@@ -13,6 +13,7 @@ namespace ProductionCalculator.Business.Interfaces
         Task<List<Project>> GetProjectsByUserId(int userId);
         Task<(List<Project> Projects, int TotalCount)> SearchPublicProjects(string searchQuery, int page, int pageSize);
         Task<bool> DeleteProject(int id);
+        Task<Project?> GetOldestAliasOfProject(string puid);
         Task<bool> PuidExists(string puid);
     }
 }

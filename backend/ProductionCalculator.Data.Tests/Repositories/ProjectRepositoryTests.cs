@@ -19,7 +19,7 @@ public class ProjectRepositoryTests
         return db;
     }
 
-    private static Project CreateProject(int id = 1, int userId = 1, string? puid = null, string name = "Test Project", string? aliasPuid = null, int aliasCount = 0, bool isPublic = false)
+    private static Project CreateProject(int id = 1, int userId = 1, string? puid = null, string name = "Test Project", string? aliasPuid = null, int aliasCount = 0, bool isPublic = false, DateTime? createdAt = null)
     {
         return new Project
         {
@@ -31,7 +31,7 @@ public class ProjectRepositoryTests
             Is_Public = isPublic,
             Alias_Project_Puid = aliasPuid,
             Alias_Count = aliasCount,
-            Created_At = DateTime.UtcNow,
+            Created_At = createdAt ?? DateTime.UtcNow,
             Last_Updated = DateTime.UtcNow
         };
     }
@@ -231,5 +231,35 @@ public class ProjectRepositoryTests
         var repo = new ProjectRepository(db);
 
         await Assert.ThrowsAsync<NotSupportedException>(() => repo.SearchPublicProjects("search", 1, 20));
+    }
+
+    [Fact]
+    public async Task GetOldestAliasOfProject_ProjectExists_ReturnsOldestAlias()
+    {
+        await using var db = CreateDbContext();
+        var repo = new ProjectRepository(db);
+        db.Set<Project>().Add(CreateProject(id: 1, puid: "canonical"));
+        db.Set<Project>().Add(CreateProject(id: 2, puid: "alias1", aliasPuid: "canonical", createdAt: DateTime.UtcNow.AddHours(-1)));
+        db.Set<Project>().Add(CreateProject(id: 3, puid: "alias2", aliasPuid: "canonical", createdAt: DateTime.UtcNow));
+        await db.SaveChangesAsync();
+
+
+        var result = await repo.GetOldestAliasOfProject("canonical");
+
+        Assert.NotNull(result);
+        Assert.Equal("alias1", result.Puid);
+    }
+
+    [Fact]
+    public async Task GetOldestAliasOfProject_NoAliases_ReturnsNull()
+    {
+        await using var db = CreateDbContext();
+        var repo = new ProjectRepository(db);
+        db.Set<Project>().Add(CreateProject(id: 1, puid: "canonical"));
+        await db.SaveChangesAsync();
+
+        var result = await repo.GetOldestAliasOfProject("canonical");
+
+        Assert.Null(result);
     }
 }

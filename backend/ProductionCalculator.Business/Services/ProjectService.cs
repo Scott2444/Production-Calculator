@@ -217,6 +217,17 @@ namespace ProductionCalculator.Business.Services
             var project = await _repo.GetProjectByPuid(puid);
             if (project == null) return ServiceResult.Fail(ServiceStatus.NotFound404, $"Project with PUID {puid} not found.");
 
+            if (project.Alias_Count > 0)
+            {
+                // Transfer ownership to user of oldest alias
+                // Preserve both projects
+                var oldestAlias = await _repo.GetOldestAliasOfProject(puid);
+                project.User_Id = oldestAlias!.User_Id;
+                _logger.LogInformation("Project deletion: Project '{ProjectName}' (PUID: {ProjectPuid}) ownership transferred to user {UserId} due to deletion of original owner.", project.Name, project.Puid, oldestAlias.User_Id);
+                await _repo.UpdateProject(project);
+                return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
+            }
+
             var previousAliasProjectPuid = project.Alias_Project_Puid;
 
             var success = await _repo.DeleteProject(project.Project_Id);

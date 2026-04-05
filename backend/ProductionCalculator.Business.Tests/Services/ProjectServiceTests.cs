@@ -529,6 +529,22 @@ public class ProjectServiceTests
         A.CallTo(() => repo.DecrementAliasCount("alias")).MustHaveHappenedOnceExactly();
     }
 
+    [Fact]
+    public async Task DeleteProject_OriginalWithAliases_TransfersOwnership()
+    {
+        var project = CreateProject(id: 1, puid: "puid", aliasCount: 2);
+        var aliasProject = CreateProject(id: 2, puid: "alias", aliasPuid: "puid");
+        var repo = A.Fake<IProjectRepository>();
+        A.CallTo(() => repo.GetProjectByPuid("puid")).Returns(project);
+        A.CallTo(() => repo.GetOldestAliasOfProject("puid")).Returns(aliasProject);
+        var service = CreateService(A.Fake<ICurrentUserService>(), repo, A.Fake<IUserRepository>());
+
+        var result = await service.DeleteProject("puid");
+
+        Assert.Equal(ServiceStatus.NoContent204, result.Status);
+        A.CallTo(() => repo.UpdateProject(project)).MustHaveHappenedOnceExactly();
+    }
+
     // ResolveProject Tests
     [Fact]
     public async Task ResolveProject_EmptyUsername_ReturnsBadRequest()
