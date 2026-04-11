@@ -69,7 +69,7 @@ export default function WorkflowsPage() {
 
     return (
         <ProjectPageLayout>
-            <div className="flex flex-col gap-4">
+            <div className="flex min-h-full flex-col gap-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                     <div className="min-w-0">
                         <h1 className="truncate text-2xl font-semibold text-slate-100">

@@ -398,7 +398,7 @@ export default function Modifiers() {
 
     return (
         <ProjectPageLayout>
-            <div className="flex flex-col gap-4">
+            <div className="flex min-h-full flex-col gap-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                         <h1 className="truncate text-2xl font-semibold text-slate-100">
