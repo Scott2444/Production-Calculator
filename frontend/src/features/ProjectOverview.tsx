@@ -44,8 +44,13 @@ function getWorkflowRouteSegment(workflow: Workflow): string {
 }
 
 export default function ProjectPage() {
-    const { routeUsername, routeProjectName, currentProject, isOwner } =
-        useProject();
+    const {
+        routeUsername,
+        routeProjectName,
+        currentProject,
+        isOwner,
+        projectQuery,
+    } = useProject();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
@@ -206,6 +211,14 @@ export default function ProjectPage() {
     );
 
     const workflowsListHref: string = `/${encodeURIComponent(routeUsername ?? "")}/${encodeURIComponent(routeProjectName ?? "")}/workflows`;
+    const isProjectOverviewLoading =
+        projectQuery.isLoading ||
+        workflowsQuery.isLoading ||
+        aliasProjectQuery.isLoading;
+    const isProjectOverviewFetching =
+        projectQuery.isFetching ||
+        workflowsQuery.isFetching ||
+        aliasProjectQuery.isFetching;
 
     return (
         <ProjectPageLayout>
@@ -503,6 +516,42 @@ export default function ProjectPage() {
                         </>
                     )}
                 </ProjectStatusGate>
+
+                <div className="mt-auto border-t border-slate-800 pt-4">
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
+                        <span>Expecting something else?</span>
+                        {!isProjectOverviewLoading && (
+                            <button
+                                type="button"
+                                className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm font-medium text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:opacity-60"
+                                onClick={() => {
+                                    const refetches: Promise<unknown>[] = [
+                                        projectQuery.refetch(),
+                                    ];
+
+                                    if (isOwner) {
+                                        refetches.push(
+                                            workflowsQuery.refetch(),
+                                        );
+                                    }
+
+                                    if (currentProject?.aliasProjectPuid) {
+                                        refetches.push(
+                                            aliasProjectQuery.refetch(),
+                                        );
+                                    }
+
+                                    void Promise.all(refetches);
+                                }}
+                                disabled={isProjectOverviewFetching}
+                            >
+                                {isProjectOverviewFetching
+                                    ? "Refreshing..."
+                                    : "Refresh"}
+                            </button>
+                        )}
+                    </div>
+                </div>
             </div>
 
             <ProjectEditorDialog
