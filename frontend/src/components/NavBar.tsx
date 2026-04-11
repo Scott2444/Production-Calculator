@@ -4,9 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/context/AuthContext";
-import { useProtectedApi } from "@/lib/api";
-import { useQuery } from "@tanstack/react-query";
-import { fetchUser } from "@/lib/user";
+import { useUserQuery } from "@/hooks/useQueries";
 import {
     IconSettings,
     IconLogout,
@@ -47,17 +45,9 @@ export default function NavBar({
         select: (state) => state.location.pathname,
     });
     const derivedCurrentPage = currentPage ?? getCurrentNavSection(pathname);
-    const { loggedIn, isHydrated } = useAuth();
+    const { loggedIn, isHydrated, userId } = useAuth();
     const accountLogoUrl = "/assets/Default_Avatar.svg";
-
-    const { userId } = useAuth();
-    const protectedApi = useProtectedApi();
-    const { data: user } = useQuery({
-        queryKey: ["user", userId],
-        queryFn: () => fetchUser(userId!, protectedApi),
-        staleTime: 5 * 60 * 1000, // 5 minutes
-        enabled: Boolean(userId),
-    });
+    const { data: user } = useUserQuery(userId);
 
     const navItems = [
         { name: "Home", href: "/" },

@@ -4,6 +4,7 @@ using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.Models;
 using ProductionCalculator.Business.Services;
 using Microsoft.Extensions.Logging;
+using ProductionCalculator.Business.APIModels;
 
 namespace ProductionCalculator.Business.Tests;
 
@@ -13,6 +14,8 @@ public class UserServiceTests
     private readonly IUserRepository _repo;
     private readonly IRoleRepository _roleRepo;
     private readonly ILogger<UserService> _logger;
+    private readonly IProjectService _projectService;
+    private readonly IAuthService _authService;
     private readonly UserService _service;
 
     public UserServiceTests()
@@ -20,7 +23,9 @@ public class UserServiceTests
         _repo = A.Fake<IUserRepository>();
         _roleRepo = A.Fake<IRoleRepository>();
         _logger = A.Fake<ILogger<UserService>>();
-        _service = new UserService(_repo, _roleRepo, _logger);
+        _projectService = A.Fake<IProjectService>();
+        _authService = A.Fake<IAuthService>();
+        _service = new UserService(_repo, _roleRepo, _logger, _projectService, _authService);
     }
 
     private User CreateTestUser(string username = "test", string email = "test@test.com", string puid = "user123456", int roleId = 1)
@@ -243,10 +248,43 @@ public class UserServiceTests
         A.CallTo(() => _repo.GetByPuid("nonexistent")).Returns(Task.FromResult<User?>(null));
 
         // Act
-        var result = await _service.DeleteUserById("nonexistent");
+        var result = await _service.DeleteUserById("nonexistent", "testuser", "testpassword");
 
         // Assert
         Assert.Equal(ServiceStatus.NotFound404, result.Status);
+    }
+
+    [Fact]
+    public async Task DeleteUserById_InvalidLogin_ReturnsUnauthorized()
+    {
+        // Arrange
+        var user = CreateTestUser();
+        A.CallTo(() => _repo.GetByPuid("valid")).Returns(user);
+        A.CallTo(() => _authService.Login("testuser", "testpassword", false))
+            .Returns((ServiceResult<AuthResponse>.Fail(ServiceStatus.Unauthorized401, "Invalid username or password."), null, null));
+
+        // Act
+        var result = await _service.DeleteUserById("valid", "testuser", "testpassword");
+
+        // Assert
+        Assert.Equal(ServiceStatus.Unauthorized401, result.Status);
+    }
+
+    [Fact]
+    public async Task DeleteUserById_ProjectRetrievalFails_ReturnsInternalServerError()
+    {
+        // Arrange
+        var user = CreateTestUser();
+        A.CallTo(() => _repo.GetByPuid("valid")).Returns(user);
+        A.CallTo(() => _authService.Login("testuser", "testpassword", false))
+            .Returns((ServiceResult<AuthResponse>.SuccessResult(new AuthResponse { Puid = user.Puid, Username = user.Username }), null, null));
+        A.CallTo(() => _projectService.GetProjectsByUserPuid(user.Puid)).Returns(Task.FromResult(ServiceResult<List<ProjectResponse>>.Fail(ServiceStatus.InternalServerError500, "Failed to retrieve projects.")));
+
+        // Act
+        var result = await _service.DeleteUserById("valid", "testuser", "testpassword");
+
+        // Assert
+        Assert.Equal(ServiceStatus.InternalServerError500, result.Status);
     }
 
     [Fact]
@@ -256,9 +294,11 @@ public class UserServiceTests
         var user = CreateTestUser();
         A.CallTo(() => _repo.GetByPuid("valid")).Returns(user);
         A.CallTo(() => _repo.DeleteUser(user.User_Id)).Returns(false);
+        A.CallTo(() => _authService.Login("testuser", "testpassword", false))
+            .Returns((ServiceResult<AuthResponse>.SuccessResult(new AuthResponse { Puid = user.Puid, Username = user.Username }), null, null));
 
         // Act
-        var result = await _service.DeleteUserById("valid");
+        var result = await _service.DeleteUserById("valid", "testuser", "testpassword");
 
         // Assert
         Assert.Equal(ServiceStatus.InternalServerError500, result.Status);
@@ -271,9 +311,12 @@ public class UserServiceTests
         var user = CreateTestUser();
         A.CallTo(() => _repo.GetByPuid("valid")).Returns(user);
         A.CallTo(() => _repo.DeleteUser(user.User_Id)).Returns(true);
+        A.CallTo(() => _projectService.GetProjectsByUserPuid(user.Puid)).Returns(Task.FromResult(ServiceResult<List<APIModels.ProjectResponse>>.SuccessResult(new List<APIModels.ProjectResponse>(), ServiceStatus.Ok200)));
+        A.CallTo(() => _authService.Login("testuser", "testpassword", false))
+            .Returns((ServiceResult<AuthResponse>.SuccessResult(new AuthResponse { Puid = user.Puid, Username = user.Username }), null, null));
 
         // Act
-        var result = await _service.DeleteUserById("valid");
+        var result = await _service.DeleteUserById("valid", "testuser", "testpassword");
 
         // Assert
         Assert.Equal(ServiceStatus.NoContent204, result.Status);

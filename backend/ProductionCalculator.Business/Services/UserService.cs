@@ -9,12 +9,16 @@ namespace ProductionCalculator.Business.Services
         private readonly IUserRepository _repo;
         private readonly IRoleRepository _roleRepo;
         private readonly ILogger<UserService> _logger;
+        private readonly IProjectService _projectService;
+        private readonly IAuthService _authService;
 
-        public UserService(IUserRepository repo, IRoleRepository roleRepo, ILogger<UserService> logger)
+        public UserService(IUserRepository repo, IRoleRepository roleRepo, ILogger<UserService> logger, IProjectService projectService, IAuthService authService)
         {
             _repo = repo;
             _roleRepo = roleRepo;
             _logger = logger;
+            _projectService = projectService;
+            _authService = authService;
         }
 
         public async Task<ServiceResult<User>> Register(string username, string email, string password)
@@ -97,7 +101,7 @@ namespace ProductionCalculator.Business.Services
 
             return ServiceResult<(User, bool)>.SuccessResult((user, isVerified), ServiceStatus.Ok200);
         }
-        public async Task<ServiceResult> DeleteUserById(string puid)
+        public async Task<ServiceResult> DeleteUserById(string puid, string username, string password)
         {
             if (string.IsNullOrWhiteSpace(puid))
                 return ServiceResult.Fail(ServiceStatus.BadRequest400);
@@ -105,6 +109,32 @@ namespace ProductionCalculator.Business.Services
             var user = await _repo.GetByPuid(puid);
             if (user == null)
                 return ServiceResult.Fail(ServiceStatus.NotFound404, $"User with PUID {puid} not found.");
+
+            // Verify credentials
+            var authResult = await _authService.Login(username, password, generateToken: false);
+            if (!authResult.result.Success)
+            {
+                _logger.LogWarning("Unauthorized deletion attempt for user '{Username}' (PUID: {UserPuid}). Invalid credentials provided.", user.Username, user.Puid);
+                return ServiceResult.Fail(ServiceStatus.Unauthorized401, "Invalid credentials.");
+            }
+
+            // Delete projects owner by user
+            // The DB has cascade delete set up, but canoncial projects need to be transferred and alias project reference counting updated
+            var projects = await _projectService.GetProjectsByUserPuid(user.Puid);
+            if (!projects.Success || projects.Data == null)
+            {
+                _logger.LogError("Failed to retrieve projects for user '{Username}' (PUID: {UserPuid}) during deletion. Error: {ErrorMessage}", user.Username, user.Puid, projects.ErrorMessage);
+                return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to retrieve user's projects.");
+            }
+            foreach (var project in projects.Data)
+            {
+                var deleteResult = await _projectService.DeleteProject(project.Puid);
+                if (!deleteResult.Success)
+                {
+                    _logger.LogError("Failed to delete project '{ProjectName}' (PUID: {ProjectPuid}) owned by user '{Username}' (PUID: {UserPuid}) during user deletion. Error: {ErrorMessage}", project.Name, project.Puid, user.Username, user.Puid, deleteResult.ErrorMessage);
+                    return ServiceResult.Fail(ServiceStatus.InternalServerError500, "Failed to delete user's projects.");
+                }
+            }
 
             var deleted = await _repo.DeleteUser(user.User_Id);
             if (!deleted)
