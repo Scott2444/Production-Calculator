@@ -1654,7 +1654,10 @@ export default function WorkflowPage() {
                                                 className="bg-slate-900!"
                                                 nodeStrokeWidth={3}
                                             />
-                                            <Controls className="bg-slate-900!" />
+                                            <Controls
+                                                className="workflow-reactflow-controls"
+                                                showInteractive={false}
+                                            />
                                         </ReactFlow>
 
                                         <div className="pointer-events-none absolute inset-0 z-20">
