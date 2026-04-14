@@ -8,6 +8,7 @@ import {
     IconSettings,
     IconTrash,
 } from "@tabler/icons-react";
+import DocsHelpLink from "@/components/DocsHelpLink";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import Popup from "@/components/Popup";
 import { type ModifierAttributeBonus } from "@/types/modifiers";
@@ -150,9 +151,18 @@ export default function ModifierEditorDialog({
                 />
 
                 <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-slate-200">
-                        Name
-                    </label>
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-slate-200">
+                            Name
+                        </label>
+                        <div className="flex justify-end">
+                            <DocsHelpLink
+                                slug="projects/components/modifiers"
+                                sectionId="built-in-modifier-fields"
+                                title="Open modifiers docs in a new tab"
+                            />
+                        </div>
+                    </div>
                     <input
                         ref={initialFocusRef}
                         value={name}
@@ -182,12 +192,24 @@ export default function ModifierEditorDialog({
                         <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-purple-400">
                             <IconGauge size={16} />
                             Speed Modifiers
+                            <DocsHelpLink
+                                slug="projects/components/modifiers"
+                                sectionId="speed"
+                                title="Open speed modifiers docs in a new tab"
+                            />
                         </div>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                             <div className="flex flex-col gap-2">
-                                <label className="text-sm font-medium text-slate-200">
-                                    Flat bonus
-                                </label>
+                                <div className="flex items-center gap-1.5">
+                                    <label className="text-sm font-medium text-slate-200">
+                                        Flat bonus
+                                    </label>
+                                    <DocsHelpLink
+                                        slug="calculation/formulas"
+                                        sectionId="speed-formulas"
+                                        title="Open flat bonus formula docs in a new tab"
+                                    />
+                                </div>
                                 <input
                                     type="number"
                                     step="any"
@@ -201,9 +223,16 @@ export default function ModifierEditorDialog({
                             </div>
 
                             <div className="flex flex-col gap-2">
-                                <label className="text-sm font-medium text-slate-200">
-                                    Additive bonus
-                                </label>
+                                <div className="flex items-center gap-1.5">
+                                    <label className="text-sm font-medium text-slate-200">
+                                        Additive bonus
+                                    </label>
+                                    <DocsHelpLink
+                                        slug="calculation/formulas"
+                                        sectionId="additive-stacking"
+                                        title="Open additive stacking docs in a new tab"
+                                    />
+                                </div>
                                 <input
                                     type="number"
                                     step="any"
@@ -217,9 +246,16 @@ export default function ModifierEditorDialog({
                             </div>
 
                             <div className="flex flex-col gap-2">
-                                <label className="text-sm font-medium text-slate-200">
-                                    Multiplicative bonus
-                                </label>
+                                <div className="flex items-center gap-1.5">
+                                    <label className="text-sm font-medium text-slate-200">
+                                        Multiplicative bonus
+                                    </label>
+                                    <DocsHelpLink
+                                        slug="calculation/formulas"
+                                        sectionId="multiplicative-stacking"
+                                        title="Open multiplicative stacking docs in a new tab"
+                                    />
+                                </div>
                                 <input
                                     type="number"
                                     step="any"
@@ -240,12 +276,24 @@ export default function ModifierEditorDialog({
                         <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-400">
                             <IconPackage size={16} />
                             Yield Modifiers
+                            <DocsHelpLink
+                                slug="projects/components/modifiers"
+                                sectionId="yield"
+                                title="Open yield modifiers docs in a new tab"
+                            />
                         </div>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="flex flex-col gap-2">
-                                <label className="text-sm font-medium text-slate-200">
-                                    Input bonus
-                                </label>
+                                <div className="flex items-center gap-1.5">
+                                    <label className="text-sm font-medium text-slate-200">
+                                        Input bonus
+                                    </label>
+                                    <DocsHelpLink
+                                        slug="calculation/formulas"
+                                        sectionId="yield-formulas"
+                                        title="Open input yield formula docs in a new tab"
+                                    />
+                                </div>
                                 <input
                                     type="number"
                                     step="any"
@@ -259,9 +307,16 @@ export default function ModifierEditorDialog({
                             </div>
 
                             <div className="flex flex-col gap-2">
-                                <label className="text-sm font-medium text-slate-200">
-                                    Output bonus
-                                </label>
+                                <div className="flex items-center gap-1.5">
+                                    <label className="text-sm font-medium text-slate-200">
+                                        Output bonus
+                                    </label>
+                                    <DocsHelpLink
+                                        slug="calculation/formulas"
+                                        sectionId="yield-formulas"
+                                        title="Open output yield formula docs in a new tab"
+                                    />
+                                </div>
                                 <input
                                     type="number"
                                     step="any"
@@ -282,6 +337,11 @@ export default function ModifierEditorDialog({
                         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-blue-400">
                             <IconSettings size={16} />
                             Attribute Bonuses
+                            <DocsHelpLink
+                                slug="projects/components/modifiers"
+                                sectionId="attribute-contributions"
+                                title="Open modifier attribute contribution docs in a new tab"
+                            />
                         </div>
                         <button
                             type="button"

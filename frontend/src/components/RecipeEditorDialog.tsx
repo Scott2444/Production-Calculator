@@ -9,6 +9,7 @@ import {
     IconSettings,
     IconTrash,
 } from "@tabler/icons-react";
+import DocsHelpLink from "@/components/DocsHelpLink";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import Popup from "@/components/Popup";
 import { type RecipeExchange, type RecipeAttributeRate } from "@/types/recipes";
@@ -158,9 +159,18 @@ export default function RecipeEditorDialog({
                 />
 
                 <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-slate-200">
-                        Name
-                    </label>
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-slate-200">
+                            Name
+                        </label>
+                        <div className="flex justify-end">
+                            <DocsHelpLink
+                                slug="projects/components/recipes"
+                                sectionId="key-fields"
+                                title="Open recipes docs in a new tab"
+                            />
+                        </div>
+                    </div>
                     <input
                         ref={initialFocusRef}
                         value={name}
@@ -189,6 +199,11 @@ export default function RecipeEditorDialog({
                     <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-400">
                         <IconClock size={16} />
                         Crafting Time
+                        <DocsHelpLink
+                            slug="calculation/formulas"
+                            sectionId="speed-formulas"
+                            title="Open speed formulas docs in a new tab"
+                        />
                     </div>
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-medium text-slate-200">
@@ -211,6 +226,11 @@ export default function RecipeEditorDialog({
                         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-400">
                             <IconArrowDown size={16} />
                             Inputs
+                            <DocsHelpLink
+                                slug="projects/components/recipes"
+                                sectionId="key-fields"
+                                title="Open recipe input docs in a new tab"
+                            />
                         </div>
                         <button
                             type="button"
@@ -274,6 +294,11 @@ export default function RecipeEditorDialog({
                         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-blue-400">
                             <IconArrowUp size={16} />
                             Outputs
+                            <DocsHelpLink
+                                slug="projects/components/recipes"
+                                sectionId="key-fields"
+                                title="Open recipe output docs in a new tab"
+                            />
                         </div>
                         <button
                             type="button"
@@ -337,6 +362,11 @@ export default function RecipeEditorDialog({
                         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-purple-400">
                             <IconSettings size={16} />
                             Recipe Attributes
+                            <DocsHelpLink
+                                slug="calculation/formulas"
+                                sectionId="attribute-formulas"
+                                title="Open attribute formula docs in a new tab"
+                            />
                         </div>
                         <button
                             type="button"

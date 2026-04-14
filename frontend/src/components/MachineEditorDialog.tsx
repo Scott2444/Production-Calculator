@@ -8,6 +8,7 @@ import {
     IconSettings,
     IconTrash,
 } from "@tabler/icons-react";
+import DocsHelpLink from "@/components/DocsHelpLink";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import Popup from "@/components/Popup";
 import { type MachineAttributeRate } from "@/types/machines";
@@ -159,9 +160,18 @@ export default function MachineEditorDialog({
                 />
 
                 <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-slate-200">
-                        Name
-                    </label>
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-slate-200">
+                            Name
+                        </label>
+                        <div className="flex justify-end">
+                            <DocsHelpLink
+                                slug="projects/components/machines"
+                                sectionId="key-fields"
+                                title="Open machines docs in a new tab"
+                            />
+                        </div>
+                    </div>
                     <input
                         ref={initialFocusRef}
                         value={name}
@@ -190,6 +200,11 @@ export default function MachineEditorDialog({
                     <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-purple-400">
                         <IconGauge size={16} />
                         Machine Speed
+                        <DocsHelpLink
+                            slug="calculation/formulas"
+                            sectionId="speed-formulas"
+                            title="Open machine speed formulas docs in a new tab"
+                        />
                     </div>
                     <div className="flex flex-col gap-2">
                         <label className="text-sm font-medium text-slate-200">
@@ -209,6 +224,11 @@ export default function MachineEditorDialog({
                     <div className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-400">
                         <IconClipboardList size={16} />
                         Compatible Recipes
+                        <DocsHelpLink
+                            slug="projects/components/machines"
+                            sectionId="key-fields"
+                            title="Open compatible recipes docs in a new tab"
+                        />
                     </div>
 
                     {sortedRecipesCount === 0 ? (
@@ -260,6 +280,11 @@ export default function MachineEditorDialog({
                         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-blue-400">
                             <IconSettings size={16} />
                             User Defined Attributes
+                            <DocsHelpLink
+                                slug="calculation/formulas"
+                                sectionId="attribute-formulas"
+                                title="Open machine attribute formula docs in a new tab"
+                            />
                         </div>
                         <button
                             type="button"

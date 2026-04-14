@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import DocsHelpLink from "@/components/DocsHelpLink";
 import Popup from "@/components/Popup";
 import { useProtectedApi } from "@/lib/api";
 import {
@@ -158,6 +159,14 @@ export default function WorkflowEditorDialog({
                         {error}
                     </div>
                 )}
+
+                <div className="flex justify-end">
+                    <DocsHelpLink
+                        slug="projects/workflows"
+                        sectionId="workflow-contains"
+                        title="Open workflows docs in a new tab"
+                    />
+                </div>
 
                 <div className="flex flex-col gap-1.5">
                     <label
