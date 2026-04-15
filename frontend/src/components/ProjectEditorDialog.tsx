@@ -1,6 +1,7 @@
 "use client";
 
 import type { RefObject } from "react";
+import DocsHelpLink from "@/components/DocsHelpLink";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import Popup from "@/components/Popup";
 
@@ -98,6 +99,14 @@ export default function ProjectEditorDialog({
                     }
                 />
 
+                <div className="flex justify-end">
+                    <DocsHelpLink
+                        slug="projects"
+                        sectionId="components-and-workflows"
+                        title="Open projects docs in a new tab"
+                    />
+                </div>
+
                 <div className="flex flex-col gap-2">
                     <label className="text-sm font-medium text-slate-200">
                         Name
@@ -125,24 +134,32 @@ export default function ProjectEditorDialog({
                     />
                 </div>
 
-                <label className="flex items-center gap-3 rounded-lg border border-slate-800 cursor-pointer bg-slate-900/40 px-3 py-2 text-sm text-slate-200">
-                    <input
-                        type="checkbox"
-                        checked={isPublic}
-                        onChange={(e) => onIsPublicChange(e.target.checked)}
-                        disabled={submitting || alias !== null}
-                        className={
-                            "h-4 w-4 accent-purple-500" +
-                            (alias !== null ? " cursor-not-allowed" : "")
-                        }
-                    />
-                    <div className="min-w-0">
-                        <div className="font-medium">Public project</div>
-                        <div className="text-xs text-slate-400">
-                            Allow others to view this project.
+                <div className="flex items-start gap-2">
+                    <label className="flex flex-1 items-center gap-3 rounded-lg border border-slate-800 cursor-pointer bg-slate-900/40 px-3 py-2 text-sm text-slate-200">
+                        <input
+                            type="checkbox"
+                            checked={isPublic}
+                            onChange={(e) => onIsPublicChange(e.target.checked)}
+                            disabled={submitting || alias !== null}
+                            className={
+                                "h-4 w-4 accent-purple-500" +
+                                (alias !== null ? " cursor-not-allowed" : "")
+                            }
+                        />
+                        <div className="min-w-0">
+                            <div className="font-medium">Public project</div>
+                            <div className="text-xs text-slate-400">
+                                Allow others to view this project.
+                            </div>
                         </div>
-                    </div>
-                </label>
+                    </label>
+                    <DocsHelpLink
+                        slug="projects"
+                        sectionId="visibility"
+                        title="Open project visibility docs in a new tab"
+                        className="mt-2"
+                    />
+                </div>
             </div>
         </Popup>
     );

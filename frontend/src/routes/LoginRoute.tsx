@@ -113,7 +113,7 @@ export default function LoginRoute() {
                         <hr className="grow border-slate-700" />
                     </div>
                     <div className="flex flex-col gap-3">
-                        <button
+                        {/* <button
                             className="w-full py-3 bg-white text-slate-900 rounded-md font-semibold border border-slate-300 flex items-center justify-center gap-2 cursor-not-allowed hover:bg-slate-100 transition-colors"
                             disabled
                         >
@@ -124,7 +124,7 @@ export default function LoginRoute() {
                                 width={20}
                             />
                             Continue with Google
-                        </button>
+                        </button> */}
                         <Link
                             to="/signup"
                             className="w-full py-3 bg-slate-800 text-purple-400 rounded-md font-semibold text-center border border-slate-700 hover:bg-slate-700 transition-colors no-underline"

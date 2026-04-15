@@ -1,6 +1,7 @@
 "use client";
 
 import type { RefObject } from "react";
+import DocsHelpLink from "@/components/DocsHelpLink";
 import ErrorDisplay from "@/components/ErrorDisplay";
 import Popup from "@/components/Popup";
 
@@ -95,9 +96,18 @@ export default function ProductEditorDialog({
                 />
 
                 <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-slate-200">
-                        Name
-                    </label>
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-slate-200">
+                            Name
+                        </label>
+                        <div className="flex justify-end">
+                            <DocsHelpLink
+                                slug="projects/components/products"
+                                sectionId="data"
+                                title="Open products docs in a new tab"
+                            />
+                        </div>
+                    </div>
                     <input
                         ref={initialFocusRef}
                         value={name}

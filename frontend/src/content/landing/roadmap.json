@@ -1,9 +1,9 @@
 {
-    "lastUpdated": "2026-04-01",
+    "lastUpdated": "2026-04-15",
     "changelog": [
         {
             "version": "v1.0.0",
-            "date": "2026-03-28",
+            "date": "2026-04-15",
             "title": "Initial Release!",
             "items": [
                 "First public release of Production Calculator.",

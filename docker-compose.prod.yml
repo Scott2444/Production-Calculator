@@ -12,6 +12,7 @@ services:
         environment:
             - ASPNETCORE_ENVIRONMENT=Production
             - PasswordReset__FrontendBaseUrl=https://production-calculator.com
+            - Jwt__Key=${JWT_KEY:?JWT_KEY must be set}
 
     prometheus:
         container_name: prometheus-prod

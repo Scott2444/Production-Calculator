@@ -256,4 +256,50 @@ public class UserRepositoryTests
         Assert.NotNull(user);
         Assert.Equal(0, user!.Project_Count);
     }
+
+    [Fact]
+    public async Task IsRegistrationEnabled_NoSettingsRow_ReturnsTrue()
+    {
+        await using var db = CreateDbContext();
+        var repo = new UserRepository(db);
+
+        var enabled = await repo.IsRegistrationEnabled();
+
+        Assert.True(enabled);
+    }
+
+    [Fact]
+    public async Task SetRegistrationEnabled_NoSettingsRow_CreatesSettingsRow()
+    {
+        await using var db = CreateDbContext();
+        var repo = new UserRepository(db);
+
+        await repo.SetRegistrationEnabled(false);
+
+        var enabled = await repo.IsRegistrationEnabled();
+        var settings = await db.Set<RegistrationSetting>().SingleAsync();
+
+        Assert.False(enabled);
+        Assert.Equal(1, settings.Settings_Id);
+        Assert.False(settings.Is_Registration_Enabled);
+    }
+
+    [Fact]
+    public async Task SetRegistrationEnabled_SettingsRowExists_UpdatesValue()
+    {
+        await using var db = CreateDbContext();
+        db.Set<RegistrationSetting>().Add(new RegistrationSetting
+        {
+            Settings_Id = 1,
+            Is_Registration_Enabled = false,
+            Last_Updated = DateTime.UtcNow.AddHours(-1)
+        });
+        await db.SaveChangesAsync();
+
+        var repo = new UserRepository(db);
+        await repo.SetRegistrationEnabled(true);
+
+        var enabled = await repo.IsRegistrationEnabled();
+        Assert.True(enabled);
+    }
 }

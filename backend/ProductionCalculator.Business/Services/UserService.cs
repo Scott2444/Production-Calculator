@@ -23,6 +23,12 @@ namespace ProductionCalculator.Business.Services
 
         public async Task<ServiceResult<User>> Register(string username, string email, string password)
         {
+            var isRegistrationEnabled = await _repo.IsRegistrationEnabled();
+            if (!isRegistrationEnabled)
+            {
+                return ServiceResult<User>.Fail(ServiceStatus.Conflict409, "Registration is currently disabled.");
+            }
+
             // basic checks
             email = email.Trim().ToLower();
             if (string.IsNullOrWhiteSpace(username)) return ServiceResult<User>.Fail(ServiceStatus.BadRequest400);
@@ -63,6 +69,12 @@ namespace ProductionCalculator.Business.Services
 
         public async Task<ServiceResult> ValidateNewUser(string username, string email)
         {
+            var isRegistrationEnabled = await _repo.IsRegistrationEnabled();
+            if (!isRegistrationEnabled)
+            {
+                return ServiceResult.Fail(ServiceStatus.Conflict409, "Registration is currently disabled.");
+            }
+
             email = email.Trim().ToLower();
             if (string.IsNullOrWhiteSpace(username)) return ServiceResult.Fail(ServiceStatus.BadRequest400);
             if (string.IsNullOrWhiteSpace(email)) return ServiceResult.Fail(ServiceStatus.BadRequest400);
@@ -141,6 +153,13 @@ namespace ProductionCalculator.Business.Services
                 return ServiceResult.Fail(ServiceStatus.InternalServerError500);
 
             _logger.LogInformation("User state change: User '{Username}' (PUID: {UserPuid}) deleted.", user.Username, user.Puid);
+            return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
+        }
+
+        public async Task<ServiceResult> SetRegistrationEnabled(bool isEnabled)
+        {
+            await _repo.SetRegistrationEnabled(isEnabled);
+            _logger.LogInformation("Registration setting changed: IsRegistrationEnabled={IsEnabled}.", isEnabled);
             return ServiceResult.SuccessResult(ServiceStatus.NoContent204);
         }
     }

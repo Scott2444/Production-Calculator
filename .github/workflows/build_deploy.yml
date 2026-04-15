@@ -132,6 +132,7 @@ jobs:
                       git fetch --all
                       git checkout ${{ github.sha }}
                       export TAG=sha-${{ github.sha }}
+                      export JWT_KEY="${{ secrets.JWT_KEY }}"
 
                       docker network create calculator-staging-network || true
 
@@ -191,6 +192,7 @@ jobs:
                       git fetch --all
                       git checkout ${{ github.sha }}
                       export TAG=sha-${{ github.sha }}
+                      export JWT_KEY="${{ secrets.JWT_KEY }}"
 
                       docker network create calculator-prod-network || true
 

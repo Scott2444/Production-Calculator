@@ -12,6 +12,7 @@ namespace ProductionCalculator.Data
         }
 
         public DbSet<User> Users => Set<User>();
+        public DbSet<RegistrationSetting> RegistrationSettings => Set<RegistrationSetting>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -39,6 +40,7 @@ namespace ProductionCalculator.Data
             modelBuilder.ApplyConfiguration(new RefreshTokenConfiguration());
             modelBuilder.ApplyConfiguration(new VerificationCodeConfiguration());
             modelBuilder.ApplyConfiguration(new PasswordResetTokenConfiguration());
+            modelBuilder.ApplyConfiguration(new RegistrationSettingConfiguration());
 
             if (!string.Equals(Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal))
             {

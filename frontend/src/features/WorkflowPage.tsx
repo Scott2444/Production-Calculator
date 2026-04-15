@@ -1,6 +1,7 @@
 "use client";
 
 import ErrorDisplay from "@/components/ErrorDisplay";
+import DocsHelpLink from "@/components/DocsHelpLink";
 import DropDown from "@/components/DropDown";
 import ProjectPageLayout from "@/components/ProjectPageLayout";
 import ProjectStatusGate from "@/components/ProjectStatusGate";
@@ -812,8 +813,7 @@ export default function WorkflowPage() {
         const fallbackMachine = compatibleMachines[0]?.puid ?? "";
         setNodeMachinePuid(selectedProcessNode.machinePuid ?? fallbackMachine);
 
-        const count =
-            selectedProcessNode.actualMachineCount ?? 0;
+        const count = selectedProcessNode.actualMachineCount ?? 0;
         setNodeActualMachineCount(`${count}`);
         setNodeModifierPuids(selectedProcessNode.modifierPuids ?? []);
     }, [selectedProcessNode, compatibleMachines]);
@@ -1654,7 +1654,10 @@ export default function WorkflowPage() {
                                                 className="bg-slate-900!"
                                                 nodeStrokeWidth={3}
                                             />
-                                            <Controls className="bg-slate-900!" />
+                                            <Controls
+                                                className="workflow-reactflow-controls"
+                                                showInteractive={false}
+                                            />
                                         </ReactFlow>
 
                                         <div className="pointer-events-none absolute inset-0 z-20">
@@ -1802,8 +1805,15 @@ export default function WorkflowPage() {
                                                         {activeGlobalMenu ===
                                                             "targets" && (
                                                             <div className="flex flex-col gap-3">
-                                                                <div className="text-sm font-semibold text-slate-100">
-                                                                    Targets
+                                                                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                                                                    <span>
+                                                                        Targets
+                                                                    </span>
+                                                                    <DocsHelpLink
+                                                                        slug="projects/workflows/targets"
+                                                                        sectionId="structure"
+                                                                        title="Open targets docs in a new tab"
+                                                                    />
                                                                 </div>
                                                                 {targetDrafts.map(
                                                                     (
@@ -1984,9 +1994,16 @@ export default function WorkflowPage() {
                                                         {activeGlobalMenu ===
                                                             "preferredRecipes" && (
                                                             <div className="flex flex-col gap-3">
-                                                                <div className="text-sm font-semibold text-slate-100">
-                                                                    Preferred
-                                                                    Recipes
+                                                                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                                                                    <span>
+                                                                        Preferred
+                                                                        Recipes
+                                                                    </span>
+                                                                    <DocsHelpLink
+                                                                        slug="projects/workflows"
+                                                                        sectionId="workflow-contains"
+                                                                        title="Open workflow overview docs in a new tab"
+                                                                    />
                                                                 </div>
                                                                 <DropDown
                                                                     label={
@@ -2132,10 +2149,17 @@ export default function WorkflowPage() {
                                                         {activeGlobalMenu ===
                                                             "externalProducts" && (
                                                             <div className="flex flex-col gap-3">
-                                                                <div className="text-sm font-semibold text-slate-100">
-                                                                    Externally
-                                                                    Supplied
-                                                                    Products
+                                                                <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                                                                    <span>
+                                                                        Externally
+                                                                        Supplied
+                                                                        Products
+                                                                    </span>
+                                                                    <DocsHelpLink
+                                                                        slug="projects/workflows/external-products"
+                                                                        sectionId="use-cases"
+                                                                        title="Open external products docs in a new tab"
+                                                                    />
                                                                 </div>
                                                                 {externalProductDrafts.map(
                                                                     (
@@ -2324,6 +2348,11 @@ export default function WorkflowPage() {
                                                                 size={16}
                                                             />
                                                             Process Node
+                                                            <DocsHelpLink
+                                                                slug="projects/workflows/process-nodes"
+                                                                sectionId="fields"
+                                                                title="Open process node docs in a new tab"
+                                                            />
                                                         </div>
                                                         <div className="text-xs text-slate-400">
                                                             {recipeNameByPuid.get(
@@ -2333,7 +2362,16 @@ export default function WorkflowPage() {
                                                         </div>
 
                                                         <div className="flex flex-col gap-1 text-xs text-slate-300">
-                                                            Machine
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span>
+                                                                    Machine
+                                                                </span>
+                                                                <DocsHelpLink
+                                                                    slug="projects/workflows/process-nodes"
+                                                                    sectionId="fields"
+                                                                    title="Open process machine docs in a new tab"
+                                                                />
+                                                            </div>
                                                             <DropDown
                                                                 label={
                                                                     <div className="truncate text-xs text-slate-200">
@@ -2370,7 +2408,18 @@ export default function WorkflowPage() {
                                                         </div>
 
                                                         <label className="flex flex-col gap-1 text-xs text-slate-300">
-                                                            Actual Machine Count
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span>
+                                                                    Actual
+                                                                    Machine
+                                                                    Count
+                                                                </span>
+                                                                <DocsHelpLink
+                                                                    slug="projects/workflows/supply-demand"
+                                                                    sectionId="supply"
+                                                                    title="Open supply docs in a new tab"
+                                                                />
+                                                            </div>
                                                             <input
                                                                 type="number"
                                                                 min="0"
@@ -2395,7 +2444,16 @@ export default function WorkflowPage() {
                                                         </label>
 
                                                         <div className="flex flex-col gap-1 text-xs text-slate-300">
-                                                            Modifiers
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span>
+                                                                    Modifiers
+                                                                </span>
+                                                                <DocsHelpLink
+                                                                    slug="projects/components/modifiers"
+                                                                    sectionId="built-in-modifier-fields"
+                                                                    title="Open modifier docs in a new tab"
+                                                                />
+                                                            </div>
                                                             <div className="flex flex-col gap-2">
                                                                 <DropDown
                                                                     label={
@@ -2614,8 +2672,15 @@ export default function WorkflowPage() {
 
                                             <div className="pointer-events-auto absolute bottom-4 left-1/2 w-95 -translate-x-1/2 rounded-xl border border-slate-700/90 bg-slate-900/92 p-3 shadow-xl backdrop-blur">
                                                 <div className="flex items-center justify-between gap-3">
-                                                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-200">
-                                                        Attribute Totals
+                                                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-200">
+                                                        <span>
+                                                            Attribute Totals
+                                                        </span>
+                                                        <DocsHelpLink
+                                                            slug="projects/workflows/attributes"
+                                                            sectionId="aggregation"
+                                                            title="Open workflow attribute totals docs in a new tab"
+                                                        />
                                                     </div>
                                                     <button
                                                         type="button"

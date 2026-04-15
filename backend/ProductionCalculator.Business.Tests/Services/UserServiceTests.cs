@@ -26,6 +26,9 @@ public class UserServiceTests
         _projectService = A.Fake<IProjectService>();
         _authService = A.Fake<IAuthService>();
         _service = new UserService(_repo, _roleRepo, _logger, _projectService, _authService);
+
+        // Default to enabled so existing register-path tests exercise validation/business logic.
+        A.CallTo(() => _repo.IsRegistrationEnabled()).Returns(true);
     }
 
     private User CreateTestUser(string username = "test", string email = "test@test.com", string puid = "user123456", int roleId = 1)
@@ -115,6 +118,20 @@ public class UserServiceTests
         A.CallTo(() => _repo.AddUser(A<User>._)).MustHaveHappenedOnceExactly();
     }
 
+    [Fact]
+    public async Task Register_RegistrationDisabled_ReturnsConflict()
+    {
+        // Arrange
+        A.CallTo(() => _repo.IsRegistrationEnabled()).Returns(false);
+
+        // Act
+        var result = await _service.Register("validuser", "valid@test.com", "password123");
+
+        // Assert
+        Assert.Equal(ServiceStatus.Conflict409, result.Status);
+        A.CallTo(() => _repo.AddUser(A<User>._)).MustNotHaveHappened();
+    }
+
     [Theory]
     [InlineData("", "email@test.com")]
     [InlineData("user", "")]
@@ -166,6 +183,21 @@ public class UserServiceTests
 
         // Assert
         Assert.Equal(ServiceStatus.Ok200, result.Status);
+    }
+
+    [Fact]
+    public async Task ValidateNewUser_RegistrationDisabled_ReturnsConflict()
+    {
+        // Arrange
+        A.CallTo(() => _repo.IsRegistrationEnabled()).Returns(false);
+
+        // Act
+        var result = await _service.ValidateNewUser("newuser", "new@test.com");
+
+        // Assert
+        Assert.Equal(ServiceStatus.Conflict409, result.Status);
+        A.CallTo(() => _repo.GetByUsername(A<string>._)).MustNotHaveHappened();
+        A.CallTo(() => _repo.GetByEmail(A<string>._)).MustNotHaveHappened();
     }
 
     [Fact]
@@ -320,5 +352,16 @@ public class UserServiceTests
 
         // Assert
         Assert.Equal(ServiceStatus.NoContent204, result.Status);
+    }
+
+    [Fact]
+    public async Task SetRegistrationEnabled_CallsRepository_ReturnsNoContent()
+    {
+        // Act
+        var result = await _service.SetRegistrationEnabled(false);
+
+        // Assert
+        Assert.Equal(ServiceStatus.NoContent204, result.Status);
+        A.CallTo(() => _repo.SetRegistrationEnabled(false)).MustHaveHappenedOnceExactly();
     }
 }

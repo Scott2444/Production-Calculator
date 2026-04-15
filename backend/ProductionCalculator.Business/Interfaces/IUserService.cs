@@ -10,5 +10,6 @@ namespace ProductionCalculator.Business.Interfaces
         Task<ServiceResult<(User, bool)>> GetUserByPuid(string puid);
         Task<ServiceResult<(User, bool)>> GetUserByUsername(string username);
         Task<ServiceResult> DeleteUserById(string puid, string username, string password);
+        Task<ServiceResult> SetRegistrationEnabled(bool isEnabled);
     }
 }

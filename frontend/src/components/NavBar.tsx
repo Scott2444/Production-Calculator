@@ -56,6 +56,10 @@ export default function NavBar({
         { name: "Docs", href: "/docs" },
     ];
 
+    const filteredNavItems = loggedIn
+        ? navItems
+        : navItems.filter((item) => item.name !== "Projects");
+
     return (
         <nav className="flex items-center justify-between py-5 px-8 border-b-2 border-black bg-slate-900/90 sticky top-0 z-50">
             <div className="flex items-center gap-14 text-xl">
@@ -68,7 +72,7 @@ export default function NavBar({
                     />
                 </Link>
                 {/* Navigation buttons */}
-                {navItems.map((item) => (
+                {filteredNavItems.map((item) => (
                     // Determine active state from the first slug in the route hierarchy.
                     <Link
                         key={item.name}

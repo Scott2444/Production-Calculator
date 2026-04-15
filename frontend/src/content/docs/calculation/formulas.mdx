@@ -9,9 +9,13 @@ This page documents the formula set used by workflow calculations.
 - Percent values are decimal scalars (`20% = 0.20`)
 - Recipe rates are in `recipes / second`
 
+<span id="additive-vs-multiplicative-stacking" />
+
 ## Additive vs Multiplicative Stacking
 
 Two stacking patterns are used in this project.
+
+<span id="additive-stacking" />
 
 ### Additive Stacking
 
@@ -28,6 +32,8 @@ Example:
 +20% and +30% additive => factor = 1 + (0.2 + 0.3) = 1.5
 ```
 
+<span id="multiplicative-stacking" />
+
 ### Multiplicative Stacking
 
 Multipliers are chained by multiplication:
@@ -42,6 +48,8 @@ Example:
 1.2x and 1.3x multiplicative => factor = 1.2 * 1.3 = 1.56
 ```
 
+<span id="combined-pattern" />
+
 ### Combined Pattern
 
 When both exist, the pattern is:
@@ -51,6 +59,8 @@ value = base * (1 + sum(additive_bonuses)) * prod(multipliers)
 ```
 
 This is the same shape used for speed and attributes.
+
+<span id="speed-formulas" />
 
 ## Speed Formulas
 
@@ -76,6 +86,8 @@ Where:
 - `base_crafting_time` is recipe seconds per craft
 - `target_recipe_rate` is the solved demand rate for that recipe
 - `machine_count` may be fractional
+
+<span id="yield-formulas" />
 
 ## Yield Formulas
 
@@ -134,6 +146,8 @@ Starting from `1 input -> 1 output`:
 - `-50% input` becomes `0.5 input -> 1 output`
 
 Both have the same input/output ratio (`0.5 input per output`), but only output scaling changes output-per-cycle and therefore machine requirement for output targets.
+
+<span id="attribute-formulas" />
 
 ## Attribute Formulas
 

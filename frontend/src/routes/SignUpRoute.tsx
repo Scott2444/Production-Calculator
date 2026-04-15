@@ -179,7 +179,7 @@ export default function SignUpRoute() {
                                     <hr className="grow border-slate-700" />
                                 </div>
                                 <div className="flex flex-col gap-3">
-                                    <button
+                                    {/* <button
                                         className="w-full py-3 bg-white text-slate-900 rounded-md font-semibold border border-slate-300 flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors"
                                         disabled
                                     >
@@ -190,7 +190,7 @@ export default function SignUpRoute() {
                                             width={20}
                                         />
                                         Continue with Google
-                                    </button>
+                                    </button> */}
                                     <Link
                                         to="/login"
                                         className="w-full py-3 bg-slate-800 text-purple-400 rounded-md font-semibold text-center border border-slate-700 hover:bg-slate-700 transition-colors no-underline"
@@ -271,7 +271,7 @@ export default function SignUpRoute() {
                                     <hr className="grow border-slate-700" />
                                 </div>
                                 <div className="flex flex-col gap-3">
-                                    <button
+                                    {/* <button
                                         className="w-full py-3 bg-white text-slate-900 rounded-md font-semibold border border-slate-300 flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors"
                                         disabled
                                     >
@@ -282,7 +282,7 @@ export default function SignUpRoute() {
                                             width={20}
                                         />
                                         Continue with Google
-                                    </button>
+                                    </button> */}
                                     <Link
                                         to="/login"
                                         className="w-full py-3 bg-slate-800 text-purple-400 rounded-md font-semibold text-center border border-slate-700 hover:bg-slate-700 transition-colors no-underline"

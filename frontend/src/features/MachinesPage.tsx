@@ -279,6 +279,15 @@ export default function Machines() {
         toText: machineToText,
     });
 
+    const isMachinesLoading =
+        machinesQuery.isLoading ||
+        recipesQuery.isLoading ||
+        attributesQuery.isLoading;
+    const isMachinesFetching =
+        machinesQuery.isFetching ||
+        recipesQuery.isFetching ||
+        attributesQuery.isFetching;
+
     const [createOpen, setCreateOpen] = useState(false);
     const [createName, setCreateName] = useState("");
     const [createDescription, setCreateDescription] = useState("");
@@ -538,7 +547,7 @@ export default function Machines() {
 
     return (
         <ProjectPageLayout>
-            <div className="flex flex-col gap-4">
+            <div className="flex min-h-full flex-col gap-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                         <h1 className="truncate text-2xl font-semibold text-slate-100">
@@ -784,6 +793,30 @@ export default function Machines() {
                         </div>
                     )}
                 </ProjectStatusGate>
+
+                <div className="mt-auto border-t border-slate-800 pt-4">
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
+                        <span>Expecting something else?</span>
+                        {!isMachinesLoading && (
+                            <button
+                                type="button"
+                                className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-1.5 text-sm font-medium text-slate-200 transition-colors cursor-pointer hover:border-purple-500/60 hover:bg-slate-800/60 hover:text-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500/40 disabled:opacity-60"
+                                onClick={() => {
+                                    void Promise.all([
+                                        machinesQuery.refetch(),
+                                        recipesQuery.refetch(),
+                                        attributesQuery.refetch(),
+                                    ]);
+                                }}
+                                disabled={isMachinesFetching}
+                            >
+                                {isMachinesFetching
+                                    ? "Refreshing..."
+                                    : "Refresh"}
+                            </button>
+                        )}
+                    </div>
+                </div>
             </div>
 
             <MachineEditorDialog
