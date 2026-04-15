@@ -162,7 +162,7 @@ export default function SignUpRoute() {
                                     />
                                     <button
                                         type="submit"
-                                        className="w-full py-3 bg-purple-700 text-white rounded-md font-semibold hover:bg-purple-600 transition-colors"
+                                        className="w-full py-3 bg-purple-700 text-white rounded-md font-semibold hover:bg-purple-600 transition-colors cursor-pointer"
                                         disabled={loading}
                                     >
                                         {loading ? "Validating..." : "Next"}
@@ -243,7 +243,7 @@ export default function SignUpRoute() {
                                     <div className="flex flex-row gap-3">
                                         <button
                                             type="button"
-                                            className="w-1/2 py-3 bg-slate-700 text-white rounded-md font-semibold hover:bg-slate-600 transition-colors"
+                                            className="w-1/2 py-3 bg-slate-700 text-white rounded-md font-semibold hover:bg-slate-600 transition-colors cursor-pointer"
                                             onClick={handleBack}
                                             disabled={loading}
                                         >
@@ -251,7 +251,7 @@ export default function SignUpRoute() {
                                         </button>
                                         <button
                                             type="submit"
-                                            className="w-1/2 py-3 bg-purple-700 text-white rounded-md font-semibold hover:bg-purple-600 transition-colors"
+                                            className="w-1/2 py-3 bg-purple-700 text-white rounded-md font-semibold hover:bg-purple-600 transition-colors cursor-pointer"
                                             disabled={loading}
                                         >
                                             {loading
