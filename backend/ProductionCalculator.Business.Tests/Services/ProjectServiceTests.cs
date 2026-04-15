@@ -702,7 +702,8 @@ public class ProjectServiceTests
 
         var result = await service.ResolveProject("owner", null);
 
-        Assert.Equal(ServiceStatus.NotFound404, result.Status);
+        Assert.Equal(ServiceStatus.Ok200, result.Status);
+        Assert.Empty(result.Data!);
     }
 
     [Fact]
