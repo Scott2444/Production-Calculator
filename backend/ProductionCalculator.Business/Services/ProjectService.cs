@@ -304,7 +304,7 @@ namespace ProductionCalculator.Business.Services
 
             var user = await _userRepo.GetByUsername(username);
             if (user == null)
-                return ServiceResult<List<ProjectResponse>>.Fail(ServiceStatus.NotFound404, $"Project or user not found.");
+                return ServiceResult<List<ProjectResponse>>.Fail(ServiceStatus.NotFound404, $"User not found.");
 
             var userProjects = await _repo.GetProjectsByUserId(user.User_Id);
 
@@ -326,11 +326,12 @@ namespace ProductionCalculator.Business.Services
             else
             {
                 var project = userProjects.FirstOrDefault(p => p.Name == projectName);
-                projects = project != null ? new List<Project> { project } : new List<Project>();
+                if (project == null)
+                {
+                    return ServiceResult<List<ProjectResponse>>.Fail(ServiceStatus.NotFound404, $"Project with name '{projectName}' not found for user '{username}'.");
+                }
+                projects = new List<Project> { project };
             }
-
-            if (!projects.Any())
-                return ServiceResult<List<ProjectResponse>>.Fail(ServiceStatus.NotFound404, "Project or user not found.");
 
             var projectResponses = projects.Select(p => MapToResponse(p, user.Username)).ToList();
             return ServiceResult<List<ProjectResponse>>.SuccessResult(projectResponses, ServiceStatus.Ok200);
