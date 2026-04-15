@@ -300,7 +300,7 @@ export default function VerifyRoute() {
 
                         <button
                             type="submit"
-                            className="w-full py-3 bg-purple-700 text-white rounded-md font-semibold hover:bg-purple-600 transition-colors disabled:opacity-60"
+                            className="w-full py-3 bg-purple-700 text-white rounded-md font-semibold hover:bg-purple-600 transition-colors cursor-pointer disabled:opacity-60"
                             disabled={verifyLoading}
                         >
                             {verifyLoading ? "Verifying..." : "Verify"}
