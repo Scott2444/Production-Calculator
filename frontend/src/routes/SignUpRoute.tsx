@@ -39,6 +39,7 @@ export default function SignUpRoute() {
             const res = await fetch(getApiUrl("/users/validate"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({ username, email }),
             });
             isValid = res.ok;
@@ -80,6 +81,7 @@ export default function SignUpRoute() {
             const registerRes = await fetch(getApiUrl("/users/register"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({ username, email, password }),
             });
             const data = await registerRes.json();
