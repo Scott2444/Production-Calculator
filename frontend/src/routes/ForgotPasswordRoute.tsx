@@ -34,6 +34,7 @@ export default function ForgotPasswordRoute() {
             const res = await fetch(getApiUrl("/auth/request-password-reset"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({ email: normalizedEmail }),
             });
 

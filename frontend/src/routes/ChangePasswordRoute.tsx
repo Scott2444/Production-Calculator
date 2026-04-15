@@ -46,6 +46,7 @@ export default function ChangePasswordRoute() {
             const res = await fetch(getApiUrl("/auth/reset-password"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({ token, newPassword }),
             });
 
