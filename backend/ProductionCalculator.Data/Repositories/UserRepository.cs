@@ -97,6 +97,39 @@ namespace ProductionCalculator.Data.Repositories
             return await _db.Set<User>().AnyAsync(u => u.Puid == puid);
         }
 
+        public async Task<bool> IsRegistrationEnabled()
+        {
+            var setting = await _db.Set<RegistrationSetting>()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Settings_Id == 1);
+
+            return setting?.Is_Registration_Enabled ?? true;
+        }
+
+        public async Task SetRegistrationEnabled(bool isEnabled)
+        {
+            var settings = await _db.Set<RegistrationSetting>()
+                .FirstOrDefaultAsync(s => s.Settings_Id == 1);
+
+            if (settings == null)
+            {
+                settings = new RegistrationSetting
+                {
+                    Settings_Id = 1,
+                    Is_Registration_Enabled = isEnabled,
+                    Last_Updated = DateTime.UtcNow
+                };
+                await _db.Set<RegistrationSetting>().AddAsync(settings);
+            }
+            else
+            {
+                settings.Is_Registration_Enabled = isEnabled;
+                settings.Last_Updated = DateTime.UtcNow;
+            }
+
+            await _db.SaveChangesAsync();
+        }
+
         private async Task AdjustProjectCount(string puid, int delta)
         {
             if (string.IsNullOrWhiteSpace(puid)) return;

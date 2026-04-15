@@ -126,6 +126,50 @@ public class UsersControllerTests
     }
 
     [Fact]
+    public async Task SetRegistrationEnabled_ValidRequest_Returns204NoContent()
+    {
+        var service = A.Fake<IUserService>();
+        var controller = CreateController(service);
+
+        A.CallTo(() => service.SetRegistrationEnabled(false))
+            .Returns(ServiceResult.SuccessResult(ServiceStatus.NoContent204));
+
+        var result = await controller.SetRegistrationEnabled(new SetRegistrationEnabledRequest { IsEnabled = false });
+
+        var status = Assert.IsType<StatusCodeResult>(result);
+        Assert.Equal(204, status.StatusCode);
+    }
+
+    [Fact]
+    public async Task SetRegistrationEnabled_MissingFlag_Returns400BadRequest()
+    {
+        var service = A.Fake<IUserService>();
+        var controller = CreateController(service);
+
+        var result = await controller.SetRegistrationEnabled(new SetRegistrationEnabledRequest { IsEnabled = null });
+
+        var obj = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(400, obj.StatusCode);
+        Assert.Equal("IsEnabled is required.", TryGetError(obj.Value));
+    }
+
+    [Fact]
+    public async Task SetRegistrationEnabled_ServiceError_Returns400BadRequest()
+    {
+        var service = A.Fake<IUserService>();
+        var controller = CreateController(service);
+
+        A.CallTo(() => service.SetRegistrationEnabled(true))
+            .Returns(ServiceResult.Fail(ServiceStatus.BadRequest400, "bad"));
+
+        var result = await controller.SetRegistrationEnabled(new SetRegistrationEnabledRequest { IsEnabled = true });
+
+        var obj = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(400, obj.StatusCode);
+        Assert.Equal("bad", TryGetError(obj.Value));
+    }
+
+    [Fact]
     public async Task GetByPuid_UserExists_Returns200OkWithResponse()
     {
         var service = A.Fake<IUserService>();

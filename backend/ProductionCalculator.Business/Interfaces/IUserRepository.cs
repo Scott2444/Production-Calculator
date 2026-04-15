@@ -17,5 +17,7 @@ namespace ProductionCalculator.Business.Interfaces
         Task<bool> DeleteUser(int id);
         Task<string> GetPasswordHash(int id);
         Task<bool> PuidExists(string puid);
+        Task<bool> IsRegistrationEnabled();
+        Task SetRegistrationEnabled(bool isEnabled);
     }
 }

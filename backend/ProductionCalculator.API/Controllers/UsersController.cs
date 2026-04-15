@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using ProductionCalculator.Business.Interfaces;
 using ProductionCalculator.Business.APIModels;
 using Microsoft.AspNetCore.Authorization;
+using ProductionCalculator.Business.Models;
 
 namespace ProductionCalculator.API.Controllers
 {
@@ -26,6 +27,19 @@ namespace ProductionCalculator.API.Controllers
         public async Task<IActionResult> ValidateNewUser([FromBody] ValidateNewUserRequest req)
         {
             var result = await _service.ValidateNewUser(req.Username, req.Email);
+            return FromServiceResult(result);
+        }
+
+        [Authorize(Policy = "IsAdmin")]
+        [HttpPut("registration")]
+        public async Task<IActionResult> SetRegistrationEnabled([FromBody] SetRegistrationEnabledRequest req)
+        {
+            if (!req.IsEnabled.HasValue)
+            {
+                return FromServiceResult(ServiceResult.Fail(ServiceStatus.BadRequest400, "IsEnabled is required."));
+            }
+
+            var result = await _service.SetRegistrationEnabled(req.IsEnabled.Value);
             return FromServiceResult(result);
         }
 
